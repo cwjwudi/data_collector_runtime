@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>报表复制配置 - SD SMA Report Copy</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260727-folder-copy" />
+  </head>
+  <body data-page="config">
+    <nav class="page-nav" aria-label="站内导航">
+      <a href="/">报表复制</a>
+      <span class="page-nav-sep">/</span>
+      <span class="page-nav-current">配置</span>
+    </nav>
+
+    <div id="appStatusBar" class="app-status-bar" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <div class="layout layout-stack">
+      <section class="panel connection-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>报表目录设置</h2>
+            <p class="hint">配置 SMA_Report 源目录、U盘目标文件夹、允许复制的文件类型与固定盘符。</p>
+          </div>
+          <span class="touch-badge">Win10 / U盘</span>
+        </div>
+        <div class="connection-form report-config-form">
+          <div class="field-block source-field">
+            <label for="sourceDir">报表目录</label>
+            <input id="sourceDir" type="text" autocomplete="off" placeholder="D:/SMA_Report" />
+          </div>
+          <div class="field-block">
+            <label for="destFolder">U盘目标文件夹</label>
+            <input id="destFolder" type="text" autocomplete="off" placeholder="SMA_Report" />
+          </div>
+          <div class="field-block">
+            <label for="allowedExts">文件类型</label>
+            <input id="allowedExts" type="text" autocomplete="off" placeholder=".pdf" />
+          </div>
+        </div>
+        <div class="connection-actions">
+          <button type="button" id="btnChooseSource">选择报表目录</button>
+          <button type="button" id="btnSaveConfig">保存设置</button>
+          <button type="button" id="btnReloadConfig">重新读取配置</button>
+        </div>
+        <div class="row compact-row">
+          <label for="copySubdirectories">包含子目录</label>
+          <input id="copySubdirectories" type="checkbox" />
+          <label for="overwriteDefault">默认覆盖同名文件</label>
+          <input id="overwriteDefault" type="checkbox" />
+          <label for="allowedTargets">允许固定盘符</label>
+          <input id="allowedTargets" type="text" placeholder="例如 F:\\,G:\\" />
+        </div>
+        <div id="configHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>配置说明</h2>
+        <p class="hint">主页面不会展示这些配置项，操作员只需要选择报表和U盘即可。</p>
+        <table>
+          <tbody>
+            <tr><th>报表目录</th><td>后端只允许读取该目录内的报表文件。</td></tr>
+            <tr><th>U盘目标文件夹</th><td>复制时会在目标盘符下创建该文件夹，并保持原有子目录结构。</td></tr>
+            <tr><th>允许固定盘符</th><td>移动硬盘如果被 Windows 识别为固定磁盘，可在这里显式加入，例如 <code>F:\</code>。</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <div id="filesystem-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog filesystem-dialog">
+        <h3 id="filesystem-modal-title" class="modal-title">选择服务器路径</h3>
+        <div id="filesystem-modal-path" class="filesystem-path"></div>
+        <div id="filesystem-modal-list" class="filesystem-list"></div>
+        <div class="modal-footer">
+          <button id="filesystem-modal-cancel" type="button">取消</button>
+          <button id="filesystem-modal-select" type="button">选择当前目录</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/app.js?v=20260806-service-browser"></script>
+  </body>
+</html>

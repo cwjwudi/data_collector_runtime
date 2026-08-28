@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>报表复制 - SD SMA Report Copy</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260727-folder-copy" />
+  </head>
+  <body data-page="main">
+    <nav class="page-nav" aria-label="站内导航">
+      <span class="page-nav-current">报表复制</span>
+      <span class="page-nav-sep">/</span>
+      <a href="/config">配置</a>
+    </nav>
+
+    <div id="appStatusBar" class="app-status-bar" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <div class="layout layout-stack">
+      <div class="report-workspace">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>报表文件</h2>
+              <p class="hint">选择要复制到 U 盘的报表；按文件夹查看时可多选文件夹并直接复制其全部内容。</p>
+            </div>
+            <span id="reportCount" class="touch-badge">0 个文件</span>
+          </div>
+          <div class="row">
+            <input id="reportSearch" type="search" placeholder="搜索文件名或相对路径" />
+            <button type="button" id="btnSearchReports">搜索</button>
+            <button type="button" id="btnSelectAll">全选</button>
+            <button type="button" id="btnClearSelection">清空</button>
+            <button type="button" class="mode-btn is-selected" data-view-mode="flat">平铺</button>
+            <button type="button" class="mode-btn" data-view-mode="folder">按文件夹</button>
+          </div>
+          <div class="table-wrap reports-table-wrap">
+            <table id="reportsTable"></table>
+          </div>
+          <div id="selectionSummary" class="muted selection-summary" aria-live="polite">已选 0 个文件、0 个文件夹</div>
+          <div id="reportsHint" class="muted"></div>
+        </section>
+
+        <section class="panel copy-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>复制到U盘</h2>
+              <p class="hint">只允许写入检测到的可移动磁盘，或设置中显式允许的固定盘符。</p>
+            </div>
+            <span id="driveCount" class="touch-badge">0 个目标</span>
+          </div>
+          <div id="driveCards" class="drive-cards"></div>
+          <div class="row">
+            <label for="driveSelect">目标盘符</label>
+            <select id="driveSelect"></select>
+          </div>
+          <div class="row">
+            <label for="overwriteCopy">覆盖同名文件</label>
+            <input id="overwriteCopy" type="checkbox" />
+            <button type="button" id="btnCopySelected" class="primary-btn">复制选中的报表到U盘</button>
+          </div>
+          <div id="copyHint" class="muted"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <h2>任务日志</h2>
+        <div class="row">
+          <button type="button" id="btnRefreshJobs">刷新任务</button>
+          <span id="jobSummary" class="muted"></span>
+        </div>
+        <div class="jobs-grid">
+          <table id="jobsTable"></table>
+          <textarea id="jobLog" readonly aria-label="任务日志"></textarea>
+        </div>
+      </section>
+    </div>
+
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 id="confirm-modal-title" class="modal-title">确认</h3>
+        <p id="confirm-modal-message" class="hint"></p>
+        <div class="modal-footer">
+          <button id="confirm-modal-cancel" type="button">取消</button>
+          <button id="confirm-modal-confirm" type="button" class="danger-btn">确认执行</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/app.js?v=20260727-folder-copy"></script>
+  </body>
+</html>

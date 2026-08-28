@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SD SMA 采集器</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="layout home-layout">
+      <section class="panel home-hero">
+        <h1>SD SMA 数据采集器</h1>
+        <p class="hint home-lead">
+          首页仅用于导航。采集任务须进入「采集监视」后点击「启动采集」才会运行；关闭运行
+          <code>start_collector.bat</code> 的窗口将结束 Web 服务及托管采集。
+        </p>
+        <div class="nav-cards">
+          <a class="nav-card" href="/dashboard">
+            <h2>采集监视</h2>
+            <p>选择配置文件、启动/停止采集、查看状态与日志</p>
+          </a>
+          <a class="nav-card" href="/config">
+            <h2>配置与 OPC UA</h2>
+            <p>编辑 JSON 配置、使用 OPC UA 浏览器选点</p>
+          </a>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

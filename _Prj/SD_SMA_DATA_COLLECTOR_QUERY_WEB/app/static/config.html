@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>配置页 — SD SMA Query Web</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260723_01" />
+  </head>
+  <body class="config-page">
+    <nav class="page-nav" aria-label="站内导航">
+      <a href="/query">查询页</a>
+      <span class="page-nav-sep" aria-hidden="true">·</span>
+      <span class="page-nav-current">配置页</span>
+    </nav>
+    <div id="configStatusBar" class="config-status-bar" role="status" aria-live="polite" aria-atomic="true">
+      <span id="configStatusIcon" class="config-status-icon" aria-hidden="true">●</span>
+      <span id="configStatusMessage">配置页正在初始化…</span>
+      <time id="configStatusTime" class="config-status-time"></time>
+    </div>
+    <div class="layout layout-stack">
+      <section class="panel active-config-bar">
+        <div class="row">
+          <label for="activeConfigSelect"><strong>当前激活配置</strong></label>
+          <select id="activeConfigSelect"></select>
+          <span id="activeConfigHint" class="muted">服务启动与 OPC 回写均使用此配置（写入 .active_query_config）</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>配置文件</h2>
+        <p class="hint">选择一个完整 config 文件进行加载；每个文件包含基础设置、查询视图和插件页面配置。</p>
+        <div class="row">
+          <label for="configProfileSelect">当前 config</label>
+          <select id="configProfileSelect"></select>
+          <button type="button" id="btnReloadConfigProfile">读取配置文件</button>
+          <button type="button" id="btnRefreshConfigProfiles">刷新文件列表</button>
+        </div>
+        <div class="row config-actions">
+          <button type="button" id="btnCreateConfigProfile">新建</button>
+          <button type="button" id="btnDeleteConfigProfile" class="danger-btn">删除</button>
+        </div>
+        <div id="configProfileHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>数据库设定</h2>
+        <p class="hint">数据库与查询限制写入 app_settings。点「保存数据库设定」保存。</p>
+
+        <div class="settings-subsection settings-subsection-db">
+          <h3 class="subsection-title">数据库连接</h3>
+          <p class="hint subsection-hint">MySQL / SQLite 连接参数（app_settings.database）</p>
+          <div class="row">
+            <label for="appDbType">数据库类型</label>
+            <select id="appDbType">
+              <option value="mysql">mysql</option>
+              <option value="sqlite">sqlite</option>
+            </select>
+            <label for="appDbName">数据库名</label>
+            <input id="appDbName" type="text" />
+            <label for="appDbHost">Host</label>
+            <input id="appDbHost" type="text" />
+            <label for="appDbPort">Port</label>
+            <input id="appDbPort" class="field-narrow-num" type="number" min="0" />
+          </div>
+          <div class="row">
+            <label for="appDbUsername">DB 用户名</label>
+            <input id="appDbUsername" type="text" />
+            <label for="appDbPassword">DB 密码</label>
+            <input id="appDbPassword" type="password" autocomplete="new-password" />
+            <label><input id="appDbClearPassword" type="checkbox" /> 清除已保存密码</label>
+          </div>
+        </div>
+
+        <div class="settings-subsection settings-subsection-limits">
+          <h3 class="subsection-title">查询限制</h3>
+          <p class="hint subsection-hint">API 限流与时间窗口（app_settings.query_limits）</p>
+          <div class="row">
+            <label for="appRequestsPerMinute">每分钟请求数</label>
+            <input id="appRequestsPerMinute" class="field-narrow-num" type="number" min="0" />
+            <label for="appDefaultWindowHours">默认窗口小时数</label>
+            <input id="appDefaultWindowHours" class="field-narrow-num" type="number" min="1" />
+            <label for="appMaxWindowHours">最大窗口小时数</label>
+            <input id="appMaxWindowHours" class="field-narrow-num" type="number" min="1" />
+          </div>
+        </div>
+
+        <div class="row settings-actions">
+          <button type="button" id="btnSaveAppSettings">保存数据库设定</button>
+          <button type="button" id="btnConnectDatabase">连接数据库</button>
+        </div>
+        <div id="appSettingsHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>OPCUA设定</h2>
+        <p class="hint">
+          连接信息、全局轮询间隔与心跳写入 profile 顶层 <code>opcua</code>。
+          心跳按轮询间隔写 1（仅 BOOL / 整型）；PLC 清 0/FALSE，超时未再变 1 则判定 Query Web 挂了。
+        </p>
+
+        <div class="settings-subsection settings-subsection-opcua">
+          <h3 class="subsection-title">连接</h3>
+          <p class="hint subsection-hint">分别填写 PLC 的 IP 与端口（无需写 opc.tcp:// 前缀）</p>
+          <div class="row opcua-endpoint-row">
+            <label for="appOpcuaHost">IP</label>
+            <input id="appOpcuaHost" type="text" placeholder="127.0.0.1" autocomplete="off" />
+            <label for="appOpcuaPort">端口</label>
+            <input id="appOpcuaPort" class="field-narrow-num" type="number" min="1" max="65535" placeholder="4840" />
+            <span class="muted inline-hint">留空默认 127.0.0.1:4840</span>
+          </div>
+          <div class="row">
+            <label for="appOpcuaUsername">OPC 用户名</label>
+            <input id="appOpcuaUsername" type="text" />
+            <label for="appOpcuaPassword">OPC 密码</label>
+            <input id="appOpcuaPassword" type="password" autocomplete="new-password" />
+            <label><input id="appOpcuaClearPassword" type="checkbox" /> 清除已保存密码</label>
+          </div>
+        </div>
+
+        <div class="settings-subsection settings-subsection-opcua-monitor">
+          <h3 class="subsection-title">监控与心跳（全局）</h3>
+          <p class="hint subsection-hint">作用于全局 OPC 轮询与心跳写入；心跳仅支持 BOOL / 整型，写 1</p>
+          <div class="row">
+            <label for="appOpcuaPollIntervalMs">轮询间隔 (ms)</label>
+            <input
+              id="appOpcuaPollIntervalMs"
+              class="field-narrow-num"
+              type="number"
+              min="50"
+              max="5000"
+              step="50"
+              value="500"
+            />
+            <span class="muted inline-hint">范围 50–5000，默认 500</span>
+          </div>
+          <div class="row">
+            <label for="appOpcuaHeartbeatNode">心跳 NodeId</label>
+            <input
+              id="appOpcuaHeartbeatNode"
+              type="text"
+              class="field-wide"
+              placeholder="ns=6;s=::DataRev:bHeartBeat（可选）"
+            />
+          </div>
+        </div>
+
+        <div class="row settings-actions">
+          <button type="button" id="btnSaveOpcuaSettings">保存 OPCUA设定</button>
+          <button type="button" id="btnTestOpcuaConnection">测试 OPC UA 连接</button>
+        </div>
+        <div id="opcuaSettingsHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Group 与列</h2>
+        <p class="hint">配置各表的时间字段、批次号绑定字段、列顺序、排序、分页与列中英文显示名；仅在查询中引用已配置的组。</p>
+        <div class="settings-subsection">
+          <h3 class="subsection-title">批次号选项来源（View 级）</h3>
+          <p class="hint subsection-hint">决定查询页下拉框从哪张表、哪个字段读取；留空表示禁用批次号查询。</p>
+          <div class="row">
+            <label for="batchSourceTable">来源表</label>
+            <select id="batchSourceTable"></select>
+            <label for="batchSourceField">来源字段</label>
+            <select id="batchSourceField"></select>
+            <button type="button" id="btnSaveBatchSource">保存批次来源</button>
+          </div>
+          <div id="batchSourceHint" class="muted"></div>
+        </div>
+        <div class="row">
+          <label for="editViewName">View</label>
+          <select id="editViewName" disabled></select>
+          <label for="editGroupName">Group</label>
+          <select id="editGroupName"></select>
+          <label for="editTableName">基准表</label>
+          <select id="editTableName"></select>
+          <button type="button" id="btnLoadTableConfig">加载 group 配置</button>
+        </div>
+        <div id="schemaHint" class="muted"></div>
+        <div class="row">
+          <label for="tableTimeField">TimeField</label>
+          <select id="tableTimeField"></select>
+          <label for="tableBatchField">批次号绑定字段</label>
+          <select id="tableBatchField"></select>
+          <label for="tableSortBy">SortBy</label>
+          <select id="tableSortBy"></select>
+          <label for="tableSortDir">SortDir</label>
+          <select id="tableSortDir">
+            <option value="desc">desc</option>
+            <option value="asc">asc</option>
+          </select>
+          <label for="tablePageSize">PageSize</label>
+          <input id="tablePageSize" class="field-narrow-num" type="number" value="50" min="1" max="500" />
+        </div>
+        <div class="col-editor">
+          <div>
+            <div class="muted">可选列</div>
+            <select id="availableColumns" multiple></select>
+          </div>
+          <div class="col-actions">
+            <button type="button" id="btnAddColumns">添加 &gt;&gt;</button>
+            <button type="button" id="btnRemoveColumns">&lt;&lt; 移除</button>
+            <button type="button" id="btnMoveUp">上移</button>
+            <button type="button" id="btnMoveDown">下移</button>
+          </div>
+          <div>
+            <div class="muted">查询列顺序（最终生效）</div>
+            <select id="orderedColumns" multiple></select>
+          </div>
+        </div>
+        <div class="row">
+          <span class="inline-label">列显示名编辑</span>
+        </div>
+        <table id="columnLabelTable"></table>
+        <div class="row">
+          <button type="button" id="btnSaveTableConfig">保存当前表配置</button>
+          <button type="button" id="btnDeleteGroupConfig" class="danger-btn">删除当前配置</button>
+        </div>
+        <div id="columnEditorHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>插件页面</h2>
+        <p class="hint">用于 <code>/plugins/{module}_{1-5}.html</code> 动态绑定；每模块预留 1–5 页。</p>
+        <div class="row">
+          <label for="pluginModule">模块</label>
+          <select id="pluginModule" disabled></select>
+          <label for="pluginPageIndex">页码</label>
+          <select id="pluginPageIndex">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+          <button type="button" id="btnLoadPluginPage">加载当前页配置</button>
+          <button type="button" id="btnSavePluginPage">保存当前页配置</button>
+        </div>
+        <div class="row">
+          <label for="pluginEnabled">启用</label>
+          <input id="pluginEnabled" type="checkbox" checked />
+          <label for="pluginTitle">标题</label>
+          <input id="pluginTitle" type="text" />
+        </div>
+        <div class="row">
+          <label for="pluginViewName">View</label>
+          <select id="pluginViewName" disabled>
+            <option value="table">table</option>
+          </select>
+          <label for="pluginPageSize">PageSize</label>
+          <input id="pluginPageSize" class="field-narrow-num" type="number" value="10" min="1" max="500" />
+        </div>
+        <div class="row">
+          <label for="pluginBindGroup">bind_group</label>
+          <select id="pluginBindGroup"></select>
+        </div>
+        <div id="pluginGroupHint" class="muted"></div>
+        <div id="pluginOpcuaWriteback" class="opcua-writeback-panel">
+          <h3 class="subsection-title">OPC UA 回写</h3>
+          <p class="hint">
+            勾选需要回写的列并填写 NodeId（B&R 示例：<code>ns=6;s=::DataRev:strStartTime</code>）；
+            仅白名单列写入 PLC 数组（最长 50）。全局 Endpoint 在「基础设定」中配置。
+          </p>
+          <div class="row">
+            <label for="pluginOpcuaCursor">Cursor NodeId</label>
+            <input id="pluginOpcuaCursor" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:diCursor" />
+            <span class="muted inline-hint">翻页/查询后写 -1；点击行写 0–49</span>
+          </div>
+          <table id="pluginOpcuaColumnTable"></table>
+          <div id="pluginOpcuaWritebackHint" class="muted"></div>
+        </div>
+        <details id="pluginOpcuaAdvanced" class="advanced-panel">
+          <summary>高级 · opcua_writeback JSON 预览</summary>
+          <p class="hint">
+            只读预览，由上方表单生成；保存当前页配置时以表单为准。
+            <code>columns</code> 键为数据库字段名，未列出的列不会写 PLC。
+          </p>
+          <textarea id="pluginOpcuaFeedbackJson" class="code-editor" spellcheck="false" rows="10" readonly></textarea>
+          <div id="pluginOpcuaFeedbackHint" class="muted"></div>
+        </details>
+        <div id="pluginTableListWriteback" class="opcua-writeback-panel">
+          <h3 class="subsection-title">OPC UA 翻页 / 批次表名回写</h3>
+          <p class="hint">
+            基础模式根据 <code>diCursor</code> 选中行写批次表名数组；高级模式可只配置上一页/下一页，
+            也可额外配置批次号与触发节点执行批次表名回写。
+          </p>
+          <div class="row">
+            <label for="pluginTableListEnabled">启用</label>
+            <input id="pluginTableListEnabled" type="checkbox" />
+          </div>
+          <div class="row">
+            <label for="pluginTableListMode">回写模式</label>
+            <select id="pluginTableListMode">
+              <option value="cursor">基础 · 选中行 (diCursor)</option>
+              <option value="advanced">高级 · OPC UA 翻页 / 可选批次回写</option>
+            </select>
+          </div>
+          <div id="pluginTableListCursorFields" class="row">
+            <label for="pluginTableListBatchColumn">批次列</label>
+            <select id="pluginTableListBatchColumn"></select>
+            <label for="pluginTableListStartTimeColumn">开批时间列</label>
+            <select id="pluginTableListStartTimeColumn"></select>
+            <span id="pluginTableListCursorHint" class="muted inline-hint">可选；不选则按批次号反查主表</span>
+          </div>
+          <div class="row">
+            <label for="pluginTableListBufferNode">Buffer NodeId</label>
+            <input
+              id="pluginTableListBufferNode"
+              type="text"
+              class="field-wide"
+              placeholder="ns=6;s=::DataRev:strListName"
+            />
+            <span class="muted inline-hint">高级模式仅翻页时可留空</span>
+          </div>
+          <div id="pluginTableListAdvancedFields" class="opcua-writeback-panel nested-panel" hidden>
+            <h4 class="subsection-title">高级 · OPC UA 节点</h4>
+            <p class="hint">
+              上一页/下一页为独立可选的 BOOL 节点（上升沿触发）。仅使用翻页时，批次号 NodeId、触发 NodeId、Buffer NodeId 均可留空；
+              如需批次表名回写，则批次号与触发节点必须成对填写，并配置 Buffer。
+              轮询间隔与心跳在上方「OPCUA设定」中全局配置。
+            </p>
+            <div class="row">
+              <label for="pluginTableListQueryNode">查询 NodeId</label>
+              <input id="pluginTableListQueryNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bExecuteRead" />
+            </div>
+            <div class="row">
+              <label for="pluginTableListPrevPageNode">上一页 NodeId</label>
+              <input id="pluginTableListPrevPageNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bPrevPage" />
+            </div>
+            <div class="row">
+              <label for="pluginTableListNextPageNode">下一页 NodeId</label>
+              <input id="pluginTableListNextPageNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bNextPage" />
+            </div>
+            <div class="row">
+              <label for="pluginTableListBatchNoNode">批次号 NodeId</label>
+              <input id="pluginTableListBatchNoNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:strBatchNo" />
+            </div>
+            <div class="row">
+              <label for="pluginTableListTriggerNode">触发 NodeId</label>
+              <input id="pluginTableListTriggerNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bTrigger" />
+            </div>
+          </div>
+          <div id="pluginTableListWritebackHint" class="muted"></div>
+        </div>
+        <details id="pluginTableListAdvanced" class="advanced-panel">
+          <summary>高级 · table_list_writeback JSON 预览</summary>
+          <p class="hint">只读预览；保存当前页配置时以表单为准，可在此复制后手动合并高级字段。</p>
+          <textarea id="pluginTableListJson" class="code-editor" spellcheck="false" rows="8" readonly></textarea>
+        </details>
+        <div id="pluginConfigHint" class="muted"></div>
+      </section>
+    </div>
+    <div id="name-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 class="modal-title">新建配置文件</h3>
+        <div class="row">
+          <input id="name-modal-input" type="text" placeholder="请输入文件名（不含后缀）" />
+          <span class="fixed-suffix">.json</span>
+        </div>
+        <p id="name-modal-hint" class="hint"></p>
+        <div class="modal-footer">
+          <button id="name-modal-cancel" type="button">取消</button>
+          <button id="name-modal-confirm" type="button">确定</button>
+        </div>
+      </div>
+    </div>
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 id="confirm-modal-title" class="modal-title">确认</h3>
+        <p id="confirm-modal-message" class="hint"></p>
+        <div class="modal-footer">
+          <button id="confirm-modal-cancel" type="button">取消</button>
+          <button id="confirm-modal-confirm" type="button" class="danger-btn">确认删除</button>
+        </div>
+      </div>
+    </div>
+    <script src="/static/config.js?v=20260723_01"></script>
+  </body>
+</html>

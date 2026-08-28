@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>配置 — SD SMA 采集配置</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <nav class="page-nav" aria-label="站内导航">
+      <a href="/dashboard">采集监视</a>
+      <span class="page-nav-sep" aria-hidden="true">·</span>
+      <span class="page-nav-current">配置与 OPC UA</span>
+    </nav>
+    <div class="layout">
+      <section class="panel">
+        <h2>OPC UA 浏览器</h2>
+        <div class="row">
+          <input id="opcua-host" type="text" placeholder="Host" value="127.0.0.1" />
+          <input id="opcua-port" type="number" placeholder="Port" value="4840" />
+          <button id="btn-connect">连接</button>
+          <button id="btn-disconnect">断开</button>
+        </div>
+        <p id="opcua-status" class="hint">未连接</p>
+        <div class="row">
+          <input id="browse-node-id" type="text" placeholder="node_id（空为根节点）" value="ns=6;i=1000" />
+          <button id="btn-browse">浏览</button>
+        </div>
+        <ul id="browse-list" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>采集配置</h2>
+        <p id="action-result" class="action-result" role="status" aria-live="polite" aria-atomic="true">等待操作</p>
+        <div class="row">
+          <select id="config-file-select"></select>
+          <button id="btn-load-file">读取配置文件</button>
+          <button id="btn-refresh-files">刷新文件列表</button>
+        </div>
+        <div class="row">
+          <button id="btn-load-template">新建</button>
+          <button id="btn-validate">校验</button>
+          <button id="btn-save-file">保存</button>
+          <button id="btn-delete-file" class="danger-btn">删除</button>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="communications">通信</button>
+          <button class="tab-btn" data-tab="points">点位</button>
+          <button class="tab-btn" data-tab="groups">数据组</button>
+          <button class="tab-btn" data-tab="connections">连接</button>
+          <button class="tab-btn" data-tab="database">数据库</button>
+          <button class="tab-btn" data-tab="logging">日志</button>
+        </div>
+        <div id="tab-communications" class="tab-panel active"></div>
+        <div id="tab-connections" class="tab-panel"></div>
+        <div id="tab-points" class="tab-panel"></div>
+        <div id="tab-groups" class="tab-panel"></div>
+        <div id="tab-database" class="tab-panel"></div>
+        <div id="tab-logging" class="tab-panel"></div>
+      </section>
+    </div>
+
+    <div id="name-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 class="modal-title">新建配置文件</h3>
+        <div class="row">
+          <input id="name-modal-input" type="text" placeholder="请输入文件名（不含后缀）" />
+          <span class="fixed-suffix">.json</span>
+        </div>
+        <p id="name-modal-hint" class="hint"></p>
+        <div class="modal-footer">
+          <button id="name-modal-cancel" type="button">取消</button>
+          <button id="name-modal-confirm" type="button">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 id="confirm-modal-title" class="modal-title">确认</h3>
+        <p id="confirm-modal-message" class="hint"></p>
+        <div class="modal-footer">
+          <button id="confirm-modal-cancel" type="button">取消</button>
+          <button id="confirm-modal-confirm" type="button" class="danger-btn">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/config.js?v=20260729_1"></script>
+  </body>
+</html>

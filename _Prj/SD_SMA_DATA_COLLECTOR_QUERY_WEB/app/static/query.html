@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>查询页 — SD SMA Query Web</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260727_01" />
+    <link rel="stylesheet" href="/static/touch_time_range.css?v=20260727_02" />
+  </head>
+  <body class="query-page">
+    <nav class="page-nav" aria-label="站内导航">
+      <span class="page-nav-current">查询页</span>
+      <span class="page-nav-sep" aria-hidden="true">·</span>
+      <a href="/config">配置页</a>
+    </nav>
+    <div class="layout layout-stack">
+      <section class="panel">
+        <h2>查询条件</h2>
+        <p class="hint">选择按时间或按批次号查询，两种条件互斥；结果按游标分页展示。</p>
+        <div class="row query-primary-row">
+          <label for="viewName">View</label>
+          <select id="viewName"></select>
+          <label for="group">Group</label>
+          <select id="group"></select>
+          <label for="tableName">表选择</label>
+          <select id="tableName"></select>
+          <label for="labelLang">列名显示</label>
+          <select id="labelLang">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="both">中文 + English</option>
+          </select>
+          <label for="pageSize">PageSize</label>
+          <input id="pageSize" class="field-narrow-num" type="number" value="10" min="1" max="500" />
+          <button type="button" id="btnRefreshGroups">刷新组</button>
+          <button type="button" id="btnRunQuery">查询</button>
+        </div>
+        <div id="viewSummary" class="muted"></div>
+        <div class="row query-pager">
+          <button type="button" id="btnPrevPage">上一页</button>
+          <button type="button" id="btnNextPage">下一页</button>
+          <span class="inline-label">第</span>
+          <input id="pageNumber" class="field-page-num" type="number" value="1" min="1" readonly aria-label="当前页码" />
+          <span class="inline-label">页</span>
+          <span id="pageInfo" class="muted"></span>
+        </div>
+        <div id="schemaHint" class="muted"></div>
+        <div class="row query-filter-row">
+          <span class="inline-label">查询方式</span>
+          <label><input id="queryModeTime" name="queryMode" type="radio" value="time" checked /> 按时间</label>
+          <label><input id="queryModeBatch" name="queryMode" type="radio" value="batch" /> 按批次号</label>
+          <label for="batchCode">BatchCode</label>
+          <select id="batchCode" disabled><option value="">请选择批次号</option></select>
+        </div>
+        <div id="queryTimePanel" class="row query-filter-row">
+          <span class="inline-label">时间范围</span>
+          <input id="startTime" class="touch-time-value-input" type="hidden" />
+          <input id="endTime" class="touch-time-value-input" type="hidden" />
+          <span id="queryTimeSummary" class="muted touch-time-inline-summary is-empty" aria-live="polite">尚未设置时间范围</span>
+          <button type="button" id="btnRange15Min">最近15分钟</button>
+          <button type="button" id="btnRange1H">最近1小时</button>
+          <button type="button" id="btnRange8H">最近8小时</button>
+          <button type="button" id="btnRangeToday">今天</button>
+          <button type="button" id="btnRangeYesterday">昨天</button>
+          <button type="button" id="btnRange1W">最近1周</button>
+          <button type="button" id="btnRange1M">最近1月</button>
+          <button type="button" id="btnPreciseTime">精确时间</button>
+        </div>
+        <div id="querySummary" class="muted"></div>
+        <div id="queryWarnings" class="muted warn"></div>
+      </section>
+
+      <section class="panel">
+        <h2>查询结果</h2>
+        <div class="query-table-wrap" tabindex="0" aria-label="查询结果，可横向滚动">
+          <table id="resultTable"></table>
+        </div>
+      </section>
+    </div>
+    <script src="/static/touch_time_range.js?v=20260727_02"></script>
+    <script src="/static/query.js?v=20260727_03"></script>
+  </body>
+</html>

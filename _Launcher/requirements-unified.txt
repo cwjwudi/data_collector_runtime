@@ -1,0 +1,15 @@
+# Unified runtime dependencies for:
+# - _Prj/SD_SMA_DATA_COLLECTOR
+# - _Prj/SD_SMA_DATA_COLLECTOR_QUERY_WEB
+# - _Prj/SD_SMA_DB_ADMIN
+# - _Prj/SD_SMA_REPORT_COPY
+fastapi
+uvicorn
+pydantic
+sqlalchemy==2.0.25
+pymysql==1.1.0
+python-multipart==0.0.9
+opcua==0.98.13
+asyncua>=2,<3
+psutil>=5.9,<8
+cryptography

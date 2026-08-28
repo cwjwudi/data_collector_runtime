@@ -1,0 +1,32 @@
+{
+  "communications": [],
+  "connections": [],
+  "points": [],
+  "groups": [],
+  "opcua": {
+    "host": "127.0.0.1",
+    "port": 4840
+  },
+  "database": {
+    "type": "sqlite",
+    "name": "runtime/collector.db",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "",
+    "password": "",
+    "auto_create": false,
+    "data_groups": []
+  },
+  "persistent_queue": {
+    "enabled": false,
+    "path": "runtime/queue/collector_outbox.db"
+  },
+  "logging": {
+    "level": "INFO",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

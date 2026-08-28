@@ -1,0 +1,100 @@
+{
+  "python": ".venv/Scripts/python.exe",
+  "allow_current_python_fallback": true,
+  "requirements": "_Launcher/requirements-unified.txt",
+  "auto_install_missing": true,
+  "wheelhouse": "wheelhouse",
+  "proxy": {
+    "enabled": false,
+    "url": "",
+    "no_proxy": "localhost,127.0.0.1,::1"
+  },
+  "required_imports": [
+    { "package": "fastapi", "import": "fastapi" },
+    { "package": "uvicorn", "import": "uvicorn" },
+    { "package": "pydantic", "import": "pydantic" },
+    { "package": "sqlalchemy", "import": "sqlalchemy" },
+    { "package": "pymysql", "import": "pymysql" },
+    { "package": "python-multipart", "import": "multipart" },
+    { "package": "opcua", "import": "opcua" },
+    { "package": "asyncua", "import": "asyncua" },
+    { "package": "psutil>=5.9,<8", "import": "psutil" },
+    { "package": "cryptography", "import": "cryptography" }
+  ],
+  "open_browser": true,
+  "management": {
+    "host": "0.0.0.0",
+    "port": 8090
+  },
+  "resource_monitor": {
+    "enabled": false,
+    "sample_interval_seconds": 5,
+    "console_interval_seconds": 5,
+    "include_child_processes": true,
+    "max_log_mb": 50,
+    "backup_count": 5,
+    "alerts": {
+      "cpu_percent": 80,
+      "memory_mb": 1024,
+      "sustain_seconds": 60
+    }
+  },
+  "services": [
+    {
+      "name": "collector_web",
+      "title": "SD SMA Collector",
+      "cwd": "_Prj/SD_SMA_DATA_COLLECTOR",
+      "app": "web_config.main:app",
+      "host": "0.0.0.0",
+      "port": 8091,
+      "health_path": "/api/health",
+      "open_url": "http://127.0.0.1:8091/dashboard",
+      "env": {
+        "SD_SMA_COLLECTOR_CONFIG_DIR": "${DATA_ROOT}/config/collector",
+        "SD_SMA_LOG_DIR": "${DATA_ROOT}/logs/collector"
+      }
+    },
+    {
+      "name": "query_web",
+      "title": "SD SMA Query Web",
+      "cwd": "_Prj/SD_SMA_DATA_COLLECTOR_QUERY_WEB",
+      "app": "app.main:app",
+      "host": "0.0.0.0",
+      "port": 8092,
+      "health_path": "/query",
+      "open_url": "http://127.0.0.1:8092/query",
+      "env": {
+        "SD_SMA_QUERY_WEB_CONFIG_DIR": "${DATA_ROOT}/config/query_web",
+        "SD_SMA_LOG_DIR": "${DATA_ROOT}/logs/query_web"
+      }
+    },
+    {
+      "name": "db_admin",
+      "title": "SD SMA DB Admin",
+      "cwd": "_Prj/SD_SMA_DB_ADMIN",
+      "app": "app.main:app",
+      "host": "0.0.0.0",
+      "port": 8093,
+      "health_path": "/api/health",
+      "open_url": "http://127.0.0.1:8093/admin",
+      "env": {
+        "SD_SMA_DB_ADMIN_CONFIG_DIR": "${DATA_ROOT}/config/db_admin",
+        "SD_SMA_DB_ADMIN_BACKUP_DIR": "${DATA_ROOT}/backups"
+      }
+    },
+    {
+      "name": "report_copy",
+      "title": "SD SMA Report Copy",
+      "cwd": "_Prj/SD_SMA_REPORT_COPY",
+      "app": "app.main:app",
+      "host": "0.0.0.0",
+      "port": 8094,
+      "health_path": "/api/health",
+      "open_url": "http://127.0.0.1:8094/",
+      "env": {
+        "SD_SMA_REPORT_COPY_CONFIG_DIR": "${DATA_ROOT}/config/report_copy",
+        "SD_SMA_LOG_DIR": "${DATA_ROOT}/logs/report_copy"
+      }
+    }
+  ]
+}

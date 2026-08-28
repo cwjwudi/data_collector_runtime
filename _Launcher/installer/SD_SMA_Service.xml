@@ -1,0 +1,24 @@
+<service>
+  <id>SD_SMA</id>
+  <name>SD SMA Runtime</name>
+  <description>SD SMA data collection and management runtime</description>
+  <executable>%BASE%\..\_Launcher\SD_SMA_Launcher.exe</executable>
+  <arguments>--config "%PROGRAMDATA%\SmartData\SD SMA\config\launcher\launcher_config.json" --no-browser</arguments>
+  <workingdirectory>%BASE%\..\_Launcher</workingdirectory>
+  <env name="SD_SMA_DATA_ROOT" value="%PROGRAMDATA%\SmartData\SD SMA" />
+  <serviceaccount>
+    <username>LocalSystem</username>
+  </serviceaccount>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <stoptimeout>30sec</stoptimeout>
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <onfailure action="restart" delay="120 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <logpath>%PROGRAMDATA%\SmartData\SD SMA\logs\service</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10485760</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

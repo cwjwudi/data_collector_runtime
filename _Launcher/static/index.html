@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>SD SMA 管理中心</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="securityWarning" class="security-warning hidden">管理员 PIN 未启用：当前网络中的访问者可以执行全部管理操作。</div>
+  <header>
+    <div><h1>SD SMA 管理中心</h1><p id="clock">本机服务管理</p></div>
+    <button id="lockButton" class="secondary">管理操作</button>
+  </header>
+
+  <nav aria-label="功能导航">
+    <button class="nav active" data-page="services">服务状态</button>
+    <button class="nav" data-page="import">导入配置</button>
+    <button class="nav" data-page="credentials">数据库密码</button>
+    <button class="nav" data-page="settings">系统设置</button>
+  </nav>
+
+  <main>
+    <section id="servicesPage" class="page active">
+      <div id="serviceGrid" class="service-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="importPage" class="page">
+      <div class="panel">
+        <h2>从 U 盘或导入箱导入配置</h2>
+        <details class="import-settings">
+          <summary>本地目录白名单</summary>
+          <label>每行一个本机目录
+            <textarea id="allowedImportRoots" rows="3" placeholder="例如 D:\SD_SMA_Config"></textarea>
+          </label>
+          <button id="saveImportRoots" class="secondary">保存本地目录</button>
+        </details>
+        <label>目标服务
+          <select id="importService">
+            <option value="all">四个插件配置文件夹（整包导入）</option>
+            <option value="collector_web">SD SMA Collector</option>
+            <option value="query_web">SD SMA Query Web</option>
+            <option value="db_admin">SD SMA DB Admin</option>
+            <option value="report_copy">SD SMA Report Copy</option>
+          </select>
+        </label>
+        <div class="panel-title"><span class="hint">U 盘插入后会自动检测</span><button id="refreshImportRoots" class="secondary">立即刷新</button></div>
+        <div id="rootGrid" class="root-grid"></div>
+        <div class="browser-bar">
+          <button id="browserUp" class="secondary" disabled>返回上级</button>
+          <span id="browserPath">请选择位置</span>
+        </div>
+        <div id="entryGrid" class="entry-grid"></div>
+        <div class="selection"><strong>已选择：</strong><span id="selectedPath">无</span></div>
+        <button id="inspectImport" class="primary" disabled>检查配置</button>
+        <div id="importPreview" class="preview hidden"></div>
+      </div>
+    </section>
+
+    <section id="credentialsPage" class="page">
+      <div class="panel">
+        <div class="panel-title"><h2>数据库凭据档案</h2><button id="newCredential" class="primary">新增档案</button></div>
+        <p class="hint">密码由本机 Windows DPAPI 加密，页面不会回显密码。</p>
+        <div id="credentialList" class="credential-list"></div>
+        <h3>服务分配</h3>
+        <div id="assignmentList" class="assignment-list"></div>
+      </div>
+    </section>
+
+    <section id="settingsPage" class="page">
+      <div class="settings-grid">
+        <div class="panel">
+          <h2>网络访问</h2>
+          <p class="hint">统一控制管理中心和四个业务服务的 8090–8094 端口。</p>
+          <label class="choice"><input type="radio" name="networkMode" value="global"> <span><strong>全局访问</strong><small>监听所有网卡，允许其他设备访问</small></span></label>
+          <label class="choice"><input type="radio" name="networkMode" value="local"> <span><strong>仅本地访问</strong><small>只允许本机通过 127.0.0.1 访问</small></span></label>
+          <p id="networkMessage" class="hint"></p>
+          <button id="saveNetworkMode" class="primary">应用网络设置</button>
+        </div>
+        <div class="panel">
+          <h2>管理员 PIN</h2>
+          <p id="pinStatusText" class="hint"></p>
+          <button id="configurePin" class="primary">设置管理员 PIN</button>
+          <button id="disablePin" class="danger hidden">关闭 PIN 保护</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="pinDialog">
+    <form method="dialog" id="pinForm">
+      <h2 id="pinTitle">管理员解锁</h2>
+      <p id="pinHelp">输入 6–12 位数字 PIN</p>
+      <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off">
+      <div id="pinPad" class="pin-pad"></div>
+      <p id="pinError" class="error"></p>
+      <div class="dialog-actions"><button id="pinCancel" type="button" class="secondary">取消</button><button id="pinSkip" type="button" class="warning hidden">暂不启用 PIN</button><button id="pinSubmit" type="submit" class="primary">确认</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="credentialDialog">
+    <form method="dialog" id="credentialForm">
+      <h2>数据库凭据档案</h2>
+      <input id="credentialId" type="hidden">
+      <label>档案名称<input id="credentialName" required maxlength="60"></label>
+      <div class="two-cols"><label>主机<input id="credentialHost" required value="127.0.0.1"></label><label>端口<input id="credentialPort" required type="number" value="3306"></label></div>
+      <div class="two-cols"><label>用户名<input id="credentialUsername" required value="root"></label><label>数据库（可选）<input id="credentialDatabase"></label></div>
+      <label>密码<input id="credentialPassword" type="password" autocomplete="new-password"><small>编辑时留空表示保留原密码</small></label>
+      <p id="credentialError" class="error"></p>
+      <div class="dialog-actions"><button id="credentialCancel" type="button" value="cancel" class="secondary">取消</button><button id="credentialSave" type="submit" value="default" class="primary">保存并应用</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog"><h2 id="confirmTitle">确认操作</h2><p id="confirmText"></p><div class="dialog-actions"><button value="cancel" class="secondary">取消</button><button value="ok" class="danger">确认</button></div></form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

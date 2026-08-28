@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpecializedQuery</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #ffffff;
+    }
+    .root {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 34px;
+    }
+    .toolbar-row .spacer {
+      flex: 1 1 auto;
+    }
+    .toolbar input, .toolbar select, .toolbar button, .pager input, .pager button {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      background: #fff;
+      height: 32px;
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
+    .toolbar-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .toolbar input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+    }
+    .toolbar button {
+      cursor: pointer;
+    }
+    .toolbar button, .pager button {
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.06s ease;
+    }
+    .toolbar button:hover, .pager button:hover {
+      background: #f3f4f6;
+    }
+    .toolbar button:active, .pager button:active {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+      transform: translateY(1px);
+    }
+    .toolbar button.is-clicked, .pager button.is-clicked {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .toolbar button.active {
+      background: #2563eb;
+      border-color: #1d4ed8;
+      color: #fff;
+    }
+    .meta {
+      font-size: 12px;
+      color: #6b7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tableWrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+    }
+    tbody tr {
+      cursor: pointer;
+    }
+    tbody tr.row-selected td {
+      background: #dbeafe;
+    }
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 34px;
+    }
+    .pageInput {
+      width: 68px;
+      text-align: center;
+    }
+    .pageText {
+      font-size: 12px;
+      color: #374151;
+      white-space: nowrap;
+    }
+    .pageTotal,
+    .recordSummary {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    #tableSelector {
+      min-width: 220px;
+    }
+    @media (pointer: coarse), (max-width: 900px) {
+      .root {
+        padding: 8px;
+        gap: 10px;
+      }
+      .toolbar {
+        gap: 8px;
+      }
+      .toolbar-row,
+      .pager {
+        gap: 10px 8px;
+        min-height: 44px;
+      }
+      .toolbar-row > span,
+      .toolbar-row label,
+      .pageText {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        font-size: 14px;
+      }
+      .toolbar input:not([type="radio"]),
+      .toolbar select,
+      .toolbar button,
+      .pager input,
+      .pager button {
+        height: 44px;
+        min-height: 44px;
+        padding: 9px 12px;
+        font-size: 16px;
+      }
+      .toolbar input[type="radio"] {
+        width: 24px;
+        height: 24px;
+      }
+      .toolbar select {
+        flex: 1 1 190px;
+        min-width: 160px;
+      }
+      .toolbar button,
+      .pager button {
+        min-width: 96px;
+      }
+      .pager button {
+        flex: 1 1 120px;
+      }
+      th, td {
+        padding: 10px 8px;
+        font-size: 14px;
+      }
+      tbody tr {
+        min-height: 44px;
+      }
+      .meta {
+        flex: 1 1 100%;
+        font-size: 13px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/touch_time_range.css?v=20260727_02" />
+</head>
+<body>
+  <div id="app" class="root">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span>查询方式</span>
+        <label><input id="queryModeTime" name="queryMode" type="radio" value="time" checked /> 按时间</label>
+        <label><input id="queryModeBatch" name="queryMode" type="radio" value="batch" /> 按批次号</label>
+        <label>BatchCode</label><select id="batchCode" disabled><option value="">请选择批次号</option></select>
+        <button id="btnGo">查询</button>
+      </div>
+      <div id="pluginTimePanel" class="toolbar-row">
+        <span>时间范围</span>
+        <input id="startDate" class="touch-time-value-input" type="hidden" />
+        <input id="endDate" class="touch-time-value-input" type="hidden" />
+        <span id="pluginTimeSummary" class="meta touch-time-inline-summary is-empty" aria-live="polite">尚未设置时间范围</span>
+        <button type="button" id="btnRange15Min">最近15分钟</button>
+        <button type="button" id="btnRange1H">最近1小时</button>
+        <button type="button" id="btnRange8H">最近8小时</button>
+        <button type="button" id="btnRangeToday">今天</button>
+        <button type="button" id="btnRangeYesterday">昨天</button>
+        <button type="button" id="btnRange1W">最近1周</button>
+        <button type="button" id="btnRange1M">最近1月</button>
+        <button type="button" id="btnPreciseTime">精确时间</button>
+      </div>
+      <div class="toolbar-row">
+        <label>表</label><select id="tableSelector"></select>
+      </div>
+    </div>
+    <div class="tableWrap">
+      <table id="resultTable"></table>
+    </div>
+    <div class="pager">
+      <button id="btnPrevPage">上一页</button>
+      <button id="btnNextPage">下一页</button>
+      <span class="pageText">第</span><input id="pageNumber" class="pageInput" type="number" min="1" value="1" readonly />
+      <span class="pageText">/ <strong id="totalPageCount" class="pageTotal">—</strong> 页</span>
+      <span id="recordSummary" class="pageText recordSummary" aria-live="polite">总数统计中</span>
+      <div id="meta" class="meta"></div>
+    </div>
+  </div>
+  <script src="/static/touch_time_range.js?v=20260727_02"></script>
+  <script src="/static/specialized_query.js?v=20260727_04"></script>
+</body>
+</html>

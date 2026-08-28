@@ -1,0 +1,16 @@
+{
+  "mysql_tools": {},
+  "backup_dir": "${DB_ADMIN_ROOT}/backups",
+  "max_upload_mb": 2048,
+  "max_concurrent_jobs": 2,
+  "cli_timeout_seconds": 86400,
+  "backup_free_space_factor": 1.5,
+  "default_connection": {
+    "engine": "mysql",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "",
+    "database": ""
+  },
+  "last_output_dir": ""
+}

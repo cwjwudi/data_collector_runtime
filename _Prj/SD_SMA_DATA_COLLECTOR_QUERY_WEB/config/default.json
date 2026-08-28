@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "name": "default",
+  "app_settings": {
+    "database": {
+      "type": "mysql",
+      "name": "",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "username": ""
+    },
+    "query_limits": {
+      "requests_per_minute": 120,
+      "default_window_hours": 24,
+      "max_window_hours": 168
+    }
+  },
+  "opcua": {
+    "endpoint_url": "",
+    "username": "",
+    "heartbeat_node": "",
+    "poll_interval_ms": 500
+  },
+  "query_view": {
+    "default_page_size": 50,
+    "max_page_size": 500,
+    "views": {
+      "table": {
+        "title": "Table Query",
+        "description": "Generic table history query",
+        "time_field": "collection_time",
+        "batch_source": {},
+        "columns": [],
+        "sort_by": "collection_time",
+        "sort_dir": "desc",
+        "page_size": 50,
+        "default_filters": [],
+        "per_table": {},
+        "per_group": {}
+      }
+    },
+    "group_baselines": {}
+  },
+  "plugins": {
+    "modules": {}
+  }
+}

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>数据库管理 - SD SMA DB Admin</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260723-sandbox-status-20260807-backup-file-manager" />
+  </head>
+  <body>
+    <nav class="page-nav" aria-label="站内导航">
+      <span class="page-nav-current">数据库管理</span>
+    </nav>
+
+    <div id="appStatusBar" class="app-status-bar" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <div class="layout layout-stack">
+      <section class="panel connection-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>连接设置</h2>
+            <p class="hint">选择常用配置后只需输入密码；需要改 Host、Port、用户时再点对应快捷项或直接编辑。</p>
+          </div>
+          <span class="touch-badge">触屏优化</span>
+        </div>
+        <div class="quick-settings" aria-label="连接快捷设置">
+          <div class="quick-group">
+            <span class="quick-label">常用连接</span>
+            <button type="button" class="quick-chip" data-conn-host="127.0.0.1" data-conn-port="3306" data-conn-user="root">本机 root</button>
+            <button type="button" class="quick-chip" data-conn-host="localhost" data-conn-port="3306" data-conn-user="root">localhost</button>
+          </div>
+          <div class="quick-group">
+            <span class="quick-label">用户</span>
+            <button type="button" class="quick-chip" data-conn-user="root">root</button>
+            <button type="button" class="quick-chip" data-conn-user="admin">admin</button>
+            <button type="button" class="quick-chip" data-conn-user="scada">scada</button>
+          </div>
+          <div class="quick-group">
+            <span class="quick-label">端口</span>
+            <button type="button" class="quick-chip" data-conn-port="3306">3306</button>
+            <button type="button" class="quick-chip" data-conn-port="3307">3307</button>
+          </div>
+        </div>
+        <div class="connection-form">
+          <div class="field-block">
+            <label for="dbHost">Host</label>
+            <input id="dbHost" type="text" inputmode="decimal" autocomplete="off" placeholder="127.0.0.1" />
+          </div>
+          <div class="field-block field-port">
+            <label for="dbPort">Port</label>
+            <input id="dbPort" class="field-narrow-num" type="number" inputmode="numeric" min="1" placeholder="3306" />
+          </div>
+          <div class="field-block">
+            <label for="dbUsername">用户</label>
+            <input id="dbUsername" type="text" autocomplete="username" placeholder="root" />
+          </div>
+          <div class="field-block field-password">
+            <label for="dbPassword">密码</label>
+            <div class="password-control">
+              <input id="dbPassword" type="password" autocomplete="current-password" />
+              <button type="button" id="btnTogglePassword" class="input-action-btn" aria-label="显示密码">显示</button>
+              <button type="button" id="btnClearPassword" class="input-action-btn" aria-label="清空密码">清空</button>
+            </div>
+          </div>
+        </div>
+        <div class="connection-actions">
+          <button type="button" id="btnTestConnection">测试连接</button>
+          <button type="button" id="btnLoadDatabases">读取数据库</button>
+        </div>
+        <div id="connectionHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>备份与导出</h2>
+        <p class="hint">选择数据库、表和输出目录后执行。整库/单表请用 SQL（适合 GB 级）；CSV 仅适合小数据交换。</p>
+        <div class="row">
+          <label for="databaseSelect">数据库</label>
+          <select id="databaseSelect"></select>
+          <button type="button" id="btnRefreshTables">刷新表</button>
+          <label for="tableSelect">表</label>
+          <select id="tableSelect"></select>
+        </div>
+        <div class="row">
+          <label for="outputDir">导出目录</label>
+          <input id="outputDir" type="text" />
+          <button type="button" id="btnChooseOutputDir">选择文件夹</button>
+          <button type="button" id="btnUseDefaultOutputDir">使用默认目录</button>
+        </div>
+        <div class="row">
+          <button type="button" id="btnBackupSql">备份当前数据库为 SQL</button>
+          <button type="button" id="btnBackupTableSql">备份当前表为 SQL</button>
+          <button type="button" id="btnExportCsv">导出当前表为 CSV</button>
+        </div>
+        <div id="objectHint" class="muted"></div>
+        <div id="backupHint" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>恢复与导入</h2>
+        <p class="hint">不经浏览器上传。外部文件先「登记」。GB 级请用 SQL；CSV 仅适合小数据。</p>
+
+        <div class="op-block">
+          <h3 class="op-block-title">SQL 恢复</h3>
+          <p class="hint op-block-hint">从服务器已完成备份恢复到目标库。单表备份含 DROP/CREATE，可能覆盖同名表。</p>
+          <div class="row">
+            <label for="serverBackupSelect">已完成 SQL</label>
+            <select id="serverBackupSelect"></select>
+            <button type="button" id="btnRefreshBackups">刷新</button>
+            <button type="button" id="btnRegisterSql">登记本地 SQL</button>
+          </div>
+          <div class="row">
+            <label for="restoreDatabaseSelect">恢复到数据库</label>
+            <select id="restoreDatabaseSelect"></select>
+            <button type="button" id="btnRestoreServerBackup" class="danger-btn">直接恢复 SQL</button>
+          </div>
+
+        </div>
+
+        <div class="op-block op-block-secondary">
+          <h3 class="op-block-title">CSV 导入（小数据）</h3>
+          <p class="hint op-block-hint">仅用于小表交换，不适合 GB 级表。目标表必须已存在。</p>
+          <div class="row">
+            <label for="serverCsvSelect">已导出 CSV</label>
+            <select id="serverCsvSelect"></select>
+            <button type="button" id="btnRefreshCsvExports">刷新</button>
+            <button type="button" id="btnRegisterCsv">登记本地 CSV</button>
+          </div>
+          <div class="row">
+            <label for="importDatabaseSelect">导入到数据库</label>
+            <select id="importDatabaseSelect"></select>
+            <button type="button" id="btnRefreshImportTables">刷新表</button>
+            <label for="importTableSelect">导入到表</label>
+            <select id="importTableSelect"></select>
+          </div>
+          <div class="row">
+            <label for="forceCsvImport">强制导入（允许字段不一致）</label>
+            <input id="forceCsvImport" type="checkbox" />
+            <label for="truncateBeforeImport">清空表后再导入</label>
+            <input id="truncateBeforeImport" type="checkbox" />
+            <button type="button" id="btnImportServerCsv" class="danger-btn">直接导入 CSV</button>
+          </div>
+        </div>
+
+        <div id="importHint" class="muted warn"></div>
+      </section>
+
+      <section class="panel backup-manager-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>备份文件管理</h2>
+            <p class="hint">浏览备份目录并勾选 SQL 或 CSV。可跨目录选择，复制时会同时复制 manifest 并校验 SHA-256。</p>
+          </div>
+          <span class="touch-badge">触屏优化</span>
+        </div>
+        <div class="backup-manager-grid">
+          <div class="backup-browser-pane">
+            <div class="backup-browser-toolbar">
+              <button type="button" id="btnBackupFilesRoots">位置列表</button>
+              <button type="button" id="btnBackupFilesParent">上一级</button>
+              <button type="button" id="btnRefreshBackupFiles">刷新</button>
+              <button type="button" id="btnSelectCurrentBackupFiles">全选当前目录</button>
+            </div>
+            <div id="backupFilesPath" class="filesystem-path">允许访问的位置</div>
+            <div id="backupFilesList" class="backup-files-list" role="group" aria-label="备份文件目录"></div>
+          </div>
+          <aside class="backup-actions-pane">
+            <div class="backup-selection-heading">
+              <h3>已选择文件</h3>
+              <button type="button" id="btnClearBackupSelection">清空选择</button>
+            </div>
+            <div id="backupSelectionSummary" class="backup-selection-summary"></div>
+            <div id="backupSelectedFiles" class="backup-selected-files"></div>
+
+            <div class="backup-action-block">
+              <h3>复制到外部设备</h3>
+              <label for="backupCopyDestination">目标目录</label>
+              <input id="backupCopyDestination" type="text" readonly placeholder="请插入并选择外部设备" />
+              <div class="backup-action-buttons">
+                <button type="button" id="btnChooseBackupDestination">选择外部设备目录</button>
+                <button type="button" id="btnRefreshRemovableDrives">立即刷新</button>
+                <button type="button" id="btnCopyBackups" class="primary-btn">复制所选文件</button>
+              </div>
+            </div>
+
+            <div class="backup-action-block backup-delete-block">
+              <h3>删除已有备份</h3>
+              <p class="hint warn">永久删除所选数据文件及 manifest，不可恢复。</p>
+              <button type="button" id="btnDeleteBackupFiles" class="danger-btn">永久删除所选文件</button>
+            </div>
+            <div id="backupManagerHint" class="muted"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>任务日志</h2>
+        <div class="row">
+          <button type="button" id="btnRefreshJobs">刷新任务</button>
+          <span id="jobSummary" class="muted"></span>
+        </div>
+        <div class="jobs-grid">
+          <table id="jobsTable"></table>
+          <textarea id="jobLog" readonly aria-label="任务日志"></textarea>
+        </div>
+      </section>
+    </div>
+
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog">
+        <h3 id="confirm-modal-title" class="modal-title">确认</h3>
+        <p id="confirm-modal-message" class="hint"></p>
+        <div class="modal-footer">
+          <button id="confirm-modal-cancel" type="button">取消</button>
+          <button id="confirm-modal-confirm" type="button" class="danger-btn">确认执行</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="filesystem-modal-overlay" class="modal-overlay" style="display: none">
+      <div class="modal-dialog filesystem-dialog">
+        <h3 id="filesystem-modal-title" class="modal-title">选择服务器路径</h3>
+        <div id="filesystem-modal-path" class="filesystem-path"></div>
+        <div id="filesystem-modal-list" class="filesystem-list"></div>
+        <div class="modal-footer">
+          <button id="filesystem-modal-refresh" type="button" style="display: none">立即刷新</button>
+          <button id="filesystem-modal-cancel" type="button">取消</button>
+          <button id="filesystem-modal-select" type="button">选择当前目录</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/admin.js?v=20260807-backup-file-manager"></script>
+  </body>
+</html>
