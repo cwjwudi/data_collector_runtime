@@ -19,6 +19,8 @@
         <Variable Name="gDataSQLProduct" RecursiveEnable="2" />
         <Variable Name="gDataSQLBatch" RecursiveEnable="2" />
         <Variable Name="gDataSQLBatchInfo" RecursiveEnable="2" />
+        <Variable Name="gSdSmaClient" RecursiveEnable="2" />
+        <Variable Name="gSdSmaSession" RecursiveEnable="2" />
       </GlobalVariables>
       <Task Name="AlarmQuerr">
         <Variable Name="HMIAlarmQuerryIndex" RecursiveEnable="2" />
@@ -238,6 +240,9 @@
       </Task>
       <Task Name="DataSQLPro">
         <Variable Name="ProductDataSQLQuery" RecursiveEnable="2" />
+      </Task>
+      <Task Name="UserBridge">
+        <Method Name="SdSmaExchange" />
       </Task>
     </Module>
   </DefaultView>

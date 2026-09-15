@@ -1,0 +1,13 @@
+OPCUA_METHOD SdSmaExchange (*Runtime exchanges the one-time code from WebViewer URL for the HMI user session*)
+	ARG_INPUT
+		Code : String := exCode; (*32 hex chars from ?sdsma_code=*)
+	END_ARG
+	ARG_OUTPUT
+		Status : Int32 := exStatus; (*0 ok, 1 unknown code, 2 already used, 3 roles pending - retry*)
+		Slot : Int32 := exSlot;
+		Seq : UInt32 := exSeq; (*compare with gSdSmaSession[Slot].seq to check the session is still alive*)
+		UserId : String := exUserId;
+		Roles : String := exRoles;
+		IpAddress : String := exIp;
+	END_ARG
+END_OPCUA_METHOD

@@ -10,6 +10,7 @@
   <Navigations />
   <BindingsSets>
     <BindingsSet refId="content_Alarm_binding" />
+    <BindingsSet refId="content_SdSma_binding" />
   </BindingsSets>
   <EventBindingsSets />
   <Dialogs />

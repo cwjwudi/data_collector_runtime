@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<BindingsSet xmlns="http://www.br-automation.com/iat2015/binding/engineering/v2" xmlns:bt="http://www.br-automation.com/iat2015/bindingListTypes/engineering/v2" xmlns:be="http://www.br-automation.com/iat2015/bindingListEmbedded/engineering/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="content_SdSma_binding">
+  <Bindings>
+    <!-- clientInfo of every client -> gSdSmaClient[slotId] (B&R FAQ "Displaying client information from all clients") -->
+    <Binding mode="oneWayToSource">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaClient[0].isValid" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaClient[1].isValid" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaClient[2].isValid" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaClient[3].isValid" />
+        </be:List>
+      </Source>
+      <Target xsi:type="session" refId="::SYSTEM:clientInfo.isValid" attribute="value" />
+    </Binding>
+    <Binding mode="oneWayToSource">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaClient[0].slotId" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaClient[1].slotId" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaClient[2].slotId" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaClient[3].slotId" />
+        </be:List>
+      </Source>
+      <Target xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+    </Binding>
+    <Binding mode="oneWayToSource">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaClient[0].userId" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaClient[1].userId" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaClient[2].userId" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaClient[3].userId" />
+        </be:List>
+      </Source>
+      <Target xsi:type="session" refId="::SYSTEM:clientInfo.userId" attribute="value" />
+    </Binding>
+    <Binding mode="oneWayToSource">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaClient[0].ipAddress" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaClient[1].ipAddress" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaClient[2].ipAddress" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaClient[3].ipAddress" />
+        </be:List>
+      </Source>
+      <Target xsi:type="session" refId="::SYSTEM:clientInfo.ipAddress" attribute="value" />
+    </Binding>
+    <!-- one-time code of this client -> WebViewer URL query (?sdsma_code=...) -->
+    <Binding mode="oneWay">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaSession[0].codeQuery" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaSession[1].codeQuery" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaSession[2].codeQuery" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaSession[3].codeQuery" />
+        </be:List>
+      </Source>
+      <Target xsi:type="brease" contentRefId="Query_Config_content" widgetRefId="WebViewer1" attribute="query" />
+    </Binding>
+    <Binding mode="oneWay">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaSession[0].codeQuery" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaSession[1].codeQuery" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaSession[2].codeQuery" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaSession[3].codeQuery" />
+        </be:List>
+      </Source>
+      <Target xsi:type="brease" contentRefId="Collector_Config_content" widgetRefId="WebViewer1" attribute="query" />
+    </Binding>
+    <Binding mode="oneWay">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaSession[0].codeQuery" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaSession[1].codeQuery" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaSession[2].codeQuery" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaSession[3].codeQuery" />
+        </be:List>
+      </Source>
+      <Target xsi:type="brease" contentRefId="content_Config" widgetRefId="WebViewer1" attribute="query" />
+    </Binding>
+    <Binding mode="oneWay">
+      <Source xsi:type="listElement">
+        <Selector xsi:type="session" refId="::SYSTEM:clientInfo.slotId" attribute="value" />
+        <be:List xsi:type="be:opcUa" attribute="value">
+          <bt:Element index="0" refId="::AsGlobalPV:gSdSmaSession[0].codeQuery" />
+          <bt:Element index="1" refId="::AsGlobalPV:gSdSmaSession[1].codeQuery" />
+          <bt:Element index="2" refId="::AsGlobalPV:gSdSmaSession[2].codeQuery" />
+          <bt:Element index="3" refId="::AsGlobalPV:gSdSmaSession[3].codeQuery" />
+        </be:List>
+      </Source>
+      <Target xsi:type="brease" contentRefId="content_Config" widgetRefId="WebViewer2" attribute="query" />
+    </Binding>
+  </Bindings>
+</BindingsSet>

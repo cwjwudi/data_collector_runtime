@@ -32,6 +32,7 @@
     </Connector>
     <Parameter ID="ConfigurationID" Value="SD_SMA_SCADA_DEMO_Config1" />
     <Parameter ID="UserPartitionSize" Value="100" />
+    <Parameter ID="Simulation" Value="1" />
     <Group ID="FileDevice1" />
     <Parameter ID="FileDeviceName1" Value="USER" />
     <Parameter ID="FileDevicePath1" Value="USER_PATH" />

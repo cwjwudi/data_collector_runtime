@@ -5,5 +5,6 @@
     <Object Type="File">Config.mappviewcfg</Object>
     <Object Type="File">Visualizat.vis</Object>
     <Object Type="File">content_Alarm.binding</Object>
+    <Object Type="File">content_SdSma.binding</Object>
   </Objects>
 </Package>

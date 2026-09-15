@@ -1,0 +1,30 @@
+(*UserBridge locals - OPC ::UserBridge:*)
+VAR
+	i : USINT;
+	k : USINT;
+	bActive : BOOL;
+	rnd : ARRAY[0..3] OF UDINT;
+	nibble : USINT;
+	codeBytes : ARRAY[0..32] OF USINT;
+	sComma : STRING[1] := ',';
+	(*role lookup, one slot at a time*)
+	roleStep : USINT;
+	roleSlot : USINT;
+	roleSeq : UDINT;
+	roleList : ArUserIdentType;
+	fbInitList : ArUserInitList;
+	fbGetFirst : ArUserGetFirst;
+	fbGetNext : ArUserGetNext;
+	fbDestroyList : ArUserDestroyList;
+	(*OPC UA method SdSmaExchange*)
+	exStep : USINT;
+	fbMethod : UaSrv_MethodOperate;
+	exMethodErrorId : DWORD;
+	exCode : STRING[32];
+	exStatus : DINT;
+	exSlot : DINT;
+	exSeq : UDINT;
+	exUserId : STRING[128];
+	exRoles : STRING[255];
+	exIp : STRING[64];
+END_VAR

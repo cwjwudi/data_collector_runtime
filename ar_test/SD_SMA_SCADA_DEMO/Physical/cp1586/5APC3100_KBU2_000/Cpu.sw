@@ -18,6 +18,7 @@
     <Task Name="DataSQLPro" Source="SMA.DataSQLPro.prg" Memory="UserROM" Language="IEC" Debugging="true" />
     <Task Name="DataSQLBat" Source="SMA.DataSQLBat.prg" Memory="UserROM" Language="IEC" Debugging="true" />
     <Task Name="LoadCtrl" Source="SMA.LoadControl.prg" Memory="UserROM" Language="IEC" Debugging="true" />
+    <Task Name="UserBridge" Source="SMA.UserBridge.prg" Memory="UserROM" Language="IEC" Debugging="true" />
   </TaskClass>
   <TaskClass Name="Cyclic#5" />
   <TaskClass Name="Cyclic#6" />
@@ -57,5 +58,8 @@
     <LibraryObject Name="astime" Source="" Memory="UserROM" Language="Binary" Debugging="true" />
     <LibraryObject Name="asieccon" Source="" Memory="UserROM" Language="Binary" Debugging="true" />
     <LibraryObject Name="brsystem" Source="" Memory="UserROM" Language="Binary" Debugging="true" />
+    <LibraryObject Name="ArUser" Source="Libraries.ArUser.lby" Memory="UserROM" Language="binary" Debugging="true" />
+    <LibraryObject Name="AsOpcUac" Source="Libraries.AsOpcUac.lby" Memory="UserROM" Language="binary" Debugging="true" />
+    <LibraryObject Name="AsOpcUas" Source="Libraries.AsOpcUas.lby" Memory="UserROM" Language="binary" Debugging="true" />
   </Libraries>
 </SwConfiguration>

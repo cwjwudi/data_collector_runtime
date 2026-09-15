@@ -18,5 +18,8 @@
     <Object Type="Library" Language="binary" Description="This library contains standard function blocks and functions for IEC 61131-3.">standard</Object>
     <Object Type="Library" Language="binary" Description="Automation Runtime profiler and idle-time measurement.">AsArProf</Object>
     <Object Type="Library" Language="binary" Description="Automation Runtime system information.">brsystem</Object>
+    <Object Type="Library" Language="binary" Description="User Role System">ArUser</Object>
+    <Object Type="Library" Language="binary" Description="The AsOpcUac library supports communication with OPC-UA servers">AsOpcUac</Object>
+    <Object Type="Library" Language="binary" Description="The AsOpcUas library provides interfaces to the OPC-UA server">AsOpcUas</Object>
   </Objects>
 </Package>

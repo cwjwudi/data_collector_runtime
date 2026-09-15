@@ -4,6 +4,9 @@
   <Objects>
     <Object Type="File" Description="DataSQL types">GlobalDataSQL.typ</Object>
     <Object Type="File" Description="DataSQL globals">GlobalDataSQL.var</Object>
+    <Object Type="File" Description="UserBridge types">GlobalUser.typ</Object>
+    <Object Type="File" Description="UserBridge globals">GlobalUser.var</Object>
+    <Object Type="Program" Language="IEC" Description="HMI user -> Runtime session bridge">UserBridge</Object>
     <Object Type="Program" Language="IEC" Description="Alarm insert buffer">DataSQLAla</Object>
     <Object Type="Program" Language="IEC" Description="Audit insert buffer">DataSQLAud</Object>
     <Object Type="Program" Language="IEC" Description="Recipe data + query">DataSQLRec</Object>
