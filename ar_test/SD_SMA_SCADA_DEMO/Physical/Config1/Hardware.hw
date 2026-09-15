@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio Version=4.12.6.106 FileVersion="4.9"?>
+<Hardware xmlns="http://br-automation.co.at/AS/Hardware">
+  <Module Name="X20CP3687X" Type="X20CP3687X" Version="1.6.2.0">
+    <Connector Name="IF2">
+      <Parameter ID="ActivateDevice" Value="1" />
+      <Parameter ID="Mode" Value="Manual" />
+      <Parameter ID="InternetAddress" Value="192.168.50.233" />
+      <Parameter ID="SubnetMask" Value="255.255.255.0" />
+      <Parameter ID="InaPort" Value="0" />
+      <Parameter ID="ActivateSnmp" Value="2" />
+    </Connector>
+    <Parameter ID="ConfigurationID" Value="SD_SMA_SCADA_DEMO_Config1" />
+    <Parameter ID="UserPartitionSize" Value="100" />
+    <Group ID="FileDevice1" />
+    <Parameter ID="FileDeviceName1" Value="USER" />
+    <Parameter ID="FileDevicePath1" Value="USER_PATH" />
+    <Group ID="FtpUser1" />
+    <Parameter ID="FtpUsername1" Value="br" />
+    <Parameter ID="FtpUserPassword1" Value="JPl1VVziIj5tK4ypV/PCMk3zrwuEHr3/unO+8TvKNbo=" Description="123" />
+    <Parameter ID="FtpUserSalt1" Value="TmpN9Vd5" />
+    <Parameter ID="FTPAccessRight1" Value="0" />
+    <Parameter ID="WebServerWebDir" Value="D:\web\CFCARD\WEBROOT\" />
+    <Parameter ID="WebServerStartPage" Value="line.html" />
+    <Parameter ID="ActivateOpcUa" Value="1" />
+    <Parameter ID="OpcUaInformationModels_PV_Version" Value="1" />
+  </Module>
+</Hardware>

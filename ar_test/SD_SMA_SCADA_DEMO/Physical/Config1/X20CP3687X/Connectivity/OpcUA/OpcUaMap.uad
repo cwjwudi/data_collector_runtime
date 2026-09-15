@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<OpcUaSource FileVersion="9" ArVersion="M4.93">
+  <Aliases>
+    <ACLAliases />
+    <EURangeViolationAliases />
+    <EURangesAliases />
+    <EngineeringUnitAliases />
+  </Aliases>
+  <DefaultView>
+    <Module Name="&lt;Default&gt;">
+      <GlobalVariables Name="Global Variables">
+        <Variable Name="guiDBHeartBeat" />
+      </GlobalVariables>
+      <Task Name="AlarmQuerr">
+        <Variable Name="HMIAlarmQuerryIndex" RecursiveEnable="2" />
+        <Variable Name="HMIAlarmQuerryMBBtn" />
+        <Variable Name="HMIAlarmQuerryTimestr" RecursiveEnable="2" />
+        <Variable Name="stDbReadQuery" RecursiveEnable="2">
+          <Variable Name="stRev">
+            <Variable Name="stRev[0]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+              <Variable Name="udiRevTime" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[1]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[2]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[3]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[4]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[5]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[6]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[7]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[8]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[9]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+          </Variable>
+        </Variable>
+        <Variable Name="msg" />
+        <Variable Name="bExecuteRead" />
+        <Variable Name="HMIAlarmQuerryedDay" />
+        <Variable Name="HMIAlarmQuerryedHour" />
+        <Variable Name="HMIAlarmQuerryedMinute" />
+        <Variable Name="HMIAlarmQuerryedMonth" />
+        <Variable Name="HMIAlarmQuerryedSec" />
+        <Variable Name="HMIAlarmQuerryedYear" />
+        <Variable Name="HMIAlarmQuerrystDay" />
+        <Variable Name="HMIAlarmQuerrystHour" />
+        <Variable Name="HMIAlarmQuerrystMinute" />
+        <Variable Name="HMIAlarmQuerrystMonth" />
+        <Variable Name="HMIAlarmQuerrystSec" />
+        <Variable Name="HMIAlarmQuerrystYear" />
+        <Variable Name="HMIAlarmClearMBBtn" />
+        <Variable Name="btrigger" />
+        <Variable Name="severity" />
+        <Variable Name="Status" />
+        <Variable Name="ts" />
+        <Variable Name="Batch" />
+        <Variable Name="Code" />
+      </Task>
+      <Task Name="Trend">
+        <Variable Name="bExecuteRead" />
+        <Variable Name="stDbReadQuery" RecursiveEnable="2">
+          <Variable Name="stConfig">
+            <Variable Name="strStartTime" RecursiveEnable="2" />
+            <Variable Name="strEndTime" RecursiveEnable="2" />
+            <Variable Name="strPointName" RecursiveEnable="2" />
+          </Variable>
+          <Variable Name="stRev">
+            <VariableCommon Name="Common Properties">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" />
+              <Variable Name="udiRevTime" RecursiveEnable="2" />
+            </VariableCommon>
+          </Variable>
+        </Variable>
+        <Variable Name="Trenddata" />
+      </Task>
+    </Module>
+  </DefaultView>
+</OpcUaSource>

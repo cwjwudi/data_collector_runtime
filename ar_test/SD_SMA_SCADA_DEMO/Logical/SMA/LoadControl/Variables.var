@@ -1,0 +1,24 @@
+VAR
+	(* Online controls and diagnostics. *)
+	bEnable : BOOL := TRUE;
+	uiTargetLoadPercent : UINT := 50;
+	udMeasuredLoadPercent : UDINT;
+	udBusyBudgetUs : UDINT;
+	udCycleTimeUs : UDINT;
+	uiIdleStatus : UINT;
+
+	(* Internal controller state. *)
+	fbIdleMeasure : LogIdleShow;
+	fbRuntimeInfo : RTInfo;
+	udControlElapsedUs : UDINT;
+	diLoadError : DINT;
+	diCorrectionUs : DINT;
+	diNewBudgetUs : DINT;
+	udMaxBudgetUs : UDINT;
+	udStartUs : UDINT;
+	udNowUs : UDINT;
+	udElapsedUs : UDINT;
+	uiTick : UINT;
+	uiTickCheck : UINT;
+	uiMicrosecond : UINT;
+END_VAR

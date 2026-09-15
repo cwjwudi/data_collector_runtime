@@ -1,0 +1,53 @@
+<svg viewBox="0 0 680 514" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>mapp Services 各组件与 Part 11 符合性声明的覆盖关系</title>
+<desc>B&R 官方符合性声明仅评估 MpAudit 与 MpUser/MpUserX；部分组件可通过 MpAudit 事件挂钩间接覆盖；mapp Database 等组件无任何声明。</desc>
+
+<text x="40" y="30" font-family="var(--font-sans)" font-size="15" font-weight="500" fill="var(--color-text-primary)">mapp Services 组件与 Part 11 声明的覆盖关系</text>
+
+<rect x="40" y="60" width="600" height="90" rx="16" fill="#085041" stroke="#5DCAA5" stroke-width="0.5"/>
+<text x="60" y="84" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#9FE1CB">B&amp;R 符合性声明已逐条评估（V5.0.0+）</text>
+<rect x="60" y="98" width="270" height="36" rx="8" fill="#0F6E56" stroke="#9FE1CB" stroke-width="0.5"/>
+<text x="195" y="116" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#E1F5EE" text-anchor="middle" dominant-baseline="central">MpAudit（mapp Audit）</text>
+<rect x="350" y="98" width="270" height="36" rx="8" fill="#0F6E56" stroke="#9FE1CB" stroke-width="0.5"/>
+<text x="485" y="116" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#E1F5EE" text-anchor="middle" dominant-baseline="central">MpUser / MpUserX</text>
+
+<rect x="40" y="170" width="600" height="132" rx="16" fill="#2C2C2A" stroke="#888780" stroke-width="0.5"/>
+<text x="60" y="194" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#B4B2A9">无独立声明，但可挂到 MpAudit 事件体系（须显式配置）</text>
+<rect x="60" y="210" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="125" y="228" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp AlarmX</text>
+<rect x="203" y="210" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="268" y="228" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp Recipe</text>
+<rect x="346" y="210" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="411" y="228" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp File</text>
+<rect x="489" y="210" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="554" y="228" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp IO</text>
+<rect x="60" y="256" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="125" y="274" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp PackML</text>
+<rect x="203" y="256" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="268" y="274" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp CodeBox</text>
+<rect x="346" y="256" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="411" y="274" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">mapp Backup</text>
+<rect x="489" y="256" width="131" height="36" rx="8" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="554" y="274" font-family="var(--font-sans)" font-size="13" font-weight="400" fill="#F1EFE8" text-anchor="middle" dominant-baseline="central">OPC UA 变量</text>
+
+<rect x="40" y="320" width="600" height="174" rx="16" fill="#791F1F" stroke="#F09595" stroke-width="0.5"/>
+<text x="60" y="344" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1">无任何 Part 11 声明，且 MpAudit 无对应事件类型 · 责任全在企业侧</text>
+<rect x="60" y="360" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="149" y="380" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp Database</text>
+<text x="149" y="398" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">明文 HTTP，无审计</text>
+<rect x="250" y="360" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="339" y="380" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp Data</text>
+<text x="339" y="398" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">CSV 可改，可回绕</text>
+<rect x="440" y="360" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="529" y="380" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp Report</text>
+<text x="529" y="398" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">输出内容自担</text>
+<rect x="60" y="428" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="149" y="448" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp OEE / Energy</text>
+<text x="149" y="466" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">非 GxP 记录用途</text>
+<rect x="250" y="428" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="339" y="448" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp Sequence</text>
+<text x="339" y="466" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">顺序自证</text>
+<rect x="440" y="428" width="178" height="56" rx="8" fill="#A32D2D" stroke="#F7C1C1" stroke-width="0.5"/>
+<text x="529" y="448" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#FCEBEB" text-anchor="middle" dominant-baseline="central">mapp Tweet</text>
+<text x="529" y="466" font-family="var(--font-sans)" font-size="12" font-weight="400" fill="#F7C1C1" text-anchor="middle" dominant-baseline="central">外发通道，泄露面</text>
+</svg>

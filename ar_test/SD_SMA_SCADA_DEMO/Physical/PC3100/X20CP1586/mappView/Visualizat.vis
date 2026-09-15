@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<vdef:Visualization id="vis_SD_SMA" autoUpdate="true" xmlns:vdef="http://www.br-automation.com/iat2015/visualizationDefinition/v2">
+  <StartPage pageRefId="Page_Audit" />
+  <Pages>
+    <Page refId="Page_Audit" />
+    <Page refId="Page_Alarm" />
+    <Page refId="Page_Trend" />
+    <Page refId="page_Config" />
+  </Pages>
+  <Navigations />
+  <BindingsSets>
+    <BindingsSet refId="content_Alarm_binding" />
+  </BindingsSets>
+  <EventBindingsSets />
+  <Dialogs />
+  <Contents>
+    <Content refId="content_Audit" />
+    <Content refId="content_Alarm" />
+    <Content refId="content_Trend" />
+    <Content refId="content_Line" />
+    <Content refId="content_Config" />
+    <Content refId="Query_Config_content" />
+    <Content refId="Collector_Config_content" />
+  </Contents>
+  <SnippetsSets>
+    <SnippetsSet refId="snippet_Audit" />
+  </SnippetsSets>
+  <VariablesSets />
+  <ExpressionsSets />
+  <StartTheme themeRefId="BuRTheme1" />
+  <Themes>
+    <Theme refId="BuRTheme1" />
+  </Themes>
+  <Configurations>
+    <Configuration key="activityCount" value="false" />
+    <Gestures>
+      <!--<SystemGesture1 touchPoints="2" />
+		  <SystemGesture2 touchPoints="2" />
+		  <SystemGesture3 touchPoints="2" />-->
+    </Gestures>
+    <VirtualKeyboards>
+      <!--<InputProcessing onKeyDown="true" />-->
+    </VirtualKeyboards>
+  </Configurations>
+</vdef:Visualization>

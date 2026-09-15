@@ -1,0 +1,17 @@
+(*Audit insert buffer + query - OPC ::DataSQLAud: (parallel arrays)*)
+VAR
+	AuditInsertBuffer : AuditInsertBuffer_typ;
+	AuditDataSQLQuery : DataSQLQuery_typ;
+	UtcDTGetTime_0 : UtcDTGetTime;
+	tonAudit : TON;
+	dtNow : DATE_AND_TIME;
+	diAuditIdx : DINT;
+	strTmp : STRING[16];
+	usiIdx : USINT;
+	bSimEnable : BOOL := TRUE;
+	bManualTrigger : BOOL;
+	uiManualIndex : UINT;
+	iEvent : INT;
+	iEventCount : INT;
+	iIdx : INT;
+END_VAR

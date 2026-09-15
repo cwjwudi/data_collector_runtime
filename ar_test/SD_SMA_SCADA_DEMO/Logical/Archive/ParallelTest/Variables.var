@@ -1,0 +1,26 @@
+VAR
+	usiTestModel : USINT;
+	usiIdx : USINT;
+	rCollectorIntervalSeconds : REAL := 5.0;
+END_VAR
+(*Insert your comment here.*)
+VAR
+	bExecuteRead : BOOL;
+	stDbReadQuery : dbReadQuery_typ;
+	bParallelTriger : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF BOOL;
+	uiHeartBeat : UINT;
+	uiQueryFeedBack : UINT;
+END_VAR
+(*DATA POINT*)
+VAR
+	F1 : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF REAL;
+	F2 : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF REAL;
+	F3 : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF REAL;
+	F4 : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF REAL;
+	F5 : ARRAY[0..MY_DATA_SIZE_MINUS_ONE] OF REAL;
+END_VAR
+(*CONSTANT*)
+VAR CONSTANT
+	MY_DATA_SIZE : UDINT := 100;
+	MY_DATA_SIZE_MINUS_ONE : UDINT := MY_DATA_SIZE-1;
+END_VAR

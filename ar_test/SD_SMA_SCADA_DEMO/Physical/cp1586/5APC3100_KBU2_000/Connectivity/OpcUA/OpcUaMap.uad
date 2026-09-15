@@ -1,0 +1,244 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<OpcUaSource FileVersion="9" ArVersion="J4.93">
+  <Aliases>
+    <ACLAliases />
+    <EURangeViolationAliases />
+    <EURangesAliases />
+    <EngineeringUnitAliases />
+  </Aliases>
+  <DefaultView>
+    <Module Name="&lt;Default&gt;">
+      <GlobalVariables Name="Global Variables">
+        <Variable Name="guiDBHeartBeat" />
+        <Variable Name="guiDQHeartBeat" />
+        <Variable Name="gDataSQLHeartBeat" />
+        <Variable Name="gDataSQLCommFault" />
+        <Variable Name="gDataSQLOperate" RecursiveEnable="2" />
+        <Variable Name="gDataSQLRecipe" RecursiveEnable="2" />
+        <Variable Name="gDataSQLProduct" RecursiveEnable="2" />
+        <Variable Name="gDataSQLBatch" RecursiveEnable="2" />
+        <Variable Name="gDataSQLBatchInfo" RecursiveEnable="2" />
+      </GlobalVariables>
+      <Task Name="AlarmQuerr">
+        <Variable Name="HMIAlarmQuerryIndex" RecursiveEnable="2" />
+        <Variable Name="HMIAlarmQuerryMBBtn" />
+        <Variable Name="HMIAlarmQuerryTimestr" RecursiveEnable="2" />
+        <Variable Name="stDbReadQuery" RecursiveEnable="2">
+          <Variable Name="stRev">
+            <Variable Name="stRev[0]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+              <Variable Name="udiRevTime" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[1]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[2]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[3]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[4]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[5]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[6]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[7]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[8]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+            <Variable Name="stRev[9]">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" ChangedCommonProperties="1" />
+            </Variable>
+          </Variable>
+        </Variable>
+        <Variable Name="msg" />
+        <Variable Name="bExecuteRead" />
+        <Variable Name="HMIAlarmQuerryedDay" />
+        <Variable Name="HMIAlarmQuerryedHour" />
+        <Variable Name="HMIAlarmQuerryedMinute" />
+        <Variable Name="HMIAlarmQuerryedMonth" />
+        <Variable Name="HMIAlarmQuerryedSec" />
+        <Variable Name="HMIAlarmQuerryedYear" />
+        <Variable Name="HMIAlarmQuerrystDay" />
+        <Variable Name="HMIAlarmQuerrystHour" />
+        <Variable Name="HMIAlarmQuerrystMinute" />
+        <Variable Name="HMIAlarmQuerrystMonth" />
+        <Variable Name="HMIAlarmQuerrystSec" />
+        <Variable Name="HMIAlarmQuerrystYear" />
+        <Variable Name="HMIAlarmClearMBBtn" />
+        <Variable Name="btrigger" />
+        <Variable Name="severity" />
+        <Variable Name="Status" />
+        <Variable Name="ts" />
+        <Variable Name="Batch" />
+        <Variable Name="Code" />
+      </Task>
+      <Task Name="Trend">
+        <Variable Name="bExecuteRead" />
+        <Variable Name="stDbReadQuery" RecursiveEnable="2">
+          <Variable Name="stConfig">
+            <Variable Name="strStartTime" RecursiveEnable="2" />
+            <Variable Name="strEndTime" RecursiveEnable="2" />
+            <Variable Name="strPointName" RecursiveEnable="2" />
+          </Variable>
+          <Variable Name="stRev">
+            <VariableCommon Name="Common Properties">
+              <Variable Name="rRevBuffer" RecursiveEnable="2" />
+              <Variable Name="udiRevTime" RecursiveEnable="2" />
+            </VariableCommon>
+          </Variable>
+        </Variable>
+        <Variable Name="Trenddata" />
+      </Task>
+      <Task Name="DataGen">
+        <Variable Name="AIR" />
+        <Variable Name="AP1" />
+        <Variable Name="AP2" />
+        <Variable Name="BP1" />
+        <Variable Name="CP" />
+        <Variable Name="CRT" />
+        <Variable Name="CT" />
+        <Variable Name="CV" />
+        <Variable Name="dtTimeStamp" />
+        <Variable Name="EC" />
+        <Variable Name="ES" />
+        <Variable Name="ES1" />
+        <Variable Name="EST" />
+        <Variable Name="F1" />
+        <Variable Name="F10" />
+        <Variable Name="F11" />
+        <Variable Name="F12" />
+        <Variable Name="F13" />
+        <Variable Name="F14" />
+        <Variable Name="F15" />
+        <Variable Name="F2" />
+        <Variable Name="F3" />
+        <Variable Name="F4" />
+        <Variable Name="F5" />
+        <Variable Name="F6" />
+        <Variable Name="F7" />
+        <Variable Name="F8" />
+        <Variable Name="F9" />
+        <Variable Name="FC" />
+        <Variable Name="FF" />
+        <Variable Name="FP" />
+        <Variable Name="FP1" />
+        <Variable Name="FP2" />
+        <Variable Name="FT" />
+        <Variable Name="HT1" />
+        <Variable Name="HT10" />
+        <Variable Name="HT11" />
+        <Variable Name="HT12" />
+        <Variable Name="HT13" />
+        <Variable Name="HT14" />
+        <Variable Name="HT15" />
+        <Variable Name="HT16" />
+        <Variable Name="HT17" />
+        <Variable Name="HT18" />
+        <Variable Name="HT19" />
+        <Variable Name="HT2" />
+        <Variable Name="HT20" />
+        <Variable Name="HT3" />
+        <Variable Name="HT4" />
+        <Variable Name="HT5" />
+        <Variable Name="HT6" />
+        <Variable Name="HT7" />
+        <Variable Name="HT8" />
+        <Variable Name="HT9" />
+        <Variable Name="ID" />
+        <Variable Name="IP1" />
+        <Variable Name="IP2" />
+        <Variable Name="MCP" />
+        <Variable Name="MCT" />
+        <Variable Name="Millsec" />
+        <Variable Name="MP" />
+        <Variable Name="MT" />
+        <Variable Name="ST1" />
+        <Variable Name="ST10" />
+        <Variable Name="ST11" />
+        <Variable Name="ST12" />
+        <Variable Name="ST13" />
+        <Variable Name="ST14" />
+        <Variable Name="ST15" />
+        <Variable Name="ST2" />
+        <Variable Name="ST3" />
+        <Variable Name="ST4" />
+        <Variable Name="ST5" />
+        <Variable Name="ST6" />
+        <Variable Name="ST7" />
+        <Variable Name="ST8" />
+        <Variable Name="ST9" />
+        <Variable Name="STATE" />
+        <Variable Name="strTimeStamp" />
+        <Variable Name="TC" />
+        <Variable Name="TF" />
+        <Variable Name="TimeStamp" />
+        <Variable Name="TW" />
+        <Variable Name="VPF" />
+        <Variable Name="WT" />
+        <Variable Name="bBatchTriger" />
+        <Variable Name="dtBtachEndTime" />
+        <Variable Name="dtBtachStartTime" />
+        <Variable Name="strBatchCode" />
+      </Task>
+      <Task Name="DataRev">
+        <Variable Name="bExecuteRead" />
+        <Variable Name="bTestTriger" />
+        <Variable Name="uiHeartBeat" />
+        <Variable Name="uiQueryFeedBack" />
+        <Variable Name="stDbReadQuery" RecursiveEnable="2" />
+        <Variable Name="strBatchCode" />
+        <Variable Name="udiEndTime" />
+        <Variable Name="udiStartTime" />
+        <Variable Name="strEndTime" />
+        <Variable Name="strStartTime" />
+        <Variable Name="udiCursor" />
+        <Variable Name="diCursor" />
+        <Variable Name="bNextPage" />
+        <Variable Name="bPrePage" />
+        <Variable Name="strBatchCode1" />
+        <Variable Name="strListName" />
+        <Variable Name="bTriger" />
+      </Task>
+      <Task Name="ParallelTe">
+        <Variable Name="rCollectorIntervalSeconds" />
+        <Variable Name="F1" />
+        <Variable Name="F2" />
+        <Variable Name="F3" />
+        <Variable Name="F4" />
+        <Variable Name="F5" />
+        <Variable Name="bExecuteRead" />
+        <Variable Name="bParallelTriger" />
+        <Variable Name="uiHeartBeat" />
+      </Task>
+      <Task Name="TimeSt">
+        <Variable Name="sDbDateTime" />
+        <Variable Name="stRTCtime">
+          <Variable Name="millisec" />
+        </Variable>
+      </Task>
+      <Task Name="DataSQLAla">
+        <Variable Name="AlarmInsertBuffer" RecursiveEnable="2" />
+        <Variable Name="AlarmDataSQLQuery" RecursiveEnable="2" />
+      </Task>
+      <Task Name="DataSQLAud">
+        <Variable Name="AuditInsertBuffer" RecursiveEnable="2" />
+        <Variable Name="AuditDataSQLQuery" RecursiveEnable="2" />
+      </Task>
+      <Task Name="DataSQLRec">
+        <Variable Name="RecipeDataSQLQuery" RecursiveEnable="2" />
+      </Task>
+      <Task Name="DataSQLPro">
+        <Variable Name="ProductDataSQLQuery" RecursiveEnable="2" />
+      </Task>
+    </Module>
+  </DefaultView>
+</OpcUaSource>

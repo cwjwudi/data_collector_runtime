@@ -1,0 +1,115 @@
+WATCH Ver=2.00 PLCName=PLC1 CPUName=CPU TaskName=DataRev 
+Position X=0 Y=0 Width=0 Height=0 TabWidth Name=200 Type=100 Scope=60 Force=60 Index=54 ASCIIString=0
+                                    name                                     type force                                                            value level type len format place expand specs
+                              strEndTime                        STRING[80][0..50]    0 "                                                               *"    0    9   81    0    1    0         
+                           strEndTime[0]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                           strEndTime[1]                               STRING[80]    0 "                                           '2026-07-22 10:44:59'"    1    9   81    1    1    0         
+                           strEndTime[2]                               STRING[80]    0 "                                           '2026-07-22 10:43:23'"    1    9   81    1    1    0         
+                           strEndTime[3]                               STRING[80]    0 "                                           '2026-07-22 10:41:48'"    1    9   81    1    1    0         
+                           strEndTime[4]                               STRING[80]    0 "                                           '2026-07-22 10:40:11'"    1    9   81    1    1    0         
+                           strEndTime[5]                               STRING[80]    0 "                                           '2026-07-22 10:38:36'"    1    9   81    1    1    0         
+                           strEndTime[6]                               STRING[80]    0 "                                           '2026-07-22 10:37:00'"    1    9   81    1    1    0         
+                           strEndTime[7]                               STRING[80]    0 "                                           '2026-07-22 10:30:46'"    1    9   81    1    1    0         
+                           strEndTime[8]                               STRING[80]    0 "                                           '2026-07-22 10:29:10'"    1    9   81    1    1    0         
+                           strEndTime[9]                               STRING[80]    0 "                                           '2026-07-22 10:27:34'"    1    9   81    1    1    0         
+                          strEndTime[10]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[11]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[12]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[13]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[14]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[15]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[16]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[17]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[18]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[19]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[20]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[21]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[22]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[23]                               STRING[80]    0 "                                                              ''"    1    9   81    1    1    0         
+                          strEndTime[24]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[25]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[26]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[27]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[28]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[29]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[30]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[31]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[32]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[33]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[34]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[35]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[36]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[37]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[38]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[39]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[40]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[41]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[42]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[43]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[44]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[45]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[46]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[47]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[48]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[49]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                          strEndTime[50]                               STRING[80]    0 "                                                               *"    1    9   81    1    1    0         
+                            strStartTime                        STRING[80][0..50]    0 "                                                               *"    0    9   81    0    1    1         
+                         strStartTime[0]                               STRING[80]    0 "                                           '2026-07-22 10:45:05'"    1    9   81    1    1    0         
+                         strStartTime[1]                               STRING[80]    0 "                                           '2026-07-22 10:43:29'"    1    9   81    1    1    0         
+                         strStartTime[2]                               STRING[80]    0 "                                           '2026-07-22 10:41:53'"    1    9   81    1    1    0         
+                               bNextPage                                     BOOL    0 "                                                           FALSE"    0    1    1    2    1    0         
+                                bPrePage                                     BOOL    0 "                                                           FALSE"    0    1    1    2    1    0         
+                                 bTriger                                     BOOL    0 "                                                           FALSE"    0    1    1    2    1    0         
+                            strBatchCode                        STRING[80][0..50]    0 "                                                               *"    0    9   81    0    1    0         
+                         strBatchCode[0]                               STRING[80]    0 "                                                'SMA_1784717105'"    1    9   81    1    0    0         
+                         strBatchCode[1]                               STRING[80]    0 "                                                'SMA_1784717009'"    1    9   81    1    0    0         
+                         strBatchCode[2]                               STRING[80]    0 "                                                'SMA_1784716913'"    1    9   81    1    0    0         
+                         strBatchCode[3]                               STRING[80]    0 "                                                'SMA_1784716817'"    1    9   81    1    0    0         
+                         strBatchCode[4]                               STRING[80]    0 "                                                'SMA_1784716721'"    1    9   81    1    0    0         
+                         strBatchCode[5]                               STRING[80]    0 "                                                'SMA_1784716626'"    1    9   81    1    0    0         
+                         strBatchCode[6]                               STRING[80]    0 "                                                'SMA_1784716530'"    1    9   81    1    0    0         
+                         strBatchCode[7]                               STRING[80]    0 "                                                'SMA_1784716156'"    1    9   81    1    0    0         
+                         strBatchCode[8]                               STRING[80]    0 "                                                'SMA_1784716060'"    1    9   81    1    0    0         
+                         strBatchCode[9]                               STRING[80]    0 "                                                'SMA_1784715964'"    1    9   81    1    0    0         
+                        strBatchCode[10]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[11]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[12]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[13]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[14]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[15]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[16]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[17]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[18]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[19]                               STRING[80]    0 "                                                              ''"    1    9   81    1    0    0         
+                        strBatchCode[20]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[21]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[22]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[23]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[24]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[25]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[26]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[27]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[28]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[29]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[30]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[31]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[32]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[33]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[34]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[35]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[36]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[37]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[38]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[39]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[40]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[41]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[42]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[43]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[44]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[45]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[46]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[47]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[48]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[49]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                        strBatchCode[50]                               STRING[80]    0 "                                                               *"    1    9   81    1    0    0         
+                            bExecuteRead                                     BOOL    0 "                                                           FALSE"    0    1    1    2    1    0         

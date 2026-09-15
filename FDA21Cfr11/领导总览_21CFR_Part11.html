@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>21 CFR Part 11 合规资料总览 · 领导版</title>
+<style>
+  :root{
+    --ink:#1a2332; --ink2:#4a5568; --ink3:#8a94a6;
+    --line:#e3e8ef; --bg:#f6f8fa; --card:#ffffff;
+    --accent:#1f6feb; --accent-soft:#e8f0fe;
+    --green:#1a7f4b; --green-soft:#e6f4ec;
+    --amber:#b35c00; --amber-soft:#fdf1e3;
+    --red:#c0392b; --red-soft:#fdecea;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 28px 80px}
+
+  /* 头部 */
+  header{border-bottom:3px solid var(--ink);padding-bottom:20px;margin-bottom:28px}
+  .kicker{font-size:13px;letter-spacing:2px;color:var(--ink3);text-transform:uppercase}
+  h1{font-size:30px;margin:6px 0 4px}
+  .sub{color:var(--ink2);font-size:15px}
+
+  /* 结论横幅 */
+  .verdict{background:var(--ink);color:#fff;border-radius:12px;padding:22px 26px;margin-bottom:32px}
+  .verdict .tag{display:inline-block;background:#f0b429;color:#1a2332;font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px;margin-bottom:10px}
+  .verdict p{font-size:17px;font-weight:600}
+  .verdict small{display:block;margin-top:8px;color:#b8c2d0;font-size:13px;font-weight:400}
+
+  /* 三卡片 */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:36px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card .no{font-size:12px;font-weight:700;color:var(--accent)}
+  .card h3{font-size:16px;margin:4px 0 8px}
+  .card p{font-size:13.5px;color:var(--ink2)}
+  .card .src{margin-top:10px;font-size:12px;color:var(--ink3)}
+
+  /* 章节 */
+  section{margin-bottom:40px}
+  h2{font-size:20px;margin-bottom:6px;padding-left:12px;border-left:5px solid var(--accent)}
+  .h2note{font-size:13px;color:var(--ink3);margin:4px 0 18px;padding-left:17px}
+
+  /* 文件条目 */
+  .doc{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .doc-head{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;user-select:none}
+  .doc-head:hover{background:#f0f4f9}
+  .badge{flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .b-core{background:var(--accent-soft);color:var(--accent)}
+  .b-src{background:#eceff3;color:var(--ink2)}
+  .doc-head h3{font-size:15.5px;flex:1}
+  .doc-head .meta{font-size:12px;color:var(--ink3);white-space:nowrap}
+  .doc-head .arrow{flex:none;color:var(--ink3);transition:transform .2s;font-size:13px}
+  .doc.open .arrow{transform:rotate(90deg)}
+  .doc-body{display:none;padding:0 20px 18px;border-top:1px dashed var(--line)}
+  .doc.open .doc-body{display:block}
+  .doc-body p{font-size:13.5px;color:var(--ink2);margin-top:12px}
+  .doc-body ul{font-size:13.5px;color:var(--ink2);margin:8px 0 0 18px}
+  .doc-body li{margin:3px 0}
+  .open-link{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);padding:5px 14px;border-radius:8px}
+  .open-link:hover{background:var(--accent);color:#fff}
+
+  /* 场景表 */
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;font-size:13.5px}
+  th{background:var(--ink);color:#fff;text-align:left;padding:10px 14px;font-size:13px}
+  td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td a{color:var(--accent);text-decoration:none;font-weight:600}
+  td a:hover{text-decoration:underline}
+
+  /* 警示条 */
+  .warn{background:var(--red-soft);border:1px solid #f2c4bd;border-left:5px solid var(--red);border-radius:10px;padding:16px 20px;font-size:14px}
+  .warn b{color:var(--red)}
+  .ok{background:var(--green-soft);border:1px solid #bfe3cd;border-left:5px solid var(--green);border-radius:10px;padding:16px 20px;font-size:14px;margin-bottom:12px}
+  .ok b{color:var(--green)}
+
+  /* 路线图 */
+  .road{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .phase{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .phase h4{font-size:14.5px;margin-bottom:8px}
+  .phase.p0{border-top:4px solid var(--red)}
+  .phase.p1{border-top:4px solid var(--amber)}
+  .phase ul{margin-left:18px;font-size:13px;color:var(--ink2)}
+  .phase li{margin:4px 0}
+
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3);text-align:center}
+  @media(max-width:760px){.cards,.road{grid-template-columns:1fr}}
+  @media print{.doc-body{display:block}.open-link{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">EXECUTIVE BRIEFING · 内部资料</div>
+  <h1>21 CFR Part 11 合规资料总览</h1>
+  <div class="sub">FDA 电子记录与电子签名法规 · 客户设备合规路径 · SD_SMA_Runtime 升级方案 —— 本页覆盖文件夹全部内容，点击条目可展开摘要、打开原文件</div>
+</header>
+
+<div class="verdict">
+  <span class="tag">核心结论</span>
+  <p>FDA 不颁发 Part 11 证书。合规 = 设备具备 Part 11 技术能力（Part 11 capable）＋ 客户现场验证（IQ/OQ/PQ）＋ SOP 与变更控制。</p>
+  <small>对外统一口径：只说 "Part 11 capable 并提供验证支持包"，禁止出现 "FDA Part 11 认证通过" 字样。</small>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="no">要点 ①</div>
+    <h3>没有官方认证这回事</h3>
+    <p>Part 11 不是 CE/UL 式产品认证。市场上任何 "Part 11 Certified" 均为供应商或咨询公司的自我声明，FDA 不承认、不授权任何第三方发证。检查时看的是系统本身、审计追踪和 SOP。</p>
+    <div class="src">→ 详见《客户设备合规说明》第 1、4、5 节</div>
+  </div>
+  <div class="card">
+    <div class="no">要点 ②</div>
+    <h3>B&R 平台有背书，但有边界</h3>
+    <p>B&R 官方符合性声明只逐条评估了 <b>MpAudit</b> 和 <b>MpUser/MpUserX</b>（V5.0.0+）；mapp Database、Data、Report 等组件无任何声明，合规责任在我们自己。</p>
+    <div class="src">→ 详见 B&R 声明原文 + 覆盖范围矩阵图</div>
+  </div>
+  <div class="card">
+    <div class="no">要点 ③</div>
+    <h3>Runtime 走"继承"路线</h3>
+    <p>SD_SMA_Runtime 不自建合规功能，而是继承 mapp Services 体系。架构方向成立，但现状有 4 个断点，须完成 R1–R7 升级；P0 三项完成前不对客户承诺合规。</p>
+    <div class="src">→ 详见《Runtime 升级说明》第 4、5、7 节</div>
+  </div>
+</div>
+
+<!-- ============ 文件全览 ============ -->
+<section>
+<h2>一、文件夹里有什么（点击条目展开 / 打开原文件）</h2>
+<div class="h2note">共 8 个文件：4 份自产结论文件（可直接引用）＋ 4 份原始依据 PDF（仅供溯源）</div>
+
+<div class="doc open">
+  <div class="doc-head"><span class="badge b-core">自产 · 导读</span><h3>README_汇报导读.md</h3><span class="meta">文字版汇报材料</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>本页的 Markdown 文字版：一句话结论、三大汇报要点、文件组织树、场景化引用指引表、引用注意事项。适合粘进邮件或会议纪要。</p>
+    <a class="open-link" href="README_汇报导读.md">打开文件 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-core">自产 · 背景</span><h3>21 CFR Part 11 客户设备合规说明.md</h3><span class="meta">通用合规路径 · 7 节</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>回答"Part 11 到底是什么、谁要满足、设备商和客户各自做什么、第三方机构能做什么"。</p>
+    <ul>
+      <li><b>第 1 节</b>：Part 11 定义，FDA 窄解释，"不是认证体系"的依据</li>
+      <li><b>第 2 节</b>：适用判定——predicate rule（21 CFR 211/820/58）+ 实际依赖电子记录</li>
+      <li><b>第 3 节</b>：落地六步路径；设备侧技术能力对照表（§11.10 条款级）；IQ/OQ/PQ 交付物清单</li>
+      <li><b>第 4 节</b>：第三方机构全景（SGS/TÜV/CSV 咨询），能做评估不能发证</li>
+      <li><b>第 5 节</b>：与 510(k)、ISO 13485、EU Annex 11 的区别对照表</li>
+      <li><b>第 6 节</b>：对外口径 + 客户侧最短闭环 5 步</li>
+    </ul>
+    <a class="open-link" href="21%20CFR%20Part%2011%20客户设备合规说明.md">打开文件 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-core">自产 · 方案</span><h3>SD_SMA_Runtime Part 11 升级说明.md</h3><span class="meta">项目升级方案 · R1–R7</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>回答"Runtime 如何继承 mapp Services 已有的合规能力"。客户架构：Hypervisor 同一工控机上 AR 侧跑 mapp Services，Windows 侧 mappView 全屏锁定为唯一入口，Runtime 网页经 WebViewer 分权呈现。</p>
+    <ul>
+      <li><b>继承了什么</b>：账号权限、密码策略、审计追踪、电子签名全部由 mapp UserX/AuditTrail 承担，Runtime 不重复自建</li>
+      <li><b>四个断点</b>：A 网络旁路（8090–8094 端口可直连）／B 操作无归属（Runtime 不知道是哪个用户）／C 审计断链（Runtime 操作不入 mapp 审计）／D 自有记录不受控（数据、报表、时钟）</li>
+      <li><b>升级项</b>：R1 网络封闭、R2 身份传递、R3 审计上交（P0）；R4 页面分级、R5 记录完整性、R6 时间同步、R7 Kiosk 加固（P1）</li>
+      <li><b>第 6 节</b>：升级完成后对客户/审计方的标准声明口径（可直接引用）</li>
+    </ul>
+    <a class="open-link" href="SD_SMA_Runtime%20Part%2011%20升级说明.md">打开文件 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-core">自产 · 图</span><h3>mapp_Services组件_Part11声明覆盖范围矩阵.html</h3><span class="meta">一张图 · 汇报演示用</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>三档展示 mapp Services 全部组件与 B&R 声明的关系：</p>
+    <ul>
+      <li><b>绿色（已评估）</b>：MpAudit、MpUser/MpUserX —— B&R 官方逐条评估</li>
+      <li><b>灰色（间接覆盖）</b>：AlarmX、Recipe、File、IO、PackML、CodeBox、Backup、OPC UA —— 可挂 MpAudit 事件，须显式配置</li>
+      <li><b>红色（无声明）</b>：mapp Database、Data、Report、OEE/Energy、Sequence、Tweet —— 责任全在企业侧</li>
+    </ul>
+    <a class="open-link" href="mapp_Services组件_Part11声明覆盖范围矩阵.html">打开文件 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-src">原文 · 关键背书</span><h3>BR_mapp_Services_Declaration_of_conformity.pdf</h3><span class="meta">B&R 官方 · 英文 12 页</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>B&R 出具的 mapp Services 符合性声明，是我们对客户最有力的平台级背书。核心内容：MpAudit、MpUser、MpUserX 的功能性要求"已满足"，但明确指出<b>合规运营的前提是客户落实组织措施和 SOP</b>——这与我们的整体口径完全一致。</p>
+    <a class="open-link" href="00_原文/BR_mapp_Services_Declaration_of_conformity.pdf">打开文件 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-src">原文 · 法规</span><h3>CFR-2025-title21-vol1-part11.pdf ＋ 094754112.pdf</h3><span class="meta">法规原文（英 5 页）＋ 全文中文翻译（9 页）</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>eCFR 2025 版 Part 11 全文（Subpart A 总则 / B 电子记录 / C 电子签名）及其中文全译。引用条款时按 "§11.10(d)" 格式，先查英文原文、再用中文翻译核对理解。</p>
+    <a class="open-link" href="00_原文/CFR-2025-title21-vol1-part11.pdf">英文原文 →</a>
+    <a class="open-link" href="00_原文/094754112.pdf">中文翻译 →</a>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="doc-head"><span class="badge b-src">原文 · 同行参考</span><h3>wp-21-cfr-part-11-compliance-…-agilent.pdf</h3><span class="meta">安捷伦白皮书 · 中文 7 页</span><span class="arrow">▶</span></div>
+  <div class="doc-body">
+    <p>安捷伦为其 ACE 软件写的 Part 11 白皮书，逐条对照法规说明软件如何支持合规。两点价值：① 话术参考——"客户组织有责任确保功能得到妥善使用"正是行业通行的责任划分表述；② 结构参考——其附录逐条对照表可作为我们对外文档的格式模板。</p>
+    <a class="open-link" href="00_原文/wp-21-cfr-part-11-compliance-ace-5994-7773zh-cn-agilent.pdf">打开文件 →</a>
+  </div>
+</div>
+</section>
+
+<!-- ============ 场景导航 ============ -->
+<section>
+<h2>二、被问到时，看哪里</h2>
+<div class="h2note">按问题直接定位到具体文件的具体章节</div>
+<table>
+  <tr><th style="width:32%">问题</th><th style="width:30%">看哪个文件</th><th>看哪部分</th></tr>
+  <tr><td>"这个认证到底有没有？"</td><td>客户设备合规说明</td><td>第 1、4 节：FDA 不发证，第三方只能做评估</td></tr>
+  <tr><td>"法规条文依据是什么？"</td><td>00_原文 / 法规原文＋中译</td><td>按条款号引用，如 §11.10(e) 审计追踪</td></tr>
+  <tr><td>"平台厂商认不认？"</td><td>B&R 符合性声明</td><td>第 6 节：MpAudit、MpUser、MpUserX 已逐条评估</td></tr>
+  <tr><td>"mapp 哪些组件没保障？"</td><td>覆盖范围矩阵图</td><td>红色区域：Database / Data / Report 等无声明</td></tr>
+  <tr><td>"Runtime 什么时候能说合规？"</td><td>Runtime 升级说明</td><td>第 6 节声明口径 ＋ 第 7 节 P0/P1 验收标准</td></tr>
+  <tr><td>"客户要我们做验证，做什么？"</td><td>客户设备合规说明</td><td>第 3.3 节：URS、风险评估、IQ/OQ/PQ、SOP 清单</td></tr>
+  <tr><td>"同行怎么写的？"</td><td>安捷伦白皮书</td><td>逐条对照表格式与责任划分话术</td></tr>
+</table>
+</section>
+
+<!-- ============ 升级路线图 ============ -->
+<section>
+<h2>三、Runtime 升级路线图（项目决策点）</h2>
+<div class="h2note">P0 是合规声明的地基；P0 完成前不对客户承诺 Runtime 合规</div>
+<div class="road">
+  <div class="phase p0">
+    <h4>P0 · 必须先做（3 项）</h4>
+    <ul>
+      <li><b>R1 网络封闭</b>：服务只绑内部网卡＋防火墙白名单 → 外部访问 8090–8094 全部失败</li>
+      <li><b>R2 身份传递</b>：mappView 登录态经 token 传到 Runtime → 无 token 的写请求被拒</li>
+      <li><b>R3 审计上交</b>：Runtime 写操作经 OPC UA 记入 mapp AuditTrail → 审计页可查</li>
+    </ul>
+  </div>
+  <div class="phase p1">
+    <h4>P1 · 随后补齐（4 项）</h4>
+    <ul>
+      <li><b>R4 页面分级</b>：操作页仅高权限角色可见可开</li>
+      <li><b>R5 记录完整性</b>：数据库 append-only 账号 ＋ 报表 SHA-256 哈希入审计</li>
+      <li><b>R6 时间同步</b>：AR 与 Windows 同源对时，审计时间轴一致</li>
+      <li><b>R7 Kiosk 加固</b>：Windows  Assigned Access，禁逃逸（客户 IT 协同）</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ============ 注意事项 ============ -->
+<section>
+<h2>四、引用注意事项</h2>
+<div class="ok">✅ <b>可以：</b>自产 4 份文件直接用于内部汇报与客户沟通；引用 B&R 声明作为平台背书；按 "§11.10(x)" 格式引用法规条款。</div>
+<div class="warn">⛔ <b>禁止：</b>任何对外材料出现 "Part 11 认证 / 证书" 字样；P0 三项（R1–R3）完成前对客户承诺 Runtime 已合规；将 00_原文/ 中的整份 PDF 直接转发客户（给链接和 B&R 声明即可）。</div>
+</section>
+
+<footer>21 CFR Part 11 合规资料 · 领导总览 · 2026-09 · 本页与文件夹内文件同级存放，链接均为相对路径，整文件夹拷贝后仍可正常跳转</footer>
+</div>
+
+<script>
+document.querySelectorAll('.doc-head').forEach(function(h){
+  h.addEventListener('click',function(){h.parentElement.classList.toggle('open')});
+});
+</script>
+</body>
+</html>

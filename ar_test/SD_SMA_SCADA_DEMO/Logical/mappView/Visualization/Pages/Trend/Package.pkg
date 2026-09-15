@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Package SubType="PagePackage" PackageType="PagePackage" xmlns="http://br-automation.co.at/AS/Package">
+  <Objects>
+    <Object Type="File">Trend.content</Object>
+    <Object Type="File" Description="Page description">Page_Trend.page</Object>
+    <Object Type="File">Line.content</Object>
+  </Objects>
+</Package>

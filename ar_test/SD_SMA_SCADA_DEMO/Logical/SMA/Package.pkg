@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Package xmlns="http://br-automation.co.at/AS/Package">
+  <Objects>
+    <Object Type="File" Description="DataSQL types">GlobalDataSQL.typ</Object>
+    <Object Type="File" Description="DataSQL globals">GlobalDataSQL.var</Object>
+    <Object Type="Program" Language="IEC" Description="Alarm insert buffer">DataSQLAla</Object>
+    <Object Type="Program" Language="IEC" Description="Audit insert buffer">DataSQLAud</Object>
+    <Object Type="Program" Language="IEC" Description="Recipe data + query">DataSQLRec</Object>
+    <Object Type="Program" Language="IEC" Description="Product data + query">DataSQLPro</Object>
+    <Object Type="Program" Language="IEC" Description="Batch / BatchInfo data">DataSQLBat</Object>
+    <Object Type="Program" Language="IEC" Description="Closed-loop CPU load controller">LoadControl</Object>
+  </Objects>
+</Package>

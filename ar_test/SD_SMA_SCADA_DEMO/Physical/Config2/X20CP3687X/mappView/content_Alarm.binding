@@ -1,0 +1,297 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BindingsSet xmlns="http://www.br-automation.com/iat2015/binding/engineering/v2" xmlns:bt="http://www.br-automation.com/iat2015/bindingListTypes/engineering/v2" xmlns:be="http://www.br-automation.com/iat2015/bindingListEmbedded/engineering/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="content_Alarm_binding">
+	<Bindings>
+		<!--  ################################################################  -->
+		<!--  ##                    查询条件绑定                            ##  -->
+		<!--  ################################################################  -->
+		<!--  开始时间: HMIAlarmQuerryStartTime -> StartTime  -->
+		
+		<!--  结束时间: HMIAlarmQuerryEndTime -> Endtime  -->
+		
+		<!--  查询按钮: HMIAlarmQuerryMBBtn -> QueryMB1  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryMBBtn" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="QueryMB1" attribute="value" />
+		</Binding>
+		<!--  ################################################################  -->
+		<!--  ##                    报警列表绑定                            ##  -->
+		<!--  ################################################################  -->
+		<!--  ========== AlarmRow1 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[0] -> DateTimeOutput1  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[0]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput1" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[0] -> SnippetAlarmmsg1 -> AlarmMsg1  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[0]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg1" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg1" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg1" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow2 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[1] -> DateTimeOutput2  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[1]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput2" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[1] -> SnippetAlarmmsg2 -> AlarmMsg2  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[1]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg2" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg2" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg2" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow3 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[2] -> DateTimeOutput3  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[2]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput3" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[2] -> SnippetAlarmmsg3 -> AlarmMsg3  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[2]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg3" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg3" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg3" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow4 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[3] -> DateTimeOutput4  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[3]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput4" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[3] -> SnippetAlarmmsg4 -> AlarmMsg4  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[3]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg4" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg4" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg4" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow5 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[4] -> DateTimeOutput5  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[4]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput5" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[4] -> SnippetAlarmmsg5 -> AlarmMsg5  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[4]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg5" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg5" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg5" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow6 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[5] -> DateTimeOutput6  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[5]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput6" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[5] -> SnippetAlarmmsg6 -> AlarmMsg6  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[5]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg6" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg6" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg6" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow7 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[6] -> DateTimeOutput7  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[6]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput7" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[6] -> SnippetAlarmmsg7 -> AlarmMsg7  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[6]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg7" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg7" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg7" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow8 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[7] -> DateTimeOutput8  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[7]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput8" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[7] -> SnippetAlarmmsg8 -> AlarmMsg8  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[7]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg8" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg8" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg8" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow9 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[8] -> DateTimeOutput9  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[8]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput9" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[8] -> SnippetAlarmmsg9 -> AlarmMsg9  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[8]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg9" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg9" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg9" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow10 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[9] -> DateTimeOutput10  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[9]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput10" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[9] -> SnippetAlarmmsg10 -> AlarmMsg10  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[9]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg10" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg10" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg10" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow11 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[10] -> DateTimeOutput11  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[10]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput11" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[10] -> SnippetAlarmmsg11 -> AlarmMsg11  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[10]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg11" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg11" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg11" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow12 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[11] -> DateTimeOutput12  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[11]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput12" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[11] -> SnippetAlarmmsg12 -> AlarmMsg12  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[11]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg12" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg12" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg12" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow13 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[12] -> DateTimeOutput13  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[12]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput13" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[12] -> SnippetAlarmmsg13 -> AlarmMsg13  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[12]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg13" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg13" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg13" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow14 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[13] -> DateTimeOutput14  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[13]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput14" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[13] -> SnippetAlarmmsg14 -> AlarmMsg14  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[13]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg14" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg14" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg14" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+		<!--  ========== AlarmRow15 ==========  -->
+		<!--  时间: HMIAlarmQuerryTimestr[14] -> DateTimeOutput15  -->
+		<Binding mode="twoWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryTimestr[14]" attribute="value" />
+			<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="DateTimeOutput15" attribute="value" />
+		</Binding>
+		<!--  消息: HMIAlarmQuerryIndex[14] -> SnippetAlarmmsg15 -> AlarmMsg15  -->
+		<Binding mode="oneWay">
+			<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryIndex[14]" attribute="value" />
+			<Target xsi:type="snippet" refId="SnippetAlarmmsg15" attribute="value" />
+		</Binding>
+		<Binding mode="oneWay">
+			<Source xsi:type="snippet" refId="SnippetAlarmmsg15" attribute="value" />
+			<Target xsi:type="brease" widgetRefId="AlarmMsg15" contentRefId="content_Alarm" attribute="value" />
+		</Binding>
+	<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystYear" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stYear" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystDay" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stDay" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystMonth" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stMonth" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystHour" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stHour" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystMinute" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stMin" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerrystSec" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="stSec" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedMinute" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edMin" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedHour" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edHour" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedDay" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edDay" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedMonth" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edMonth" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedYear" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edYear" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmQuerryedSec" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="edSec" attribute="value" />
+</Binding>
+<Binding mode="twoWay">
+<Source xsi:type="opcUa" refId="::AlarmQuerr:HMIAlarmClearMBBtn" attribute="value" />
+<Target xsi:type="brease" contentRefId="content_Alarm" widgetRefId="QueryClearMB" attribute="value" />
+</Binding>
+</Bindings>
+</BindingsSet>

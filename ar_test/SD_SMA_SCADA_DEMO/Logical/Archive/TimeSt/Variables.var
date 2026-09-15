@@ -1,0 +1,5 @@
+(*Insert your comment here.*)
+VAR
+	stRTCtime : RTCtime_typ;
+	sDbDateTime : STRING[32];
+END_VAR

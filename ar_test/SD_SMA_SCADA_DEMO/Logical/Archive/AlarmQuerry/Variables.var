@@ -1,0 +1,56 @@
+(*HMIConnect*)
+VAR
+	HMIAlarmQuerrystYear : STRING[10];
+	HMIAlarmQuerrystMonth : STRING[10];
+	HMIAlarmQuerrystDay : STRING[10];
+	HMIAlarmQuerrystHour : STRING[10];
+	HMIAlarmQuerrystMinute : STRING[10];
+	HMIAlarmQuerrystSec : STRING[10];
+	HMIAlarmQuerryedYear : STRING[10];
+	HMIAlarmQuerryedMonth : STRING[10];
+	HMIAlarmQuerryedDay : STRING[10];
+	HMIAlarmQuerryedHour : STRING[10];
+	HMIAlarmQuerryedMinute : STRING[10];
+	HMIAlarmQuerryedSec : STRING[10];
+	HMIAlarmClearMBBtn : UINT;
+	HMIAlarmQuerryMBBtn : UINT;
+	HMIAlarmQuerryTimestr : ARRAY[0..MAX_ENTRIES_PERPAGE_MINUSONE] OF STRING[100];
+	HMIAlarmQuerryIndex : ARRAY[0..MAX_ENTRIES_PERPAGE_MINUSONE] OF UINT;
+END_VAR
+(*DATA BASE Query*)
+VAR
+	bExecuteRead : BOOL;
+	stDbReadQuery : dbReadQuery_typ;
+END_VAR
+(*Data point*)
+VAR
+	ts : STRING[80];
+	Code : DINT;
+	msg : DINT;
+	Batch : DINT;
+	severity : DINT;
+	Status : DINT;
+END_VAR
+(*TIME CONVENT*)
+VAR
+	UtcDTGetTime_0 : UtcDTGetTime;
+END_VAR
+(*connect var*)
+VAR
+	stRecvDT : {REDUND_UNREPLICABLE} ARRAY[0..MAX_ENTRIES_PERPAGE_MINUSONE] OF DTStructure;
+	strtempSecond : STRING[10];
+	strempMinute : STRING[10];
+	strempHour : STRING[10];
+	strempDay : STRING[10];
+	strempMonth : STRING[10];
+	strempYear : STRING[10];
+	i : UINT;
+END_VAR
+(*Insert your comment here.*)
+VAR CONSTANT
+	MAX_ENTRIES_PERPAGE_MINUSONE : UINT := MAX_ENTRIES_PERPAGE- 1;
+	MAX_ENTRIES_PERPAGE : UINT := 15;
+END_VAR
+VAR
+	btrigger : BOOL;
+END_VAR
