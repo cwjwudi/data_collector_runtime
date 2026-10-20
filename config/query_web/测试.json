@@ -37,143 +37,53 @@
         "default_filters": [],
         "per_table": {},
         "per_group": {
-          "sensor_group_1": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "采集时间"
-              },
-              {
-                "name": "rEC",
-                "label_en": "rEC(En)",
-                "label_zh": "第EC"
-              },
-              {
-                "name": "rF10",
-                "label_en": "rF10",
-                "label_zh": "F10"
-              },
-              {
-                "name": "rF11",
-                "label_en": "rF11",
-                "label_zh": "F11"
-              },
-              {
-                "name": "rF12",
-                "label_en": "rF12",
-                "label_zh": "F12"
-              },
-              {
-                "name": "rF13",
-                "label_en": "rF13",
-                "label_zh": "F13"
-              },
-              {
-                "name": "rF14",
-                "label_en": "rF14",
-                "label_zh": "F14"
-              },
-              {
-                "name": "rF15",
-                "label_en": "rF15",
-                "label_zh": "F15"
-              }
-            ],
+          "data_alarm": {
+            "columns": [],
             "time_field": "collection_time",
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 10
-          },
-          "Group1": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "collection_time"
-              },
-              {
-                "name": "AP1",
-                "label_en": "AP1",
-                "label_zh": "AP1"
-              },
-              {
-                "name": "AP2",
-                "label_en": "AP2",
-                "label_zh": "AP2"
-              },
-              {
-                "name": "AIR",
-                "label_en": "AIR",
-                "label_zh": "AIR"
-              }
-            ],
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 10
-          },
-          "BatchGroup": {
-            "columns": [
-              {
-                "name": "dtBtachStartTime",
-                "label_en": "dtBtachStartTime",
-                "label_zh": "开始时间"
-              },
-              {
-                "name": "dtBtachEndTime",
-                "label_en": "dtBtachEndTime",
-                "label_zh": "结束时间"
-              },
-              {
-                "name": "strBatchCode",
-                "label_en": "strBatchCode",
-                "label_zh": "批次号"
-              },
-              {
-                "name": "ST3",
-                "label_en": "ST3",
-                "label_zh": "ST3"
-              },
-              {
-                "name": "ST4",
-                "label_en": "ST4",
-                "label_zh": "ST4"
-              }
-            ],
-            "time_field": "dtBtachStartTime",
+            "batch_field": "",
             "sort_by": "collection_time",
             "sort_dir": "desc",
             "page_size": 50
           },
-          "motor_group": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "时间"
-              },
-              {
-                "name": "rMotorCurrent",
-                "label_en": "rMotorCurrent",
-                "label_zh": "电流"
-              },
-              {
-                "name": "rMotorSpeed",
-                "label_en": "rMotorSpeed",
-                "label_zh": "速度"
-              },
-              {
-                "name": "id",
-                "label_en": "id",
-                "label_zh": "ID"
-              }
-            ],
+          "data_audit": {
+            "columns": [],
             "time_field": "collection_time",
+            "batch_field": "",
             "sort_by": "collection_time",
             "sort_dir": "desc",
-            "page_size": 10
+            "page_size": 50
+          },
+          "data_batchinfo": {
+            "columns": [],
+            "time_field": "collection_time",
+            "batch_field": "",
+            "sort_by": "collection_time",
+            "sort_dir": "desc",
+            "page_size": 50
+          },
+          "dict_alarmstate": {
+            "columns": [],
+            "time_field": "id",
+            "batch_field": "",
+            "sort_by": "id",
+            "sort_dir": "desc",
+            "page_size": 50
           }
-        }
+        },
+        "query_conditions": [
+          {
+            "name": "状态",
+            "source_table": "dict_alarmstate",
+            "source_field": "value",
+            "bind_field": "AlarmState"
+          },
+          {
+            "name": "批次号",
+            "source_table": "data_batch",
+            "source_field": "BatchCode",
+            "bind_field": "BatchCode"
+          }
+        ]
       },
       "alarm": {
         "title": "报警列表",
@@ -198,45 +108,7 @@
           }
         ],
         "per_table": {},
-        "per_group": {
-          "alarm_group_1": {
-            "columns": [
-              {
-                "name": "ts",
-                "label_en": "ts",
-                "label_zh": "ts"
-              },
-              {
-                "name": "Status",
-                "label_en": "Status",
-                "label_zh": "Status"
-              },
-              {
-                "name": "severity",
-                "label_en": "severity",
-                "label_zh": "severity"
-              },
-              {
-                "name": "code",
-                "label_en": "code",
-                "label_zh": "code"
-              },
-              {
-                "name": "msg",
-                "label_en": "msg",
-                "label_zh": "msg"
-              },
-              {
-                "name": "Batch",
-                "label_en": "Batch",
-                "label_zh": "Batch"
-              }
-            ],
-            "sort_by": "ts",
-            "sort_dir": "desc",
-            "page_size": 100
-          }
-        }
+        "per_group": {}
       },
       "audit": {
         "title": "审计列表",
@@ -260,164 +132,28 @@
           }
         ],
         "per_table": {},
-        "per_group": {
-          "trend_group_1": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "collection_time"
-              },
-              {
-                "name": "id",
-                "label_en": "id",
-                "label_zh": "id"
-              },
-              {
-                "name": "Trenddata",
-                "label_en": "Trenddata",
-                "label_zh": "Trenddata"
-              }
-            ],
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 100
-          }
-        }
+        "per_group": {}
       }
     },
     "group_baselines": {
-      "sensor_group_1": "sensor_group_1_20260310",
-      "sensor_group_2": "sensor_group_2_20260326",
-      "alarm_group_1": "alarm_group_1_20260407",
-      "trend_group_1": "trend_group_1_20260408",
-      "Group1": "Group1_20260507",
-      "BatchGroup": "BatchGroup_20260511",
-      "motor_group": "motor_group_20260227"
+      "data_alarm": "data_alarm",
+      "data_audit": "data_audit",
+      "data_batchinfo": "data_batchinfo",
+      "dict_alarmstate": "dict_alarmstate"
     }
   },
   "plugins": {
     "modules": {
-      "alarm": {
-        "title": "Alarm Module",
-        "view_name": "alarm",
-        "bind_group": "alarm_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Alarm Page 1",
-            "enabled": true,
-            "bind_group": "sensor_group_1",
-            "view_name": "alarm",
-            "page_size": 10
-          },
-          "2": {
-            "title": "Alarm Page 2",
-            "enabled": true,
-            "bind_group": "alarm_group_1",
-            "view_name": "alarm",
-            "page_size": 10,
-            "opcua_writeback": {
-              "cursor": "ns=2;s=QueryDemo.cursor",
-              "columns": {
-                "code": "ns=2;s=QueryDemo.arCode",
-                "msg": "ns=2;s=QueryDemo.arMsg"
-              }
-            }
-          },
-          "3": {
-            "title": "Alarm Page 3",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "4": {
-            "title": "Alarm Page 4",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          },
-          "5": {
-            "title": "Alarm Page 5",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          }
-        }
-      },
-      "trend": {
-        "title": "Trend Module",
-        "view_name": "table",
-        "bind_group": "sensor_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Trend Page 1",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "2": {
-            "title": "Trend Page 2",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "3": {
-            "title": "Trend Page 3",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "4": {
-            "title": "Trend Page 4",
-            "enabled": false,
-            "bind_group": "sensor_group_1"
-          },
-          "5": {
-            "title": "Trend Page 5",
-            "enabled": false,
-            "bind_group": "sensor_group_1"
-          }
-        }
-      },
-      "audit": {
-        "title": "Audit Module",
-        "view_name": "audit",
-        "bind_group": "alarm_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Audit Page 1",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "2": {
-            "title": "Audit Page 2",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "3": {
-            "title": "Audit Page 3",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "4": {
-            "title": "Audit Page 4",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          },
-          "5": {
-            "title": "Audit Page 5",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          }
-        }
-      },
       "general": {
         "title": "General Module",
         "view_name": "table",
-        "bind_group": "sensor_group_1",
+        "bind_group": "",
         "page_size": 10,
         "pages": {
           "1": {
             "title": "批次查询表",
             "enabled": true,
-            "bind_group": "motor_group",
+            "bind_group": "",
             "view_name": "table",
             "page_size": 50,
             "opcua_writeback": {
@@ -428,26 +164,26 @@
             }
           },
           "2": {
-            "title": "General Page 2",
+            "title": "报警查询",
             "enabled": true,
-            "bind_group": "sensor_group_2",
+            "bind_group": "data_alarm",
             "view_name": "table",
             "page_size": 10
           },
           "3": {
             "title": "General Page 3",
             "enabled": true,
-            "bind_group": "sensor_group_1"
+            "bind_group": ""
           },
           "4": {
             "title": "General Page 4",
             "enabled": false,
-            "bind_group": "sensor_group_1"
+            "bind_group": ""
           },
           "5": {
             "title": "General Page 5",
             "enabled": false,
-            "bind_group": "sensor_group_1"
+            "bind_group": ""
           }
         }
       }

@@ -18,7 +18,45 @@ def _view(**extra):
     return base
 
 
+def _check_prune() -> None:
+    profile = {
+        "query_view": {
+            "views": {
+                "table": {"per_group": {"data_product": {"columns": []}, "sensor_group_1": {"columns": []}}},
+                "alarm": {"per_group": {"alarm_group_1": {"columns": []}}},
+            },
+            "group_baselines": {
+                "data_product": "data_product",
+                "sensor_group_1": "sensor_group_1_20260310",
+            },
+        },
+        "plugins": {
+            "modules": {
+                "general": {
+                    "bind_group": "sensor_group_1",
+                    "pages": {"1": {"bind_group": "data_product"}, "2": {"bind_group": "motor_group"}},
+                },
+                "alarm": {"pages": {}},
+            }
+        },
+    }
+    report = ConfigManager.prune_editor_profile(profile, {"data_product", "data_alarm"})
+    assert report["removed_groups"] == ["alarm_group_1", "sensor_group_1"], report
+    assert "sensor_group_1" in report["removed_baselines"]
+    assert report["removed_plugin_modules"] == ["alarm"]
+    assert profile["plugins"]["modules"]["general"]["bind_group"] == ""
+    assert profile["plugins"]["modules"]["general"]["pages"]["1"]["bind_group"] == "data_product"
+    assert profile["plugins"]["modules"]["general"]["pages"]["2"]["bind_group"] == ""
+    kept = ConfigManager.prune_editor_profile(
+        {"query_view": {"views": {"table": {"per_group": {"sensor_group_1": {}}}}, "group_baselines": {}}, "plugins": {"modules": {}}},
+        None,
+    )
+    assert kept["database_reached"] is False
+    assert kept["removed_groups"] == []
+
+
 def main() -> None:
+    _check_prune()
     legacy = ConfigManager.conditions_from_view(_view(), "Data_Main")
     assert legacy == [
         {

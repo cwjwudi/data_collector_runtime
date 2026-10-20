@@ -1259,6 +1259,22 @@ def delete_config_profile(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.get("/api/config/profile")
+def get_config_profile() -> dict[str, Any]:
+    return config_store.get_public_profile()
+
+
+@app.post("/api/config/profile")
+def save_config_profile(payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        profile, prune = config_store.replace_active_profile(payload)
+        _apply_runtime_settings(_load_app_settings())
+        _clear_plugin_snapshots()
+        return {"status": "saved", "profile": profile, "prune": prune}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/api/config/app-settings")
 def save_app_settings(payload: dict[str, Any]) -> dict[str, Any]:
     try:

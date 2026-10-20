@@ -166,6 +166,30 @@ body.config-page {
   grid-template-columns: 1fr;
 }
 
+.config-editor .tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.config-editor .tab-btn.active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.config-editor .tab-panel {
+  display: none;
+}
+
+.config-editor .tab-panel.active {
+  display: block;
+}
+
+.config-page .layout {
+  align-items: start;
+}
+
 .panel-span {
   grid-column: 1 / -1;
 }

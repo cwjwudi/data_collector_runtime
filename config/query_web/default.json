@@ -5,10 +5,10 @@
     "database": {
       "type": "mysql",
       "name": "wn_10",
-      "host": "192.168.50.22",
+      "host": "127.0.0.1",
       "port": 3306,
       "username": "root",
-      "password": ""
+      "password_enc": "gAAAAABq1yhuaXoKtH2JW9Ei48orRmKfW9DZSzSrzaeNRlAL0fBTqQS5uE2DJ1iL9yg3I6it-b4NhiVErwgLhHPvwXyzfZq7Bw=="
     },
     "query_limits": {
       "requests_per_minute": 180,
@@ -19,7 +19,6 @@
   "opcua": {
     "endpoint_url": "opc.tcp://192.168.50.233:4840/",
     "username": "",
-    "password": "",
     "heartbeat_node": "ns=6;s=::DataRev:uiHeartBeat",
     "poll_interval_ms": 500
   },
@@ -85,89 +84,6 @@
             "sort_by": "collection_time",
             "sort_dir": "desc",
             "page_size": 10
-          },
-          "Group1": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "collection_time"
-              },
-              {
-                "name": "AP1",
-                "label_en": "AP1",
-                "label_zh": "AP1"
-              },
-              {
-                "name": "AP2",
-                "label_en": "AP2",
-                "label_zh": "AP2"
-              },
-              {
-                "name": "AIR",
-                "label_en": "AIR",
-                "label_zh": "AIR"
-              }
-            ],
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 10
-          },
-          "BatchGroup": {
-            "columns": [
-              {
-                "name": "dtBtachStartTime",
-                "label_en": "dtBtachStartTime",
-                "label_zh": "开始时间"
-              },
-              {
-                "name": "dtBtachEndTime",
-                "label_en": "dtBtachEndTime",
-                "label_zh": "结束时间"
-              },
-              {
-                "name": "strBatchCode",
-                "label_en": "strBatchCode",
-                "label_zh": "批次号"
-              },
-              {
-                "name": "ST3",
-                "label_en": "ST3",
-                "label_zh": "ST3"
-              },
-              {
-                "name": "ST4",
-                "label_en": "ST4",
-                "label_zh": "ST4"
-              }
-            ],
-            "time_field": "dtBtachStartTime",
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 50
-          },
-          "ai_bp_0708101057_hdr": {
-            "columns": [
-              {
-                "name": "strBatchCode",
-                "label_en": "strBatchCode",
-                "label_zh": "strBatchCode"
-              },
-              {
-                "name": "dtBtachStartTime",
-                "label_en": "dtBtachStartTime",
-                "label_zh": "dtBtachStartTime"
-              },
-              {
-                "name": "dtBtachEndTime",
-                "label_en": "dtBtachEndTime",
-                "label_zh": "dtBtachEndTime"
-              }
-            ],
-            "time_field": "collection_time",
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 10
           }
         }
       },
@@ -194,45 +110,7 @@
           }
         ],
         "per_table": {},
-        "per_group": {
-          "alarm_group_1": {
-            "columns": [
-              {
-                "name": "ts",
-                "label_en": "ts",
-                "label_zh": "ts"
-              },
-              {
-                "name": "Status",
-                "label_en": "Status",
-                "label_zh": "Status"
-              },
-              {
-                "name": "severity",
-                "label_en": "severity",
-                "label_zh": "severity"
-              },
-              {
-                "name": "code",
-                "label_en": "code",
-                "label_zh": "code"
-              },
-              {
-                "name": "msg",
-                "label_en": "msg",
-                "label_zh": "msg"
-              },
-              {
-                "name": "Batch",
-                "label_en": "Batch",
-                "label_zh": "Batch"
-              }
-            ],
-            "sort_by": "ts",
-            "sort_dir": "desc",
-            "page_size": 100
-          }
-        }
+        "per_group": {}
       },
       "audit": {
         "title": "审计列表",
@@ -256,154 +134,16 @@
           }
         ],
         "per_table": {},
-        "per_group": {
-          "trend_group_1": {
-            "columns": [
-              {
-                "name": "collection_time",
-                "label_en": "collection_time",
-                "label_zh": "collection_time"
-              },
-              {
-                "name": "id",
-                "label_en": "id",
-                "label_zh": "id"
-              },
-              {
-                "name": "Trenddata",
-                "label_en": "Trenddata",
-                "label_zh": "Trenddata"
-              }
-            ],
-            "sort_by": "collection_time",
-            "sort_dir": "desc",
-            "page_size": 100
-          }
-        }
+        "per_group": {}
       }
     },
     "group_baselines": {
       "sensor_group_1": "sensor_group_1_y2026_span1",
-      "sensor_group_2": "sensor_group_2_20260326",
-      "alarm_group_1": "alarm_group_1_20260407",
-      "trend_group_1": "trend_group_1_20260408",
-      "Group1": "Group1_20260507",
-      "BatchGroup": "BatchGroup_20260511",
-      "ai_bp_0708101057_hdr": "ai_bp_0708101057_hdr"
+      "sensor_group_2": "sensor_group_2_20260326"
     }
   },
   "plugins": {
     "modules": {
-      "alarm": {
-        "title": "Alarm Module",
-        "view_name": "alarm",
-        "bind_group": "alarm_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Alarm Page 1",
-            "enabled": true,
-            "bind_group": "sensor_group_1",
-            "view_name": "alarm",
-            "page_size": 10
-          },
-          "2": {
-            "title": "Alarm Page 2",
-            "enabled": true,
-            "bind_group": "alarm_group_1",
-            "view_name": "alarm",
-            "page_size": 10,
-            "opcua_writeback": {
-              "cursor": "ns=2;s=QueryDemo.cursor",
-              "columns": {
-                "code": "ns=2;s=QueryDemo.arCode",
-                "msg": "ns=2;s=QueryDemo.arMsg"
-              }
-            }
-          },
-          "3": {
-            "title": "Alarm Page 3",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "4": {
-            "title": "Alarm Page 4",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          },
-          "5": {
-            "title": "Alarm Page 5",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          }
-        }
-      },
-      "trend": {
-        "title": "Trend Module",
-        "view_name": "table",
-        "bind_group": "sensor_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Trend Page 1",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "2": {
-            "title": "Trend Page 2",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "3": {
-            "title": "Trend Page 3",
-            "enabled": true,
-            "bind_group": "sensor_group_1"
-          },
-          "4": {
-            "title": "Trend Page 4",
-            "enabled": false,
-            "bind_group": "sensor_group_1"
-          },
-          "5": {
-            "title": "Trend Page 5",
-            "enabled": false,
-            "bind_group": "sensor_group_1"
-          }
-        }
-      },
-      "audit": {
-        "title": "Audit Module",
-        "view_name": "audit",
-        "bind_group": "alarm_group_1",
-        "page_size": 10,
-        "pages": {
-          "1": {
-            "title": "Audit Page 1",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "2": {
-            "title": "Audit Page 2",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "3": {
-            "title": "Audit Page 3",
-            "enabled": true,
-            "bind_group": "alarm_group_1"
-          },
-          "4": {
-            "title": "Audit Page 4",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          },
-          "5": {
-            "title": "Audit Page 5",
-            "enabled": false,
-            "bind_group": "alarm_group_1"
-          }
-        }
-      },
       "general": {
         "title": "General Module",
         "view_name": "table",
@@ -413,28 +153,13 @@
           "1": {
             "title": "批次查询表",
             "enabled": true,
-            "bind_group": "ai_bp_0708101057_hdr",
+            "bind_group": "",
             "view_name": "table",
-            "page_size": 10,
+            "page_size": 50,
             "opcua_writeback": {
+              "cursor": "ns=6;s=::DataRev:diCursor",
               "columns": {
-                "strBatchCode": "ns=6;s=::DataRev:strBatchCode",
-                "dtBtachStartTime": "ns=6;s=::DataRev:strStartTime"
-              }
-            },
-            "table_list_writeback": {
-              "enabled": true,
-              "mode": "advanced",
-              "batch_column": "strBatchCode",
-              "lookup_start_time_column": "dtBtachStartTime",
-              "buffer_node": "ns=6;s=::DataRev:strListName",
-              "max_tables": 50,
-              "string_max_len": 80,
-              "advanced": {
-                "prev_page_node": "ns=6;s=::DataRev:bPrePage",
-                "next_page_node": "ns=6;s=::DataRev:bNextPage",
-                "batch_no_node": "ns=6;s=::DataRev:strBatchCode1",
-                "trigger_node": "ns=6;s=::DataRev:bTriger"
+                "collection_time": "ns=6;s=::DataRev:strStartTime"
               }
             }
           },

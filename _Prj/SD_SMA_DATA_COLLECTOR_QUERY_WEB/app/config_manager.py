@@ -617,6 +617,78 @@ class UnifiedConfigStore:
         self.save_active_config(config)
         return self.get_public_opcua_settings()
 
+    def get_public_profile(self) -> dict[str, Any]:
+        config = self.get_active_config()
+        public = self._clone_json(config)
+        settings = public.get("app_settings")
+        if not isinstance(settings, dict):
+            settings = self._default_app_settings()
+            public["app_settings"] = settings
+        database = settings.get("database") if isinstance(settings.get("database"), dict) else {}
+        database.pop("password", None)
+        database.pop("password_enc", None)
+        database["password_configured"] = password_is_configured(
+            (config.get("app_settings") or {}).get("database", {})
+            if isinstance(config.get("app_settings"), dict)
+            else {},
+            "SD_SMA_DB_PASSWORD",
+        )
+        settings["database"] = database
+        opcua = self._normalize_opcua_settings(public.get("opcua"))
+        opcua.pop("password_enc", None)
+        opcua["password_configured"] = password_is_configured(config.get("opcua"), "SD_SMA_OPCUA_PASSWORD")
+        public["opcua"] = opcua
+        return public
+
+    def replace_active_profile(self, submitted: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        """用提交的整份配置替换当前文件。密码与已保存密文合并；库能连上时去掉不存在的分组。"""
+        if not isinstance(submitted, dict):
+            raise ValueError("配置必须为 JSON 对象")
+        query_view = submitted.get("query_view")
+        plugins = submitted.get("plugins")
+        if not isinstance(query_view, dict) or not isinstance(plugins, dict):
+            raise ValueError("整份保存需要 query_view 与 plugins")
+
+        existing = self.get_active_config()
+        existing_settings = existing.get("app_settings") if isinstance(existing.get("app_settings"), dict) else {}
+        app_settings = dict(submitted.get("app_settings") or {})
+        app_settings["database"] = prepare_password_mapping(
+            self.config_dir,
+            app_settings.get("database") if isinstance(app_settings.get("database"), dict) else {},
+            existing_settings.get("database") if isinstance(existing_settings.get("database"), dict) else {},
+        )
+        if not isinstance(app_settings.get("query_limits"), dict):
+            app_settings["query_limits"] = dict(self._default_app_settings()["query_limits"])
+
+        profile = {
+            "version": 1,
+            "name": Path(self.get_active_profile_name()).stem,
+            "app_settings": app_settings,
+            "opcua": self._normalize_opcua_settings(
+                prepare_password_mapping(
+                    self.config_dir,
+                    submitted.get("opcua") if isinstance(submitted.get("opcua"), dict) else {},
+                    existing.get("opcua") if isinstance(existing.get("opcua"), dict) else {},
+                )
+            ),
+            "query_view": self._clone_json(query_view),
+            "plugins": self._clone_json(plugins),
+        }
+        runtime_database = dict(app_settings["database"])
+        runtime_database["password"] = resolve_password(
+            self.config_dir,
+            runtime_database,
+            env_name="SD_SMA_DB_PASSWORD",
+            label="数据库",
+        )
+        runtime_database.pop("password_enc", None)
+        live_groups = ConfigManager.probe_groups(runtime_database)
+        report = ConfigManager.prune_editor_profile(profile, live_groups)
+        ConfigManager(self)._validate_query_view_config(profile["query_view"])
+        ConfigManager.validate_plugins(profile["plugins"])
+        self.save_active_config(profile)
+        return self.get_public_profile(), report
+
 
 class ConfigManager:
     def __init__(self, config_store: UnifiedConfigStore):
@@ -753,6 +825,95 @@ class ConfigManager:
         if not isinstance(views, dict):
             return {}
         return views
+
+    EDITOR_PLUGIN_MODULE = "general"
+
+    @staticmethod
+    def probe_groups(database: dict[str, Any]) -> set[str] | None:
+        """连上则返回分组名；连不上返回 None，调用方不要据此删分组。"""
+        from .database import QueryDatabase
+
+        try:
+            temp = QueryDatabase(database)
+            temp.ping()
+            return set(temp.list_groups())
+        except Exception:
+            return None
+
+    @staticmethod
+    def validate_plugins(data: dict[str, Any]) -> None:
+        if not isinstance(data, dict):
+            raise ValueError("plugins 配置必须为 JSON 对象")
+        modules = data.get("modules")
+        if not isinstance(modules, dict):
+            raise ValueError("plugins 配置必须包含 modules 对象")
+        for module_name, module_cfg in modules.items():
+            if not isinstance(module_cfg, dict):
+                raise ValueError(f"模块配置无效: {module_name}")
+            pages = module_cfg.get("pages")
+            if not isinstance(pages, dict):
+                raise ValueError(f"模块 {module_name} 缺少 pages 配置")
+            for idx in ("1", "2", "3", "4", "5"):
+                if idx not in pages or not isinstance(pages[idx], dict):
+                    raise ValueError(f"模块 {module_name} 缺少第 {idx} 页配置")
+
+    @classmethod
+    def prune_editor_profile(cls, profile: dict[str, Any], live_groups: set[str] | None) -> dict[str, Any]:
+        """配置页只编辑 general，并在知道当前库分组时丢掉库里没有的分组与基线。"""
+        report: dict[str, Any] = {
+            "database_reached": live_groups is not None,
+            "removed_groups": [],
+            "removed_baselines": [],
+            "removed_plugin_modules": [],
+            "cleared_binds": [],
+        }
+        removed_groups: set[str] = set()
+        query_view = profile.get("query_view")
+        if live_groups is not None and isinstance(query_view, dict):
+            views = query_view.get("views") if isinstance(query_view.get("views"), dict) else {}
+            for view in views.values():
+                if not isinstance(view, dict):
+                    continue
+                per_group = view.get("per_group")
+                if not isinstance(per_group, dict):
+                    continue
+                for name in list(per_group):
+                    if name not in live_groups:
+                        del per_group[name]
+                        removed_groups.add(str(name))
+            baselines = query_view.get("group_baselines")
+            if isinstance(baselines, dict):
+                for name in list(baselines):
+                    if name not in live_groups:
+                        del baselines[name]
+                        report["removed_baselines"].append(str(name))
+        report["removed_groups"] = sorted(removed_groups)
+        report["removed_baselines"] = sorted(set(report["removed_baselines"]))
+
+        plugins = profile.get("plugins")
+        modules = plugins.get("modules") if isinstance(plugins, dict) else None
+        if isinstance(modules, dict):
+            for name in list(modules):
+                if name != cls.EDITOR_PLUGIN_MODULE:
+                    del modules[name]
+                    report["removed_plugin_modules"].append(str(name))
+            report["removed_plugin_modules"].sort()
+            general = modules.get(cls.EDITOR_PLUGIN_MODULE)
+            if live_groups is not None and isinstance(general, dict):
+                module_bind = str(general.get("bind_group") or "")
+                if module_bind and module_bind not in live_groups:
+                    general["bind_group"] = ""
+                    report["cleared_binds"].append(f"{cls.EDITOR_PLUGIN_MODULE}:{module_bind}")
+                pages = general.get("pages")
+                if isinstance(pages, dict):
+                    for idx, page in pages.items():
+                        if not isinstance(page, dict):
+                            continue
+                        bind = str(page.get("bind_group") or "")
+                        if bind and bind not in live_groups:
+                            page["bind_group"] = ""
+                            report["cleared_binds"].append(f"{cls.EDITOR_PLUGIN_MODULE}.{idx}:{bind}")
+        return report
 
     LEGACY_QUERY_CONDITION_NAME = "批次号"
     _DICT_CONDITION_SKIP = {"id", "collection_time", "created_at", "is_backfill"}
@@ -1262,8 +1423,13 @@ class ConfigManager:
         if not isinstance(per_group, dict):
             raise ValueError("per_group config must be an object")
         existed = group in per_group
+        baselines = config.get("group_baselines")
+        baseline_existed = isinstance(baselines, dict) and group in baselines
         if existed:
             del per_group[group]
+        if baseline_existed:
+            del baselines[group]
+        if existed or baseline_existed:
             self._validate_query_view_config(config)
             self._write_query_view_config(config)
-        return existed
+        return existed or baseline_existed

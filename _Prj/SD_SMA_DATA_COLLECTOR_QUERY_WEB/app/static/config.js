@@ -11,6 +11,10 @@ const LOCKED_GROUP_VIEW = 'table';
 const LOCKED_PLUGIN_MODULE = 'general';
 const LOCKED_PLUGIN_VIEW = 'table';
 let currentConfigProfile = '';
+let currentProfile = null;
+let loadedGroup = '';
+let loadedPluginPage = '1';
+let conditionsDirty = false;
 let preservedBatchField = '';
 let queryConditionRows = [];
 let conditionSourceTables = [];
@@ -408,6 +412,7 @@ function renderQueryConditionEditor() {
     removeButton.type = 'button';
     removeButton.textContent = '删除';
     removeButton.addEventListener('click', () => {
+      conditionsDirty = true;
       readConditionRowsFromDom();
       queryConditionRows.splice(index, 1);
       renderQueryConditionEditor();
@@ -437,6 +442,7 @@ async function loadQueryConditionEditor() {
     source_field: item.source_field || '',
     bind_field: item.bind_field || '',
   }));
+  conditionsDirty = false;
   renderQueryConditionEditor();
   const hint = document.getElementById('queryConditionHint');
   if (data.legacy) {
@@ -450,40 +456,54 @@ async function loadQueryConditionEditor() {
   }
 }
 
-async function saveQueryConditionEditor() {
+function applyConditionsToProfile() {
+  if (!conditionsDirty || !currentProfile) return;
   const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
   const conditions = readConditionRowsFromDom();
   for (const [index, row] of conditions.entries()) {
     if (!row.name || !row.source_table || !row.source_field || !row.bind_field) {
-      setHintMessage('queryConditionHint', `第 ${index + 1} 条条件需要名称、来源表、来源字段和绑定列`);
-      return;
+      activateConfigTab('groups');
+      throw new Error(`第 ${index + 1} 条查询条件需要名称、来源表、来源字段和绑定列`);
     }
   }
-  const result = await fetchJson('/api/config/query-conditions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ view_name: viewName, conditions }),
-  });
-  queryViews[viewName] = queryViews[viewName] || {};
-  queryViews[viewName].query_conditions = result.conditions || [];
-  setHintMessage('queryConditionHint', `已保存 ${result.conditions.length} 条查询条件`, 'ok');
-  setConfigStatus(`保存成功：查询条件 ${result.conditions.length} 条`, 'ok');
-  saveConfigPageState();
+  const view = ensureProfileView(viewName);
+  view.query_conditions = conditions;
+  queryViews[viewName] = view;
+}
+
+async function loadWorkingProfile() {
+  currentProfile = await fetchJson('/api/config/profile');
+  currentProfile.query_view = currentProfile.query_view || { views: {}, group_baselines: {} };
+  currentProfile.query_view.views = currentProfile.query_view.views || {};
+  currentProfile.query_view.group_baselines = currentProfile.query_view.group_baselines || {};
+  currentProfile.plugins = currentProfile.plugins || { modules: {} };
+  currentProfile.plugins.modules = currentProfile.plugins.modules || {};
+  pluginConfigData = currentProfile.plugins;
+  fillAppSettingsForm(currentProfile.app_settings || {});
+  fillOpcuaForm(currentProfile.opcua || {});
+}
+
+function ensureProfileView(viewName) {
+  const views = currentProfile.query_view.views;
+  if (!views[viewName] || typeof views[viewName] !== 'object') {
+    views[viewName] = { per_group: {} };
+  }
+  if (!views[viewName].per_group || typeof views[viewName].per_group !== 'object') {
+    views[viewName].per_group = {};
+  }
+  return views[viewName];
+}
+
+function groupColumnDefsFromProfile(viewName, group) {
+  const view = currentProfile?.query_view?.views?.[viewName];
+  const groupCfg = view?.per_group?.[group];
+  return Array.isArray(groupCfg?.columns) ? groupCfg.columns : [];
 }
 
 async function loadAppSettings() {
-  const [data, opcuaData] = await Promise.all([
-    fetchJson('/api/config/app-settings'),
-    fetchJson('/api/config/opcua').catch(() => ({
-      endpoint_url: '',
-      username: '',
-      password_configured: false,
-      heartbeat_node: '',
-      poll_interval_ms: 500,
-    })),
-  ]);
-  fillAppSettingsForm(data || {});
-  fillOpcuaForm(opcuaData || {});
+  if (!currentProfile) await loadWorkingProfile();
+  fillAppSettingsForm(currentProfile.app_settings || {});
+  fillOpcuaForm(currentProfile.opcua || {});
   document.getElementById('appSettingsHint').textContent = '已加载数据库设定（数据库与查询限制）';
   const opcuaHint = document.getElementById('opcuaSettingsHint');
   if (opcuaHint) {
@@ -512,15 +532,8 @@ async function loadConfigProfiles() {
   currentConfigProfile = data.active || '';
   const profiles = data.profiles || [];
   fillConfigProfileSelect(document.getElementById('configProfileSelect'), profiles, currentConfigProfile);
-  fillConfigProfileSelect(document.getElementById('activeConfigSelect'), profiles, currentConfigProfile);
   document.getElementById('configProfileHint').textContent =
-    currentConfigProfile ? `当前加载: ${currentConfigProfile}` : '未找到可用 config';
-  const activeHint = document.getElementById('activeConfigHint');
-  if (activeHint) {
-    activeHint.textContent = currentConfigProfile
-      ? `服务启动与 OPC 回写均使用此配置：${currentConfigProfile}`
-      : '未找到可用 config';
-  }
+    currentConfigProfile ? `当前文件: ${currentConfigProfile}` : '未找到可用 config';
 }
 
 async function switchConfigProfile(sourceSelectId) {
@@ -618,7 +631,11 @@ async function reloadActiveConfigData(message) {
   columnLabels = {};
   currentSchema = null;
   pluginConfigData = { modules: {} };
+  currentProfile = null;
+  loadedGroup = '';
+  conditionsDirty = false;
   await loadConfigProfiles();
+  await loadWorkingProfile();
   await loadAppSettings();
   await loadViews();
   await loadGroups();
@@ -811,60 +828,65 @@ async function refreshMetadataFromCurrentDatabase() {
   saveConfigPageState();
 }
 
-async function saveAppSettings(options = {}) {
-  const { refreshMetadata = false, successMessage } = options;
-  const payload = getAppSettingsPayload();
-  const result = await fetchJson('/api/config/app-settings', {
+function describePrune(prune) {
+  const parts = [];
+  if (prune?.removed_groups?.length) {
+    parts.push(`已去掉当前库不存在的分组 ${prune.removed_groups.join('、')}`);
+  }
+  if (prune?.removed_plugin_modules?.length) {
+    parts.push(`已去掉配置页不编辑的插件模块 ${prune.removed_plugin_modules.join('、')}`);
+  }
+  if (prune && prune.database_reached === false) {
+    parts.push('数据库未连上，分组未按当前库清理');
+  }
+  return parts.join('；');
+}
+
+async function saveWorkingProfile(options = {}) {
+  if (!currentProfile) await loadWorkingProfile();
+  applyGroupEditorToProfile();
+  applyPluginPageToProfile();
+  applyConditionsToProfile();
+  const result = await fetchJson('/api/config/profile', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      version: currentProfile.version || 1,
+      name: currentProfile.name || '',
+      app_settings: getAppSettingsPayload(),
+      opcua: getOpcuaPayload(),
+      query_view: currentProfile.query_view,
+      plugins: currentProfile.plugins,
+    }),
   });
-  fillAppSettingsForm((result && result.settings) || payload);
-  if (refreshMetadata) {
+  currentProfile = result.profile;
+  currentProfile.query_view = currentProfile.query_view || { views: {}, group_baselines: {} };
+  currentProfile.plugins = currentProfile.plugins || { modules: {} };
+  pluginConfigData = currentProfile.plugins;
+  conditionsDirty = false;
+  fillAppSettingsForm(currentProfile.app_settings || {});
+  fillOpcuaForm(currentProfile.opcua || {});
+  if (options.refreshMetadata) {
     await refreshMetadataFromCurrentDatabase();
   }
-  const baseMessage =
-    successMessage ||
-    (refreshMetadata
-      ? '数据库设定已保存，数据库已重连，Group 与列已按当前数据库刷新'
-      : '数据库设定已保存；如需刷新 Group 与列，请点击“连接数据库”');
-  document.getElementById('appSettingsHint').textContent = baseMessage;
-  setConfigStatus(`保存成功：${baseMessage}`, 'ok');
+  const pruneText = describePrune(result.prune);
+  const baseMessage = options.successMessage || '整份配置已写入当前文件';
+  const message = pruneText ? `${baseMessage}；${pruneText}` : baseMessage;
+  const dbHint = document.getElementById('appSettingsHint');
+  if (dbHint && options.refreshMetadata) dbHint.textContent = message;
+  setConfigStatus(message, result.prune?.database_reached === false ? 'warn' : 'ok');
   return result;
 }
 
-async function saveOpcuaSettings(options = {}) {
-  const { successMessage } = options;
-  const opcuaPayload = getOpcuaPayload();
-  const opcuaResult = await fetchJson('/api/config/opcua', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(opcuaPayload),
-  });
-  fillOpcuaForm(opcuaResult || opcuaPayload);
-  const hint = document.getElementById('opcuaSettingsHint');
-  if (hint) {
-    hint.textContent =
-      successMessage ||
-      `OPCUA设定已保存（轮询 ${opcuaResult?.poll_interval_ms || opcuaPayload.poll_interval_ms} ms` +
-        `${opcuaResult?.heartbeat_node || opcuaPayload.heartbeat_node ? '，已配置心跳' : '，未配置心跳'}）`;
-    hint.className = 'muted ok';
-  }
-  setConfigStatus('保存成功：OPC UA 连接、轮询与心跳设置已写入', 'ok');
-  return opcuaResult;
-}
-
 async function connectDatabase() {
-  document.getElementById('appSettingsHint').textContent = '正在保存数据库设定并连接数据库...';
-  await saveAppSettings({
-    refreshMetadata: false,
-    successMessage: '数据库设定已保存，正在验证数据库连接...',
+  document.getElementById('appSettingsHint').textContent = '正在把整份配置写入并连接数据库...';
+  await saveWorkingProfile({
+    refreshMetadata: true,
+    successMessage: '整份配置已写入，数据库已连接，分组已按当前库刷新',
   });
   const check = await fetchJson('/api/db/check');
-  await refreshMetadataFromCurrentDatabase();
   document.getElementById('appSettingsHint').textContent =
-    `数据库连接成功（${check.database || '-'}），Group 与列已刷新`;
-  setConfigStatus(`读取成功：数据库 ${check.database || '-'} 已连接，Group 与列已刷新`, 'ok');
+    `数据库连接成功（${check.database || '-'}），分组已刷新`;
 }
 
 async function testOpcuaConnection() {
@@ -937,7 +959,9 @@ async function loadTables() {
     hint.textContent = `group=${group} 检测到结构不一致，请选择基准表。当前基准：${data.baseline_table}${kindSummary ? `；${kindSummary}` : ''}`;
     hint.className = 'muted warn';
   }
-  await loadColumnsForTable(sel.value, document.getElementById('tableTimeField').value, document.getElementById('tableSortBy').value);
+  if (sel.value) {
+    await loadTableConfig();
+  }
   saveConfigPageState();
 }
 
@@ -982,6 +1006,28 @@ function syncLabelInputsToState() {
   saveConfigPageState();
 }
 
+function applyGroupEditorToProfile() {
+  if (!currentProfile || !loadedGroup) return;
+  const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
+  const baselineTable = document.getElementById('editTableName').value;
+  if (!viewName || !baselineTable) return;
+  syncLabelInputsToState();
+  const view = ensureProfileView(viewName);
+  view.per_group[loadedGroup] = {
+    columns: orderedColumns.map(name => ({
+      name,
+      label_en: (columnLabels[name] || {}).label_en || name,
+      label_zh: (columnLabels[name] || {}).label_zh || name,
+    })),
+    time_field: document.getElementById('tableTimeField').value || 'collection_time',
+    batch_field: preservedBatchField || '',
+    sort_by: document.getElementById('tableSortBy').value || 'collection_time',
+    sort_dir: document.getElementById('tableSortDir').value || 'desc',
+    page_size: Number(document.getElementById('tablePageSize').value || 50),
+  };
+  currentProfile.query_view.group_baselines[loadedGroup] = baselineTable;
+}
+
 async function loadTableConfig() {
   const viewName = document.getElementById('editViewName').value;
   const group = document.getElementById('editGroupName').value;
@@ -990,12 +1036,17 @@ async function loadTableConfig() {
 
   await loadColumnsForTable(baselineTable, '', '');
 
-  const cfg = await fetchJson(
-    '/api/config/query-group?view_name=' +
-      encodeURIComponent(viewName) +
-      '&group=' +
-      encodeURIComponent(group),
-  );
+  const stored = currentProfile?.query_view?.views?.[viewName]?.per_group?.[group] || {};
+  const savedBaseline = currentProfile?.query_view?.group_baselines?.[group] || '';
+  const cfg = {
+    columns: Array.isArray(stored.columns) ? stored.columns : [],
+    time_field: stored.time_field || 'collection_time',
+    batch_field: stored.batch_field || '',
+    sort_by: stored.sort_by || 'collection_time',
+    sort_dir: stored.sort_dir || 'desc',
+    page_size: stored.page_size || 50,
+    baseline_table: savedBaseline,
+  };
 
   orderedColumns = (cfg.columns || []).map(x => x.name);
   columnLabels = {};
@@ -1017,12 +1068,11 @@ async function loadTableConfig() {
       tableSel.value = cfg.baseline_table;
     }
   }
+  loadedGroup = group;
   document.getElementById('columnEditorHint').textContent =
-    `已加载: view=${viewName}, group=${group}, 基准表=${baselineTable}, columns=${orderedColumns.length}（当前为 group 级配置）`;
-  setConfigStatus(
-    `读取成功：view=${viewName}，group=${group}，columns=${orderedColumns.length}`,
-    'ok',
-  );
+    cfg.columns.length
+      ? `当前编辑: view=${viewName}, group=${group}, 基准表=${baselineTable}, columns=${orderedColumns.length}`
+      : `当前编辑: view=${viewName}, group=${group}，尚未选择列`;
   saveConfigPageState();
 }
 
@@ -1076,51 +1126,6 @@ function moveSelected(up) {
   }
 }
 
-async function saveTableConfig() {
-  syncLabelInputsToState();
-  const viewName = document.getElementById('editViewName').value;
-  const group = document.getElementById('editGroupName').value;
-  const baselineTable = document.getElementById('editTableName').value;
-  if (!viewName || !group || !baselineTable) {
-    setHintMessage('columnEditorHint', '请先选择 view、group、基准表');
-    return;
-  }
-
-  const payload = {
-    view_name: viewName,
-    group,
-    baseline_table: baselineTable,
-    time_field: document.getElementById('tableTimeField').value || 'collection_time',
-    batch_field: preservedBatchField,
-    sort_by: document.getElementById('tableSortBy').value || 'collection_time',
-    sort_dir: document.getElementById('tableSortDir').value || 'desc',
-    page_size: Number(document.getElementById('tablePageSize').value || 50),
-    columns: orderedColumns.map(name => ({
-      name,
-      label_en: (columnLabels[name] || {}).label_en || name,
-      label_zh: (columnLabels[name] || {}).label_zh || name,
-    })),
-  };
-
-  await fetchJson('/api/config/query-group', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  await fetchJson('/api/config/group-baseline', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ group, baseline_table: baselineTable }),
-  });
-  document.getElementById('columnEditorHint').textContent =
-    `已保存: view=${viewName}, group=${group}, 基准表=${baselineTable}, columns=${orderedColumns.length}（已写入 views.${viewName}.per_group.${group}）`;
-  setConfigStatus(
-    `保存成功：view=${viewName}，group=${group}，columns=${orderedColumns.length}`,
-    'ok',
-  );
-  saveConfigPageState();
-}
-
 async function deleteGroupConfig() {
   const viewName = document.getElementById('editViewName').value;
   const group = document.getElementById('editGroupName').value;
@@ -1149,20 +1154,19 @@ async function deleteGroupConfig() {
     return;
   }
 
-  const result = await fetchJson(
-    '/api/config/query-group?view_name=' +
-      encodeURIComponent(viewName) +
-      '&group=' +
-      encodeURIComponent(group),
-    { method: 'DELETE' },
-  );
+  const view = ensureProfileView(viewName);
+  const hadGroup = Boolean(view.per_group[group]);
+  const hadBaseline = Boolean(currentProfile.query_view.group_baselines[group]);
+  delete view.per_group[group];
+  delete currentProfile.query_view.group_baselines[group];
+  loadedGroup = '';
   orderedColumns = [];
   columnLabels = {};
   renderOrderedColumns();
   document.getElementById('columnEditorHint').textContent =
-    result.status === 'deleted'
-      ? `已删除: view=${viewName}, group=${group}（views.${viewName}.per_group.${group}）`
-      : `未找到配置: view=${viewName}, group=${group}`;
+    hadGroup || hadBaseline
+      ? `已从当前配置去掉 group=${group}，点左侧保存后写入文件`
+      : `当前配置里没有 group=${group}`;
   saveConfigPageState();
 }
 
@@ -1241,18 +1245,11 @@ document.getElementById('btnDeleteConfigProfile').addEventListener('click', () =
 document.getElementById('configProfileSelect').addEventListener('change', () => {
   switchConfigProfile('configProfileSelect').catch(catchHintError('configProfileHint'));
 });
-document.getElementById('activeConfigSelect').addEventListener('change', () => {
-  switchConfigProfile('activeConfigSelect').catch(err => {
-    const hint = document.getElementById('activeConfigHint');
-    if (hint) hint.textContent = String(err.message || err);
+document.getElementById('btnSaveProfile').addEventListener('click', () => {
+  saveWorkingProfile().catch(err => {
+    setConfigStatus(String(err.message || err), 'error');
     catchHintError('configProfileHint')(err);
   });
-});
-document.getElementById('btnSaveAppSettings').addEventListener('click', () => {
-  saveAppSettings().catch(catchHintError('appSettingsHint'));
-});
-document.getElementById('btnSaveOpcuaSettings').addEventListener('click', () => {
-  saveOpcuaSettings().catch(catchHintError('opcuaSettingsHint'));
 });
 document.getElementById('btnConnectDatabase').addEventListener('click', () => {
   connectDatabase().catch(catchHintError('appSettingsHint'));
@@ -1270,26 +1267,27 @@ document.getElementById('btnAddColumns').addEventListener('click', addColumns);
 document.getElementById('btnRemoveColumns').addEventListener('click', removeColumns);
 document.getElementById('btnMoveUp').addEventListener('click', () => moveSelected(true));
 document.getElementById('btnMoveDown').addEventListener('click', () => moveSelected(false));
-document.getElementById('btnSaveTableConfig').addEventListener('click', () => {
-  saveTableConfig().catch(catchHintError('columnEditorHint'));
-});
 document.getElementById('btnAddQueryCondition').addEventListener('click', () => {
+  conditionsDirty = true;
   readConditionRowsFromDom();
   queryConditionRows.push({ name: '', source_table: '', source_field: '', bind_field: '' });
   renderQueryConditionEditor();
 });
-document.getElementById('btnSaveQueryConditions').addEventListener('click', () => {
-  saveQueryConditionEditor().catch(catchHintError('queryConditionHint'));
+document.getElementById('queryConditionList').addEventListener('input', () => {
+  conditionsDirty = true;
+});
+document.getElementById('queryConditionList').addEventListener('change', () => {
+  conditionsDirty = true;
 });
 document.getElementById('btnDeleteGroupConfig').addEventListener('click', () => {
   deleteGroupConfig().catch(catchHintError('columnEditorHint'));
 });
 document.getElementById('editGroupName').addEventListener('change', async () => {
   try {
+    applyGroupEditorToProfile();
+    loadedGroup = '';
     await loadTables();
-    if (document.getElementById('editTableName').value) {
-      await loadTableConfig();
-    } else {
+    if (!document.getElementById('editTableName').value) {
       clearGroupConfigEditor();
     }
     saveConfigPageState();
@@ -1315,6 +1313,12 @@ document.getElementById('pluginModule').addEventListener('change', () => {
   loadPluginPageConfig().catch(catchHintError('pluginConfigHint'));
 });
 document.getElementById('pluginPageIndex').addEventListener('change', () => {
+  try {
+    applyPluginPageToProfile();
+  } catch (err) {
+    catchHintError('pluginConfigHint')(err);
+    return;
+  }
   saveConfigPageState();
   loadPluginPageConfig().catch(catchHintError('pluginConfigHint'));
 });
@@ -1496,13 +1500,7 @@ async function refreshPluginTableListColumnOptions(tableListCfg) {
     return [];
   }
   try {
-    const cfg = await fetchJson(
-      '/api/config/query-group?view_name=' +
-        encodeURIComponent(viewName) +
-        '&group=' +
-        encodeURIComponent(bindGroup),
-    );
-    const columns = cfg.columns || [];
+    const columns = groupColumnDefsFromProfile(viewName, bindGroup);
     renderPluginTableListColumnOptions(columns, tableListCfg || collectPluginTableListWriteback());
     if (columns.length === 0) {
       hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。`;
@@ -1616,7 +1614,8 @@ function loadPluginTableListWritebackForm(tableListCfg) {
 }
 
 async function loadPluginConfig() {
-  pluginConfigData = await fetchJson('/api/config/plugins');
+  if (!currentProfile) await loadWorkingProfile();
+  pluginConfigData = currentProfile.plugins;
   ensurePluginModuleAndPage(LOCKED_PLUGIN_MODULE, '1');
   lockSelect('pluginModule', LOCKED_PLUGIN_MODULE, LOCKED_PLUGIN_MODULE);
   await loadPluginPageConfig();
@@ -1781,15 +1780,9 @@ async function loadPluginOpcuaWritebackTable(viewName, bindGroup, writebackCfg) 
   }
 
   try {
-    const cfg = await fetchJson(
-      '/api/config/query-group?view_name=' +
-        encodeURIComponent(viewName) +
-        '&group=' +
-        encodeURIComponent(bindGroup),
-    );
-    const columns = cfg.columns || [];
+    const columns = groupColumnDefsFromProfile(viewName, bindGroup);
     if (columns.length === 0) {
-      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列，请先在「Group 与列」中保存该 group。`;
+      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。先在「分组与列」里选好列，再点左侧保存。`;
       hint.className = 'muted warn';
       return;
     }
@@ -1866,21 +1859,16 @@ async function loadPluginPageConfig() {
   loadPluginTableListWritebackForm(tableListCfg);
   await refreshPluginTableListColumnOptions(tableListCfg);
 
+  loadedPluginPage = pageIndex;
   document.getElementById('pluginConfigHint').textContent =
     `当前编辑: module=${moduleName}, page=${pageIndex}`;
-  setConfigStatus(
-    `读取成功：module=${moduleName}，page=${pageIndex}，bind_group=${bindGroup || '-'}；插件页配置已完整载入`,
-    'ok',
-  );
+  saveConfigPageState();
 }
 
-async function savePluginPageConfig() {
-  const moduleName = document.getElementById('pluginModule').value || LOCKED_PLUGIN_MODULE;
-  const pageIndex = document.getElementById('pluginPageIndex').value || '1';
-  if (!moduleName) {
-    setHintMessage('pluginConfigHint', '请先选择模块');
-    return;
-  }
+function applyPluginPageToProfile() {
+  const moduleName = LOCKED_PLUGIN_MODULE;
+  const pageIndex = loadedPluginPage || '1';
+  if (!pluginConfigData) return;
   ensurePluginModuleAndPage(moduleName, pageIndex);
   const moduleCfg = pluginConfigData.modules[moduleName];
   const pageCfg = moduleCfg.pages[pageIndex];
@@ -1913,9 +1901,9 @@ async function savePluginPageConfig() {
             : tableListWriteback._invalidReason === 'advanced_buffer'
               ? '启用批次触发回写时需填写 Buffer NodeId；仅使用翻页时可留空'
               : '基础批次表名回写需填写批次列与 Buffer NodeId';
-      setHintMessage('pluginConfigHint', reason);
-      setConfigStatus(`保存未执行：${reason}`, 'warn');
-      return;
+      document.getElementById('pluginPageIndex').value = pageIndex;
+      activateConfigTab('plugins');
+      throw new Error(reason);
     }
     delete tableListWriteback._invalid;
     delete tableListWriteback._invalidReason;
@@ -1929,31 +1917,10 @@ async function savePluginPageConfig() {
   moduleCfg.page_size = moduleCfg.page_size || pageCfg.page_size;
   moduleCfg.bind_group = moduleCfg.bind_group || pageCfg.bind_group;
   delete moduleCfg.bind_table;
-
-  await fetchJson('/api/config/plugins', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(pluginConfigData),
-  });
-  await updatePluginGroupHint(pageCfg.bind_group || '');
-  document.getElementById('pluginConfigHint').textContent =
-    `已保存: module=${moduleName}, page=${pageIndex}, bind_group=${pageCfg.bind_group || '-'}`;
-  pluginOpcuaWritebackDraft = JSON.parse(JSON.stringify(pageCfg.opcua_writeback || { cursor: '', columns: {} }));
-  pluginTableListWritebackDraft = pageCfg.table_list_writeback
-    ? JSON.parse(JSON.stringify(pageCfg.table_list_writeback))
-    : null;
-  setConfigStatus(
-    `保存成功：module=${moduleName}，page=${pageIndex}，bind_group=${pageCfg.bind_group || '-'}；OPC UA 翻页与可选批次回写设置已写入`,
-    'ok',
-  );
-  saveConfigPageState();
 }
 
 document.getElementById('btnLoadPluginPage').addEventListener('click', () => {
   loadPluginPageConfig().catch(catchHintError('pluginConfigHint'));
-});
-document.getElementById('btnSavePluginPage').addEventListener('click', () => {
-  savePluginPageConfig().catch(catchHintError('pluginConfigHint'));
 });
 document.getElementById('pluginEnabled').addEventListener('change', saveConfigPageState);
 document.getElementById('pluginTitle').addEventListener('input', saveConfigPageState);
@@ -2024,15 +1991,28 @@ document.getElementById('pluginOpcuaColumnTable').addEventListener('input', even
   }
 });
 
+function activateConfigTab(name) {
+  document.querySelectorAll('.config-editor .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === name);
+  });
+  document.querySelectorAll('.config-editor .tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `tab-${name}`);
+  });
+}
+
 async function initConfigPage() {
   initializeLockedControls();
+  document.querySelectorAll('.config-editor .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateConfigTab(btn.dataset.tab));
+  });
   await loadConfigProfiles();
-  await loadAppSettings();
+  await loadWorkingProfile();
   await loadViews();
   await loadGroups();
   enableButtonClickFeedback();
   await loadPluginConfig().catch(() => {});
   await restoreConfigPageState();
+  setConfigStatus(`已读取 ${currentConfigProfile || '配置文件'}`, 'ok');
 }
 
 initConfigPage().catch(catchHintError('configProfileHint'));

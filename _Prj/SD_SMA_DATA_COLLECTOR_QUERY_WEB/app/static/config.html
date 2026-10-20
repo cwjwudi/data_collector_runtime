@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>配置页 — SD SMA Query Web</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20261020_02" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261020_03" />
   </head>
   <body class="config-page">
     <nav class="page-nav" aria-label="站内导航">
@@ -17,34 +17,37 @@
       <span id="configStatusMessage">配置页正在初始化…</span>
       <time id="configStatusTime" class="config-status-time"></time>
     </div>
-    <div class="layout layout-stack">
-      <section class="panel active-config-bar">
-        <div class="row">
-          <label for="activeConfigSelect"><strong>当前激活配置</strong></label>
-          <select id="activeConfigSelect"></select>
-          <span id="activeConfigHint" class="muted">服务启动与 OPC 回写均使用此配置（写入 .active_query_config）</span>
-        </div>
-      </section>
-
+    <div class="layout">
       <section class="panel">
         <h2>配置文件</h2>
-        <p class="hint">选择一个完整 config 文件进行加载；每个文件包含基础设置、查询视图和插件页面配置。</p>
+        <p class="hint">右侧按数据库、分组与列、OPC UA、插件页从左到右修改。改动先留在本页，点「保存」后整份写入当前文件。</p>
         <div class="row">
-          <label for="configProfileSelect">当前 config</label>
+          <label for="configProfileSelect">当前文件</label>
           <select id="configProfileSelect"></select>
-          <button type="button" id="btnReloadConfigProfile">读取配置文件</button>
-          <button type="button" id="btnRefreshConfigProfiles">刷新文件列表</button>
+        </div>
+        <div class="row">
+          <button type="button" id="btnReloadConfigProfile">读取</button>
+          <button type="button" id="btnRefreshConfigProfiles">刷新</button>
         </div>
         <div class="row config-actions">
           <button type="button" id="btnCreateConfigProfile">新建</button>
+          <button type="button" id="btnSaveProfile">保存</button>
           <button type="button" id="btnDeleteConfigProfile" class="danger-btn">删除</button>
         </div>
         <div id="configProfileHint" class="muted"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel config-editor">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab-btn active" data-tab="database">数据库</button>
+          <button type="button" class="tab-btn" data-tab="groups">分组与列</button>
+          <button type="button" class="tab-btn" data-tab="opcua">OPC UA</button>
+          <button type="button" class="tab-btn" data-tab="plugins">插件页</button>
+        </div>
+
+      <div id="tab-database" class="tab-panel active">
         <h2>数据库设定</h2>
-        <p class="hint">数据库与查询限制写入 app_settings。点「保存数据库设定」保存。</p>
+        <p class="hint">先填连接并点「连接数据库」。连接会把当前整份配置写入文件，再按这个库刷新后面的分组。</p>
 
         <div class="settings-subsection settings-subsection-db">
           <h3 class="subsection-title">数据库连接</h3>
@@ -85,13 +88,12 @@
         </div>
 
         <div class="row settings-actions">
-          <button type="button" id="btnSaveAppSettings">保存数据库设定</button>
           <button type="button" id="btnConnectDatabase">连接数据库</button>
         </div>
         <div id="appSettingsHint" class="muted"></div>
-      </section>
+      </div>
 
-      <section class="panel">
+      <div id="tab-opcua" class="tab-panel">
         <h2>OPCUA设定</h2>
         <p class="hint">
           连接信息、全局轮询间隔与心跳写入 profile 顶层 <code>opcua</code>。
@@ -145,22 +147,20 @@
         </div>
 
         <div class="row settings-actions">
-          <button type="button" id="btnSaveOpcuaSettings">保存 OPCUA设定</button>
           <button type="button" id="btnTestOpcuaConnection">测试 OPC UA 连接</button>
         </div>
         <div id="opcuaSettingsHint" class="muted"></div>
-      </section>
+      </div>
 
-      <section class="panel">
+      <div id="tab-groups" class="tab-panel">
         <h2>Group 与列</h2>
-        <p class="hint">配置各表的时间字段、列顺序、排序、分页与列中英文显示名；仅在查询中引用已配置的组。</p>
+        <p class="hint">只列出当前数据库里的分组。列和查询条件先记在本页，和插件页一起由左侧「保存」整份写入。</p>
         <div class="settings-subsection">
           <h3 class="subsection-title">查询条件（View 级）</h3>
-          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。查询时选择不同条件，就是从不同来源表读取下拉值。未保存本列表时，仍使用原来的批次号来源和各组绑定字段；保存后以本列表为准。</p>
+          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。未改本列表时，仍使用原来的批次号来源；改过之后，左侧保存会把本列表整份写入。</p>
           <div id="queryConditionList"></div>
           <div class="row">
             <button type="button" id="btnAddQueryCondition">添加条件</button>
-            <button type="button" id="btnSaveQueryConditions">保存查询条件</button>
           </div>
           <div id="queryConditionHint" class="muted"></div>
         </div>
@@ -208,13 +208,12 @@
         </div>
         <table id="columnLabelTable"></table>
         <div class="row">
-          <button type="button" id="btnSaveTableConfig">保存当前表配置</button>
-          <button type="button" id="btnDeleteGroupConfig" class="danger-btn">删除当前配置</button>
+          <button type="button" id="btnDeleteGroupConfig" class="danger-btn">删除当前分组</button>
         </div>
         <div id="columnEditorHint" class="muted"></div>
-      </section>
+      </div>
 
-      <section class="panel">
+      <div id="tab-plugins" class="tab-panel">
         <h2>插件页面</h2>
         <p class="hint">用于 <code>/plugins/{module}_{1-5}.html</code> 动态绑定；每模块预留 1–5 页。</p>
         <div class="row">
@@ -229,7 +228,6 @@
             <option value="5">5</option>
           </select>
           <button type="button" id="btnLoadPluginPage">加载当前页配置</button>
-          <button type="button" id="btnSavePluginPage">保存当前页配置</button>
         </div>
         <div class="row">
           <label for="pluginEnabled">启用</label>
@@ -343,6 +341,7 @@
           <textarea id="pluginTableListJson" class="code-editor" spellcheck="false" rows="8" readonly></textarea>
         </details>
         <div id="pluginConfigHint" class="muted"></div>
+      </div>
       </section>
     </div>
     <div id="name-modal-overlay" class="modal-overlay" style="display: none">
@@ -369,6 +368,6 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20261020_02"></script>
+    <script src="/static/config.js?v=20261020_04"></script>
   </body>
 </html>
