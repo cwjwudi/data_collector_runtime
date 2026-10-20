@@ -1,0 +1,246 @@
+{
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "127.0.0.1",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "Connect1",
+      "communication": "PLC1",
+      "data_groups": [
+        "TestGroup1",
+        "BatchGroup",
+        "TestGroup3"
+      ],
+      "heartbeat": "uiHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "AIR",
+      "path": "ns=6;s=::DataGen:AIR",
+      "description": "AIR"
+    },
+    {
+      "name": "AP1",
+      "path": "ns=6;s=::DataGen:AP1",
+      "description": "AP1"
+    },
+    {
+      "name": "AP2",
+      "path": "ns=6;s=::DataGen:AP2",
+      "description": "AP2"
+    },
+    {
+      "name": "CP",
+      "path": "ns=6;s=::DataGen:CP",
+      "description": "CP"
+    },
+    {
+      "name": "CT",
+      "path": "ns=6;s=::DataGen:CT",
+      "description": "CT"
+    },
+    {
+      "name": "EC",
+      "path": "ns=6;s=::DataGen:EC",
+      "description": "EC"
+    },
+    {
+      "name": "ES",
+      "path": "ns=6;s=::DataGen:ES",
+      "description": "ES"
+    },
+    {
+      "name": "strTimeStamp",
+      "path": "ns=6;s=::DataGen:strTimeStamp",
+      "description": "strTimeStamp"
+    },
+    {
+      "name": "MCP",
+      "path": "ns=6;s=::DataGen:MCP",
+      "description": "MCP"
+    },
+    {
+      "name": "ST2",
+      "path": "ns=6;s=::DataGen:ST2",
+      "description": "ST2"
+    },
+    {
+      "name": "ST3",
+      "path": "ns=6;s=::DataGen:ST3",
+      "description": "ST3"
+    },
+    {
+      "name": "ST4",
+      "path": "ns=6;s=::DataGen:ST4",
+      "description": "ST4"
+    },
+    {
+      "name": "ST5",
+      "path": "ns=6;s=::DataGen:ST5",
+      "description": "ST5"
+    },
+    {
+      "name": "ST6",
+      "path": "ns=6;s=::DataGen:ST6",
+      "description": "ST6"
+    },
+    {
+      "name": "uiHeartBeat",
+      "path": "ns=6;s=::DataRev:uiHeartBeat",
+      "description": "uiHeartBeat"
+    },
+    {
+      "name": "bTestTriger",
+      "path": "ns=6;s=::DataRev:bTestTriger",
+      "description": "bTestTriger"
+    },
+    {
+      "name": "dtBtachEndTime",
+      "path": "ns=6;s=::DataGen:dtBtachEndTime",
+      "description": "dtBtachEndTime",
+      "datatype": "datetime"
+    },
+    {
+      "name": "dtBtachStartTime",
+      "path": "ns=6;s=::DataGen:dtBtachStartTime",
+      "description": "dtBtachStartTime",
+      "datatype": "datetime"
+    },
+    {
+      "name": "strBatchCode",
+      "path": "ns=6;s=::DataGen:strBatchCode",
+      "description": "strBatchCode",
+      "datatype": "string"
+    },
+    {
+      "name": "bBatchTriger",
+      "path": "ns=6;s=::DataGen:bBatchTriger",
+      "description": "bBatchTriger",
+      "datatype": "bool"
+    }
+  ],
+  "groups": [
+    {
+      "name": "TestGroup1",
+      "interval_seconds": 10,
+      "trigger": "time_and_variable",
+      "description": "测试数据1",
+      "data_points": [
+        "AIR",
+        "AP1",
+        "AP2",
+        "CP",
+        "CT",
+        "EC",
+        "ES",
+        "strTimeStamp",
+        "MCP",
+        "ST2",
+        "ST3",
+        "ST4",
+        "ST5",
+        "ST6"
+      ],
+      "trigger_point": "bTestTriger",
+      "reset_trigger_after_read": false,
+      "recreate_interval_days": 10000,
+      "batch_insert_size": 1,
+      "is_parallel": false,
+      "trigger_interval_seconds": 0.3,
+      "batch_upsert": {
+        "enabled": false,
+        "start_time_point": "",
+        "end_time_point": "",
+        "update_only_when_end_time_is_null": true,
+        "reject_when_end_time_exists": true,
+        "allow_idempotent_same_end_time": false
+      },
+      "unique_key_point": "AP1"
+    },
+    {
+      "name": "BatchGroup",
+      "interval_seconds": 1,
+      "trigger": "variable",
+      "description": "批次数据",
+      "data_points": [
+        "ST3",
+        "ST4",
+        "dtBtachEndTime",
+        "dtBtachStartTime",
+        "strBatchCode",
+        "bBatchTriger"
+      ],
+      "trigger_point": "bBatchTriger",
+      "reset_trigger_after_read": false,
+      "recreate_interval_days": 10000,
+      "batch_insert_size": 1,
+      "is_parallel": false,
+      "trigger_interval_seconds": 0.5,
+      "unique_key_point": "strBatchCode",
+      "batch_upsert": {
+        "enabled": true,
+        "start_time_point": "dtBtachStartTime",
+        "end_time_point": "dtBtachEndTime",
+        "update_only_when_end_time_is_null": true,
+        "reject_when_end_time_exists": true,
+        "allow_idempotent_same_end_time": true
+      },
+      "indexes": [
+        {
+          "columns": [
+            "strBatchCode"
+          ],
+          "unique": false,
+          "index_type": "btree"
+        }
+      ]
+    },
+    {
+      "name": "TestGroup3",
+      "interval_seconds": 5,
+      "trigger": "time",
+      "description": "",
+      "data_points": [
+        "CT",
+        "EC",
+        "ST2",
+        "ST3",
+        "ST4",
+        "ST5",
+        "ST6"
+      ],
+      "trigger_point": "",
+      "reset_trigger_after_read": true,
+      "recreate_interval_days": 30,
+      "batch_insert_size": 1,
+      "is_parallel": false
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "wn_10",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "",
+    "data_groups": [
+      "TestGroup1",
+      "BatchGroup",
+      "TestGroup3"
+    ]
+  },
+  "logging": {
+    "level": "DEBUG",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

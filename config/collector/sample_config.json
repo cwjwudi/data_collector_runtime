@@ -1,28 +1,258 @@
 {
-  "communications": [],
-  "connections": [],
-  "points": [],
-  "groups": [],
-  "opcua": {
-    "host": "127.0.0.1",
-    "port": 4840
-  },
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "192.168.50.233",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC1",
+      "data_groups": [
+        "sensor_group_1",
+        "sensor_group_2",
+        "trigger_group_1",
+        "主表"
+      ],
+      "heartbeat": "ns=6;s=::DataRev:uiHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "rEC",
+      "path": "ns=6;s=::DataGen:EC",
+      "description": "PLC1测试FLOAT数据"
+    },
+    {
+      "name": "rF1",
+      "path": "ns=6;s=::DataGen:F1",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF2",
+      "path": "ns=6;s=::DataGen:F2",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF3",
+      "path": "ns=6;s=::DataGen:F3",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF4",
+      "path": "ns=6;s=::DataGen:F4",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF10",
+      "path": "ns=6;s=::DataGen:F10",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF11",
+      "path": "ns=6;s=::DataGen:F11",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF12",
+      "path": "ns=6;s=::DataGen:F12",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF13",
+      "path": "ns=6;s=::DataGen:F13",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF14",
+      "path": "ns=6;s=::DataGen:F14",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF15",
+      "path": "ns=6;s=::DataGen:F15",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rAIR",
+      "path": "ns=6;s=::DataGen:AIR",
+      "description": "远程PLC AIR数据"
+    },
+    {
+      "name": "rAP1",
+      "path": "ns=6;s=::DataGen:AP1",
+      "description": "远程PLC AP1数据"
+    },
+    {
+      "name": "rBP1",
+      "path": "ns=6;s=::DataGen:BP1",
+      "description": "远程PLC BP1数据"
+    },
+    {
+      "name": "bTrigger1",
+      "path": "ns=6;s=::DataRev:bTestTriger",
+      "description": "PLC测试Trigger信号，布尔类型"
+    },
+    {
+      "name": "bTriggerQuery",
+      "path": "ns=6;s=::DataRev:bExecuteRead",
+      "description": "用于触发查询任务"
+    },
+    {
+      "name": "strBatchCode",
+      "path": "ns=6;s=::DataGen:strBatchCode",
+      "description": "BatchCode"
+    },
+    {
+      "name": "dtBtachEndTime",
+      "path": "ns=6;s=::DataGen:dtBtachEndTime",
+      "description": "dtBtachEndTime"
+    },
+    {
+      "name": "dtBtachStartTime",
+      "path": "ns=6;s=::DataGen:dtBtachStartTime",
+      "description": "dtBtachStartTime"
+    }
+  ],
+  "groups": [
+    {
+      "name": "sensor_group_1",
+      "interval_seconds": 6,
+      "trigger": "time",
+      "description": "PLC1传感器组，每1秒采集一次",
+      "data_points": [
+        "rEC",
+        "rF10",
+        "rF11",
+        "rF12",
+        "rF13",
+        "rF14",
+        "rF15",
+        "strBatchCode"
+      ],
+      "trigger_point": null,
+      "recreate_interval_days": 1,
+      "batch_insert_size": 5,
+      "partition_interval_years": 0,
+      "is_parallel": false,
+      "indexes": [
+        {
+          "name": "",
+          "columns": [
+            "strBatchCode"
+          ],
+          "unique": false,
+          "index_type": "btree"
+        }
+      ],
+      "unique_key_point": ""
+    },
+    {
+      "name": "sensor_group_2",
+      "interval_seconds": 7,
+      "trigger": "time_and_variable",
+      "description": "远程PLC传感器组，每1秒采集一次",
+      "data_points": [
+        "rAIR",
+        "rAP1",
+        "rBP1",
+        "strBatchCode"
+      ],
+      "trigger_point": "bTrigger1",
+      "recreate_interval_days": 1,
+      "batch_insert_size": 5,
+      "partition_interval_years": 0,
+      "trigger_interval_seconds": 1,
+      "unique_key_point": "",
+      "indexes": [
+        {
+          "name": "",
+          "columns": [
+            "strBatchCode"
+          ],
+          "unique": false,
+          "index_type": "btree"
+        }
+      ]
+    },
+    {
+      "name": "trigger_group_1",
+      "interval_seconds": 0.5,
+      "trigger": "variable",
+      "description": "PLC2触发组，由变量触发采集",
+      "data_points": [
+        "rF1",
+        "rF2",
+        "rF3",
+        "rF4",
+        "strBatchCode"
+      ],
+      "trigger_point": "bTrigger1",
+      "reset_trigger_after_read": true,
+      "recreate_interval_days": 15,
+      "batch_insert_size": 1,
+      "partition_interval_years": 0,
+      "trigger_interval_seconds": 0.5
+    },
+    {
+      "name": "主表",
+      "interval_seconds": 20,
+      "trigger": "variable",
+      "description": "",
+      "data_points": [
+        "rBP1",
+        "strBatchCode",
+        "dtBtachEndTime",
+        "dtBtachStartTime"
+      ],
+      "trigger_point": "bTrigger1",
+      "reset_trigger_after_read": true,
+      "partition_interval_years": 0,
+      "recreate_interval_days": 1,
+      "batch_insert_size": 1,
+      "is_parallel": false,
+      "unique_key_point": "strBatchCode",
+      "batch_upsert": {
+        "enabled": true,
+        "start_time_point": "dtBtachStartTime",
+        "end_time_point": "dtBtachEndTime",
+        "update_only_when_end_time_is_null": true,
+        "reject_when_end_time_exists": true,
+        "allow_idempotent_same_end_time": false
+      }
+    }
+  ],
   "database": {
-    "type": "sqlite",
-    "name": "runtime/collector.db",
-    "host": "127.0.0.1",
+    "type": "mysql",
+    "name": "wn_9",
+    "host": "192.168.50.22",
     "port": 3306,
-    "username": "",
+    "username": "root",
     "password": "",
-    "auto_create": false,
-    "data_groups": []
+    "data_groups": [
+      "sensor_group_1",
+      "sensor_group_2",
+      "trigger_group_1",
+      "主表"
+    ]
   },
   "persistent_queue": {
-    "enabled": false,
-    "path": "runtime/queue/collector_outbox.db"
+    "enabled": true,
+    "path": "runtime/queue/collector_outbox.db",
+    "synchronous": "FULL",
+    "busy_timeout_ms": 5000,
+    "lease_seconds": 60,
+    "retry_interval_seconds": 5,
+    "max_retry_interval_seconds": 300,
+    "max_attempts": 0,
+    "completed_retention_days": 1,
+    "max_queue_rows": 1000000
   },
   "logging": {
-    "level": "INFO",
+    "level": "DEBUG",
     "output_dir": "",
     "backup_days": 14,
     "rotation_when": "midnight",

@@ -1,0 +1,89 @@
+{
+  "communications": [
+    {
+      "name": "PLC_TPS",
+      "type": "opcua",
+      "host": "192.168.50.233",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC_TPS",
+      "data_groups": [
+        "unique_feedback_group"
+      ],
+      "heartbeat": "ns=6;s=::AsGlobalPV:gDataSQLHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "rUniqueKey",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.State",
+      "description": "唯一性校验键（同组内不可重复）"
+    },
+    {
+      "name": "rValue",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH01",
+      "description": "普通采集值"
+    },
+    {
+      "name": "udiInsertFeedBack",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.ProductInsertStatus",
+      "description": "插入反馈码（UDINT）"
+    },
+    {
+      "name": "ProductInsertTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.ProductInsert",
+      "description": "生产数据-存储信号"
+    },
+    {
+      "name": "AIR",
+      "path": "ns=6;s=::DataGen:AIR",
+      "description": "AIR"
+    }
+  ],
+  "groups": [
+    {
+      "name": "unique_feedback_group",
+      "interval_seconds": 0.5,
+      "trigger": "variable",
+      "description": "用于测试唯一性校验与插入反馈",
+      "trigger_point": "ProductInsertTrigger",
+      "data_points": [
+        "rUniqueKey",
+        "rValue"
+      ],
+      "unique_key_point": "rUniqueKey",
+      "insert_feedback": {
+        "feedback_point": "udiInsertFeedBack",
+        "code_success": 0,
+        "code_unique_conflict": 1,
+        "code_db_error": 2,
+        "code_other_error": 3
+      },
+      "recreate_interval_days": 1,
+      "batch_insert_size": 1
+    }
+  ],
+  "database": {
+    "type": "sqlite",
+    "name": "unique_feedback_test.db",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "",
+    "password": "",
+    "data_groups": [
+      "unique_feedback_group"
+    ]
+  },
+  "logging": {
+    "level": "DEBUG",
+    "output_dir": "",
+    "backup_days": 7,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

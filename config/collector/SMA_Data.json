@@ -1,0 +1,422 @@
+{
+  "communications": [
+    {
+      "name": "PLC_TPS",
+      "type": "opcua",
+      "host": "127.0.0.1",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC_TPS",
+      "data_groups": [
+        "Data_Product"
+      ],
+      "heartbeat": "ns=6;s=::AsGlobalPV:gDataSQLHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "DataRecipeTime",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.TimeStamp",
+      "description": "配方数据-时间戳",
+      "datatype": "datetime"
+    },
+    {
+      "name": "DataRecipeState",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.State",
+      "description": "配方数据-状态"
+    },
+    {
+      "name": "DataRecipeCH00",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH00",
+      "description": "配方数据-主机设定速度"
+    },
+    {
+      "name": "DataRecipeCH01",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH01",
+      "description": "配方数据-1#主压厚度"
+    },
+    {
+      "name": "DataRecipeCH02",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH02",
+      "description": "配方数据-1#主压压力"
+    },
+    {
+      "name": "DataRecipeCH03",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH03",
+      "description": "配方数据-1#主压压力上偏差"
+    },
+    {
+      "name": "DataRecipeCH04",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH04",
+      "description": "配方数据-1#主压压力下偏差"
+    },
+    {
+      "name": "DataRecipeCH05",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH05",
+      "description": "配方数据-1#预压厚度"
+    },
+    {
+      "name": "DataRecipeCH06",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH06",
+      "description": "配方数据-1#预压压力"
+    },
+    {
+      "name": "DataRecipeCH07",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH07",
+      "description": "配方数据-1#预压压力上偏差"
+    },
+    {
+      "name": "DataRecipeCH08",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH08",
+      "description": "配方数据-1#预压压力下偏差"
+    },
+    {
+      "name": "DataRecipeCH09",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH09",
+      "description": "配方数据-2#主压厚度"
+    },
+    {
+      "name": "DataRecipeCH10",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH10",
+      "description": "配方数据-2#主压压力"
+    },
+    {
+      "name": "DataRecipeCH11",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH11",
+      "description": "配方数据-2#主压压力上偏差"
+    },
+    {
+      "name": "DataRecipeCH12",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH12",
+      "description": "配方数据-2#主压压力下偏差"
+    },
+    {
+      "name": "DataRecipeCH13",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH13",
+      "description": "配方数据-2#预压厚度"
+    },
+    {
+      "name": "DataRecipeCH14",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH14",
+      "description": "配方数据-2#预压压力"
+    },
+    {
+      "name": "DataRecipeCH15",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH15",
+      "description": "配方数据-2#预压压力上偏差"
+    },
+    {
+      "name": "DataRecipeCH16",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH16",
+      "description": "配方数据-2#预压压力下偏差"
+    },
+    {
+      "name": "DataRecipeCH17",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH17",
+      "description": "配方数据-1#充填深度"
+    },
+    {
+      "name": "DataRecipeCH18",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH18",
+      "description": "配方数据-2#充填深度"
+    },
+    {
+      "name": "DataRecipeCH19",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH19",
+      "description": "配方数据-1#供料靴设定速度"
+    },
+    {
+      "name": "DataRecipeCH20",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH20",
+      "description": "配方数据-2#供料靴设定速度"
+    },
+    {
+      "name": "DataRecipeCH21",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH21",
+      "description": "配方数据-主压液压设定值"
+    },
+    {
+      "name": "DataRecipeCH22",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH22",
+      "description": "配方数据-预压液位设定值"
+    },
+    {
+      "name": "DataRecipeCH23",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH23",
+      "description": "配方数据-预留"
+    },
+    {
+      "name": "DataRecipeCH24",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH24",
+      "description": "配方数据-预留"
+    },
+    {
+      "name": "DataRecipeCH25",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLRecipe.CH25",
+      "description": "配方数据-预留"
+    },
+    {
+      "name": "DataProductTime",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.TimeStamp",
+      "description": "生产数据-时间戳",
+      "datatype": "datetime"
+    },
+    {
+      "name": "DataProductState",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.State",
+      "description": "生产数据-状态"
+    },
+    {
+      "name": "DataProductCH01",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH01",
+      "description": "生产数据-1#充填深度"
+    },
+    {
+      "name": "DataProductCH02",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH02",
+      "description": "生产数据-1#主压厚度"
+    },
+    {
+      "name": "DataProductCH03",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH03",
+      "description": "生产数据-1#周期合格平均值"
+    },
+    {
+      "name": "DataProductCH04",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH04",
+      "description": "生产数据-2#充填深度"
+    },
+    {
+      "name": "DataProductCH05",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH05",
+      "description": "生产数据-2#主压厚度"
+    },
+    {
+      "name": "DataProductCH06",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLProduct.CH06",
+      "description": "生产数据-2#周期合格平均值"
+    },
+    {
+      "name": "AlarmTimeStamp",
+      "path": "ns=6;s=::DataSQLAla:AlarmInsertBuffer.AlarmTime",
+      "description": "报警数据-时间戳",
+      "datatype": "datetime"
+    },
+    {
+      "name": "AlarmCode",
+      "path": "ns=6;s=::DataSQLAla:AlarmInsertBuffer.AlarmCode",
+      "description": "报警数据-报警编号"
+    },
+    {
+      "name": "AlarmState",
+      "path": "ns=6;s=::DataSQLAla:AlarmInsertBuffer.AlarmState",
+      "description": "报警数据-报警状态"
+    },
+    {
+      "name": "AlarmText",
+      "path": "ns=6;s=::DataSQLAla:AlarmInsertBuffer.AlarmText",
+      "description": "报警数据-报警文本"
+    },
+    {
+      "name": "AuditTimeStamp",
+      "path": "ns=6;s=::DataSQLAud:AuditInsertBuffer.AuditTime",
+      "description": "审计数据-时间戳",
+      "datatype": "datetime"
+    },
+    {
+      "name": "AuditOperator",
+      "path": "ns=6;s=::DataSQLAud:AuditInsertBuffer.AuditOperator",
+      "description": "审计数据-操作员"
+    },
+    {
+      "name": "AuditText",
+      "path": "ns=6;s=::DataSQLAud:AuditInsertBuffer.AuditText",
+      "description": "审计数据-文本信息"
+    },
+    {
+      "name": "RecipeInsertTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.RecipeInsert",
+      "description": "配方数据-存储信号"
+    },
+    {
+      "name": "ProductInsertTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.ProductInsert",
+      "description": "生产数据-存储信号"
+    },
+    {
+      "name": "AlarmInsertTrigger",
+      "path": "ns=6;s=::DataSQLAla:AlarmInsertBuffer.InsertTrigger",
+      "description": "报警数据-存储信号"
+    },
+    {
+      "name": "AuditInsertTrigger",
+      "path": "ns=6;s=::DataSQLAud:AuditInsertBuffer.InsertTrigger",
+      "description": "审计数据-存储信号"
+    },
+    {
+      "name": "RecipeStartTime",
+      "path": "ns=6;s=::DataSQLRec:RecipeDataSQLQuery.Config.StartTime",
+      "description": "配方查询-开始时间"
+    },
+    {
+      "name": "RecipeEndTime",
+      "path": "ns=6;s=::DataSQLRec:RecipeDataSQLQuery.Config.EndTime",
+      "description": "配方查询-结束时间"
+    },
+    {
+      "name": "RecipeReadPoint",
+      "path": "ns=6;s=::DataSQLRec:RecipeDataSQLQuery.Config.PointName",
+      "description": "配方查询-开始时间"
+    },
+    {
+      "name": "RecipeAuxQuery",
+      "path": "ns=6;s=::DataSQLRec:RecipeDataSQLQuery.Config.AuxQuery",
+      "description": "附加查询指令，SELECT XX FROM table_name WHERE point_name BETWEEN 开始时间 AND 结束时间 AND (RecipeAuxQuery);"
+    },
+    {
+      "name": "ProductStartTime",
+      "path": "ns=6;s=::DataSQLPro:ProductDataSQLQuery.Config.StartTime",
+      "description": "生产查询-开始时间"
+    },
+    {
+      "name": "ProductEndTime",
+      "path": "ns=6;s=::DataSQLPro:ProductDataSQLQuery.Config.EndTime",
+      "description": "生产查询-结束时间"
+    },
+    {
+      "name": "ProductReadPoint",
+      "path": "ns=6;s=::DataSQLPro:ProductDataSQLQuery.Config.PointName",
+      "description": "生产查询-开始时间"
+    },
+    {
+      "name": "ProductAuxQuery",
+      "path": "ns=6;s=::DataSQLPro:ProductDataSQLQuery.Config.AuxQuery",
+      "description": "附加查询指令，SELECT XX FROM table_name WHERE point_name BETWEEN 开始时间 AND 结束时间 AND (RecipeAuxQuery);"
+    },
+    {
+      "name": "AlarmStartTime",
+      "path": "ns=6;s=::DataSQLAla:AlarmDataSQLQuery.Config.StartTime",
+      "description": "报警查询-开始时间"
+    },
+    {
+      "name": "AlarmEndTime",
+      "path": "ns=6;s=::DataSQLAla:AlarmDataSQLQuery.Config.EndTime",
+      "description": "报警查询-结束时间"
+    },
+    {
+      "name": "AlarmReadPoint",
+      "path": "ns=6;s=::DataSQLAla:AlarmDataSQLQuery.Config.PointName",
+      "description": "报警查询-开始时间"
+    },
+    {
+      "name": "AlarmAuxQuery",
+      "path": "ns=6;s=::DataSQLAla:AlarmDataSQLQuery.Config.AuxQuery",
+      "description": "附加查询指令，SELECT XX FROM table_name WHERE point_name BETWEEN 开始时间 AND 结束时间 AND (RecipeAuxQuery);"
+    },
+    {
+      "name": "AuditStartTime",
+      "path": "ns=6;s=::DataSQLAud:AuditDataSQLQuery.Config.StartTime",
+      "description": "审计查询-开始时间"
+    },
+    {
+      "name": "AuditEndTime",
+      "path": "ns=6;s=::DataSQLAud:AuditDataSQLQuery.Config.EndTime",
+      "description": "审计查询-结束时间"
+    },
+    {
+      "name": "AuditReadPoint",
+      "path": "ns=6;s=::DataSQLAud:AuditDataSQLQuery.Config.PointName",
+      "description": "审计查询-开始时间"
+    },
+    {
+      "name": "AuditAuxQuery",
+      "path": "ns=6;s=::DataSQLAud:AuditDataSQLQuery.Config.AuxQuery",
+      "description": "附加查询指令，SELECT XX FROM table_name WHERE point_name BETWEEN 开始时间 AND 结束时间 AND (RecipeAuxQuery);"
+    },
+    {
+      "name": "RecipeQueryTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.RecipeRead",
+      "description": "配方数据-查询信号"
+    },
+    {
+      "name": "RecipeQueryStatus",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.RecipeReadStatus",
+      "description": "配方数据-查询状态"
+    },
+    {
+      "name": "ProductQueryTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.ProductRead",
+      "description": "生产数据-查询信号"
+    },
+    {
+      "name": "ProductQueryStatus",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.ProductReadStatus",
+      "description": "生产数据-查询状态"
+    },
+    {
+      "name": "AlarmQueryTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.AlarmRead",
+      "description": "报警数据-查询信号"
+    },
+    {
+      "name": "AlarmQueryStatus",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.AlarmReadStatus",
+      "description": "报警数据-查询状态"
+    },
+    {
+      "name": "AuditQueryTrigger",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.AuditRead",
+      "description": "审计数据-查询信号"
+    },
+    {
+      "name": "AuditQueryStatus",
+      "path": "ns=6;s=::AsGlobalPV:gDataSQLOperate.AuditReadStatus",
+      "description": "审计数据-查询状态"
+    }
+  ],
+  "groups": [
+    {
+      "name": "Data_Product",
+      "interval_seconds": 0.2,
+      "trigger": "variable",
+      "description": "生产数据采集-事件触发+时间触发",
+      "data_points": [
+        "DataProductTime",
+        "DataProductState",
+        "DataProductCH01",
+        "DataProductCH02",
+        "DataProductCH03",
+        "DataProductCH04",
+        "DataProductCH05",
+        "DataProductCH06"
+      ],
+      "trigger_point": "ProductInsertTrigger",
+      "reset_trigger_after_read": true,
+      "recreate_interval_days": 1,
+      "batch_insert_size": 1
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "sma_data_test",
+    "host": "192.168.50.22",
+    "port": 3306,
+    "username": "root",
+    "password": "Br54644800@",
+    "data_groups": [
+      "Data_Product"
+    ]
+  },
+  "logging": {
+    "level": "DEBUG",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

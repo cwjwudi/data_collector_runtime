@@ -1,0 +1,97 @@
+{
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "127.0.0.1",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC1",
+      "data_groups": [
+        "time_interval_millisecond_group_1"
+      ],
+      "heartbeat": "ns=6;s=::DataRev:uiHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "rF1",
+      "path": "ns=6;s=::DataGen:F1",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF2",
+      "path": "ns=6;s=::DataGen:F2",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF3",
+      "path": "ns=6;s=::DataGen:F3",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF4",
+      "path": "ns=6;s=::DataGen:F4",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF5",
+      "path": "ns=6;s=::DataGen:F5",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "bTrigger1",
+      "path": "ns=6;s=::DataRev:bTestTriger",
+      "description": "PLC测试Trigger信号，布尔类型"
+    },
+    {
+      "name": "ts",
+      "path": "ns=6;s=::TimeSt:sDbDateTime",
+      "description": "时间戳",
+      "datatype": "datetime"
+    },
+    {
+      "name": "millisecond",
+      "path": "ns=6;s=::TimeSt:stRTCtime.millisec",
+      "description": "毫秒"
+    }
+  ],
+  "groups": [
+    {
+      "name": "time_interval_millisecond_group_1",
+      "interval_seconds": 10,
+      "trigger_interval_seconds": null,
+      "trigger": "time",
+      "description": "PLC1时间触发组，每10秒采集一次",
+      "data_points": [
+        "rF1",
+        "rF2",
+        "rF3",
+        "rF4",
+        "rF5",
+        "ts",
+        "millisecond"
+      ],
+      "trigger_point": "bTrigger1",
+      "reset_trigger_after_read": null,
+      "recreate_interval_days": 15,
+      "batch_insert_size": 1,
+      "is_parallel": false
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "wn_10",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "",
+    "data_groups": [
+      "time_interval_millisecond_group_1"
+    ]
+  }
+}

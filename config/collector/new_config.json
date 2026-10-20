@@ -1,0 +1,99 @@
+{
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "192.168.50.233",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "Connect1",
+      "communication": "PLC1",
+      "data_groups": [
+        "TestGroupSMA"
+      ],
+      "heartbeat": ""
+    }
+  ],
+  "points": [
+    {
+      "name": "DataGen",
+      "path": "ns=6;s=::DataGen",
+      "description": "DataGen"
+    },
+    {
+      "name": "AIR",
+      "path": "ns=6;s=::DataGen:AIR",
+      "description": "AIR"
+    },
+    {
+      "name": "AP1",
+      "path": "ns=6;s=::DataGen:AP1",
+      "description": "AP1"
+    },
+    {
+      "name": "AP2",
+      "path": "ns=6;s=::DataGen:AP2",
+      "description": "AP2"
+    },
+    {
+      "name": "BP1",
+      "path": "ns=6;s=::DataGen:BP1",
+      "description": "BP1"
+    },
+    {
+      "name": "bTestTriger",
+      "path": "ns=6;s=::DataRev:bTestTriger",
+      "description": "bTestTriger"
+    },
+    {
+      "name": "strBatchCode",
+      "path": "ns=6;s=::DataGen:strBatchCode",
+      "description": "strBatchCode"
+    }
+  ],
+  "groups": [
+    {
+      "name": "TestGroupSMA",
+      "interval_seconds": 10,
+      "trigger": "time_and_variable",
+      "description": "测试用表",
+      "data_points": [
+        "DataGen",
+        "AIR",
+        "AP1",
+        "AP2",
+        "BP1",
+        "strBatchCode"
+      ],
+      "trigger_point": "bTestTriger",
+      "reset_trigger_after_read": true,
+      "recreate_interval_days": 365,
+      "batch_insert_size": 1,
+      "is_parallel": false,
+      "trigger_interval_seconds": 0.5,
+      "unique_key_point": "strBatchCode"
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "wn_10",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "",
+    "data_groups": [
+      "TestGroupSMA"
+    ]
+  },
+  "logging": {
+    "level": "DEBUG",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

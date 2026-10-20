@@ -1,0 +1,71 @@
+{
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "127.0.0.1",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC1",
+      "data_groups": [
+        "trend_group"
+      ]
+    }
+  ],
+  "points": [
+    {
+      "name": "Trenddata",
+      "path": "ns=6;s=::Trend:Trenddata",
+      "description": "趋势数据"
+    },
+    {
+      "name": "strStartTimes",
+      "path": "ns=6;s=::Trend:stDbReadQuery.stConfig.strStartTime",
+      "description": "查询起始时间"
+    },
+    {
+      "name": "strEndTimes",
+      "path": "ns=6;s=::Trend:stDbReadQuery.stConfig.strEndTime",
+      "description": "查询结束时间"
+    },
+    {
+      "name": "strPointNames",
+      "path": "ns=6;s=::Trend:stDbReadQuery.stConfig.strPointName",
+      "description": "查询数据点名称"
+    },
+    {
+      "name": "bTriggerQuery",
+      "path": "ns=6;s=::Trend:bExecuteRead",
+      "description": "用于触发查询任务"
+    }
+  ],
+  "groups": [
+    {
+      "name": "trend_group",
+      "interval_seconds": 5,
+      "trigger": "time",
+      "description": "趋势数据采集组，每 5 秒采集一次",
+      "data_points": [
+        "Trenddata"
+      ],
+      "trigger_point": null,
+      "recreate_interval_days": 1,
+      "batch_insert_size": 5
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "wn_10",
+    "host": "192.168.50.22",
+    "port": 3306,
+    "username": "root",
+    "password": "Br54644800@",
+    "data_groups": [
+      "trend_group"
+    ]
+  }
+}

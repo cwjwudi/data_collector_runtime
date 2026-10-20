@@ -1,0 +1,92 @@
+{
+  "communications": [
+    {
+      "name": "PLC1",
+      "type": "opcua",
+      "host": "127.0.0.1",
+      "port": 4840
+    }
+  ],
+  "connections": [
+    {
+      "name": "connection1",
+      "communication": "PLC1",
+      "data_groups": [
+        "time_and_variable_group_2"
+      ],
+      "heartbeat": "ns=6;s=::DataRev:uiHeartBeat"
+    }
+  ],
+  "points": [
+    {
+      "name": "rF1",
+      "path": "ns=6;s=::DataGen:F1",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF2",
+      "path": "ns=6;s=::DataGen:F2",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF3",
+      "path": "ns=6;s=::DataGen:F3",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF4",
+      "path": "ns=6;s=::DataGen:F4",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "rF5",
+      "path": "ns=6;s=::DataGen:F5",
+      "description": "PLC1测试REAL数据"
+    },
+    {
+      "name": "bTrigger1",
+      "path": "ns=6;s=::DataRev:bTestTriger",
+      "description": "PLC测试Trigger信号，布尔类型"
+    }
+  ],
+  "groups": [
+    {
+      "name": "time_and_variable_group_2",
+      "interval_seconds": 5,
+      "trigger_interval_seconds": 0.5,
+      "trigger": "time_and_variable",
+      "description": "PLC2触发组，由变量触发采集",
+      "data_points": [
+        "rF1",
+        "rF2",
+        "rF3",
+        "rF4",
+        "rF5"
+      ],
+      "trigger_point": "bTrigger1",
+      "reset_trigger_after_read": true,
+      "recreate_interval_days": 15,
+      "batch_insert_size": 1,
+      "is_parallel": false
+    }
+  ],
+  "database": {
+    "type": "mysql",
+    "name": "wn_10",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "",
+    "data_groups": [
+      "time_and_variable_group_2"
+    ]
+  },
+  "logging": {
+    "level": "INFO",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}

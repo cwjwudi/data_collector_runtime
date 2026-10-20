@@ -1,0 +1,23 @@
+{
+  "communications": [],
+  "connections": [],
+  "points": [],
+  "groups": [],
+  "database": {
+    "type": "mysql",
+    "name": "",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "",
+    "password": "",
+    "data_groups": []
+  },
+  "logging": {
+    "level": "INFO",
+    "output_dir": "",
+    "backup_days": 14,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "console_enabled": true
+  }
+}
