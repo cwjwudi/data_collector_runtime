@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>配置页 — SD SMA Query Web</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20261020_03" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261020_04" />
   </head>
   <body class="config-page">
     <nav class="page-nav" aria-label="站内导航">
@@ -17,31 +17,23 @@
       <span id="configStatusMessage">配置页正在初始化…</span>
       <time id="configStatusTime" class="config-status-time"></time>
     </div>
-    <div class="layout">
-      <section class="panel">
-        <h2>配置文件</h2>
-        <p class="hint">右侧按数据库、分组与列、OPC UA、插件页从左到右修改。改动先留在本页，点「保存」后整份写入当前文件。</p>
-        <div class="row">
-          <label for="configProfileSelect">当前文件</label>
+    <div class="layout layout-stack">
+      <section class="panel config-editor">
+        <div class="config-file-bar">
+          <label for="configProfileSelect">配置文件</label>
           <select id="configProfileSelect"></select>
-        </div>
-        <div class="row">
           <button type="button" id="btnReloadConfigProfile">读取</button>
           <button type="button" id="btnRefreshConfigProfiles">刷新</button>
-        </div>
-        <div class="row config-actions">
           <button type="button" id="btnCreateConfigProfile">新建</button>
           <button type="button" id="btnSaveProfile">保存</button>
           <button type="button" id="btnDeleteConfigProfile" class="danger-btn">删除</button>
         </div>
-        <div id="configProfileHint" class="muted"></div>
-      </section>
-
-      <section class="panel config-editor">
+        <p class="hint">按数据库、OPC UA、分组与列、插件页从左到右修改。改动先留在本页，点「保存」后整份写入当前文件。</p>
+        <p id="configProfileHint" class="muted"></p>
         <div class="tabs" role="tablist">
           <button type="button" class="tab-btn active" data-tab="database">数据库</button>
-          <button type="button" class="tab-btn" data-tab="groups">分组与列</button>
           <button type="button" class="tab-btn" data-tab="opcua">OPC UA</button>
+          <button type="button" class="tab-btn" data-tab="groups">分组与列</button>
           <button type="button" class="tab-btn" data-tab="plugins">插件页</button>
         </div>
 
@@ -154,10 +146,10 @@
 
       <div id="tab-groups" class="tab-panel">
         <h2>Group 与列</h2>
-        <p class="hint">只列出当前数据库里的分组。列和查询条件先记在本页，和插件页一起由左侧「保存」整份写入。</p>
+        <p class="hint">只列出当前数据库里的分组。列和查询条件先记在本页，和插件页一起由上方「保存」整份写入。</p>
         <div class="settings-subsection">
           <h3 class="subsection-title">查询条件（View 级）</h3>
-          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。未改本列表时，仍使用原来的批次号来源；改过之后，左侧保存会把本列表整份写入。</p>
+          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。未改本列表时，仍使用原来的批次号来源；改过之后，上方保存会把本列表整份写入。</p>
           <div id="queryConditionList"></div>
           <div class="row">
             <button type="button" id="btnAddQueryCondition">添加条件</button>
@@ -368,6 +360,6 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20261020_04"></script>
+    <script src="/static/config.js?v=20261020_05"></script>
   </body>
 </html>

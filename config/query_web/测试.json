@@ -46,7 +46,23 @@
             "page_size": 50
           },
           "data_audit": {
-            "columns": [],
+            "columns": [
+              {
+                "name": "AuditTime",
+                "label_en": "AuditTime",
+                "label_zh": "AuditTime"
+              },
+              {
+                "name": "AuditOperator",
+                "label_en": "AuditOperator",
+                "label_zh": "AuditOperator"
+              },
+              {
+                "name": "AuditText",
+                "label_en": "AuditText",
+                "label_zh": "AuditText"
+              }
+            ],
             "time_field": "collection_time",
             "batch_field": "",
             "sort_by": "collection_time",
@@ -72,16 +88,10 @@
         },
         "query_conditions": [
           {
-            "name": "状态",
-            "source_table": "dict_alarmstate",
+            "name": "操作员",
+            "source_table": "dict_auditoperator",
             "source_field": "value",
-            "bind_field": "AlarmState"
-          },
-          {
-            "name": "批次号",
-            "source_table": "data_batch",
-            "source_field": "BatchCode",
-            "bind_field": "BatchCode"
+            "bind_field": "AuditOperator"
           }
         ]
       },
@@ -147,7 +157,7 @@
       "general": {
         "title": "General Module",
         "view_name": "table",
-        "bind_group": "",
+        "bind_group": "data_alarm",
         "page_size": 10,
         "pages": {
           "1": {
@@ -155,13 +165,7 @@
             "enabled": true,
             "bind_group": "",
             "view_name": "table",
-            "page_size": 50,
-            "opcua_writeback": {
-              "cursor": "ns=6;s=::DataRev:diCursor",
-              "columns": {
-                "collection_time": "ns=6;s=::DataRev:strStartTime"
-              }
-            }
+            "page_size": 50
           },
           "2": {
             "title": "报警查询",
@@ -171,9 +175,11 @@
             "page_size": 10
           },
           "3": {
-            "title": "General Page 3",
+            "title": "审计",
             "enabled": true,
-            "bind_group": ""
+            "bind_group": "data_audit",
+            "view_name": "table",
+            "page_size": 10
           },
           "4": {
             "title": "General Page 4",

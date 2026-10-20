@@ -1165,7 +1165,7 @@ async function deleteGroupConfig() {
   renderOrderedColumns();
   document.getElementById('columnEditorHint').textContent =
     hadGroup || hadBaseline
-      ? `已从当前配置去掉 group=${group}，点左侧保存后写入文件`
+      ? `已从当前配置去掉 group=${group}，点上方保存后写入文件`
       : `当前配置里没有 group=${group}`;
   saveConfigPageState();
 }
@@ -1782,7 +1782,7 @@ async function loadPluginOpcuaWritebackTable(viewName, bindGroup, writebackCfg) 
   try {
     const columns = groupColumnDefsFromProfile(viewName, bindGroup);
     if (columns.length === 0) {
-      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。先在「分组与列」里选好列，再点左侧保存。`;
+      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。先在「分组与列」里选好列，再点上方保存。`;
       hint.className = 'muted warn';
       return;
     }

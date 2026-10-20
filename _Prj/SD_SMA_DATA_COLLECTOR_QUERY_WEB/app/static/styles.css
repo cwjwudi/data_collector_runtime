@@ -166,6 +166,18 @@ body.config-page {
   grid-template-columns: 1fr;
 }
 
+.config-file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.config-file-bar select {
+  min-width: 16rem;
+}
+
 .config-editor .tabs {
   display: flex;
   flex-wrap: wrap;
