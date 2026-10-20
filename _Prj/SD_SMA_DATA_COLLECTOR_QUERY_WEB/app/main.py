@@ -56,6 +56,20 @@ from sd_sma_common.session_bridge import install_session_middleware
 
 AUTH_EXEMPT_PATHS = {"/api/health"}
 
+# dict_ 前缀表由 data_collector 的 groups[].dict_fields 配置自动建表/自动填充
+DICT_TABLE_PREFIX = "dict_"
+
+
+def _dict_source_ready(source: dict[str, Any]) -> bool:
+    """字典表来源是否已就绪（表已建且字段存在）。"""
+    try:
+        if source["table"] not in db.list_tables():
+            return False
+        return source["field"] in db.list_columns(source["table"])
+    except Exception:
+        return False
+
+
 
 def _resolve_config_dir(env_name: str, default: Path) -> Path:
     raw = os.getenv(env_name)
@@ -1272,15 +1286,19 @@ def meta_batch_codes(view_name: str, request: Request, group: str | None = None)
         source = cfg.resolve_batch_source(view_name, group)
         if not source["table"] or not source["field"]:
             raise HTTPException(status_code=400, detail="当前 View 未配置批次号来源表和字段")
-        available_columns = db.list_columns(source["table"])
-        if source["field"] not in available_columns:
-            raise HTTPException(
-                status_code=400,
-                detail=f"批次号来源字段不存在于表 {source['table']}: {source['field']}",
-            )
+        # dict_ 字典表由 data_collector 自动维护（dict_fields 配置）：
+        # 表或字段尚未创建（collector 未启动/未配 dict_fields）时返回空列表，等表就绪后自然出现
+        pending = source["table"].startswith(DICT_TABLE_PREFIX) and not _dict_source_ready(source)
+        if not pending:
+            available_columns = db.list_columns(source["table"])
+            if source["field"] not in available_columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"批次号来源字段不存在于表 {source['table']}: {source['field']}",
+                )
         return {
-            "items": db.list_batch_codes(source["table"], source["field"], limit=1000),
-            "source": source,
+            "items": [] if pending else db.list_batch_codes(source["table"], source["field"], limit=1000),
+            "source": {**source, "pending": pending},
         }
     except HTTPException:
         raise
@@ -1699,21 +1717,26 @@ def save_query_batch_source(payload: QueryBatchSourceUpdateRequest) -> dict[str,
     if bool(source_table) != bool(source_field):
         raise HTTPException(status_code=400, detail="批次号来源表和字段必须同时设置或同时留空")
     if source_table:
-        try:
-            available_columns = db.list_columns(source_table)
-        except (OperationalError, SQLAlchemyError) as exc:
-            _raise_db_error(exc)
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"读取批次号来源表失败: {exc}") from exc
-        if source_field not in available_columns:
-            raise HTTPException(
-                status_code=400,
-                detail=f"批次号来源字段不存在于表 {source_table}: {source_field}",
-            )
+        # dict_ 字典表由 data_collector 自动建表，允许先配置、表后出现
+        if not source_table.startswith(DICT_TABLE_PREFIX):
+            try:
+                available_columns = db.list_columns(source_table)
+            except (OperationalError, SQLAlchemyError) as exc:
+                _raise_db_error(exc)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"读取批次号来源表失败: {exc}") from exc
+            if source_field not in available_columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"批次号来源字段不存在于表 {source_table}: {source_field}",
+                )
     try:
         cfg.update_query_batch_source(payload.view_name, source_table, source_field)
         _clear_plugin_snapshots()
-        return {"status": "saved", **cfg.get_query_batch_source(payload.view_name)}
+        pending = source_table.startswith(DICT_TABLE_PREFIX) and not _dict_source_ready(
+            {"table": source_table, "field": source_field}
+        )
+        return {"status": "saved", "pending": pending, **cfg.get_query_batch_source(payload.view_name)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

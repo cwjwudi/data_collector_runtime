@@ -4,7 +4,7 @@
   "app_settings": {
     "database": {
       "type": "mysql",
-      "name": "wn_9",
+      "name": "sma_data_collector_fulltest_20260729",
       "host": "127.0.0.1",
       "port": 3306,
       "username": "root",

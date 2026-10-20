@@ -284,6 +284,21 @@ class CollectorConfigManager:
                             )
                         seen_names.add(name)
 
+            # 验证 dict_fields 配置（自动维护的字典字段，必须是本组数据点）
+            dict_fields = group.get("dict_fields")
+            if dict_fields is not None:
+                if not isinstance(dict_fields, list):
+                    raise ValueError(f"数据组 '{group.get('name', '<unknown>')}' 的 dict_fields 必须是数组")
+                data_points = group.get("data_points", [])
+                for col in dict_fields:
+                    if not isinstance(col, str) or not col or col not in data_points:
+                        raise ValueError(
+                            f"数据组 '{group.get('name', '<unknown>')}' 的 dict_fields "
+                            f"引用了不存在的点位: {col}"
+                        )
+                if len(set(dict_fields)) != len(dict_fields):
+                    raise ValueError(f"数据组 '{group.get('name', '<unknown>')}' 的 dict_fields 存在重复项")
+
     @staticmethod
     def _validate_points_unique(payload: dict[str, Any]) -> None:
         points = payload.get("points", [])

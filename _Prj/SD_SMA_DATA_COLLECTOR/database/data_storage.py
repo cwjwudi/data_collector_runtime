@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.db_manager import DatabaseManager
 from database.persistent_queue import PersistentQueueStore
 
+# 字典字段单批去重值上限：超过视为误配高频列（预期字典表只几十条）
+_DICT_FIELD_BATCH_CAP = 1000
+
 
 class DataStorageProcessor:
     """数据存储处理器类"""
@@ -55,6 +58,7 @@ class DataStorageProcessor:
         self.group_partition_interval_years = {}  # 存储各组分表间隔年份
         self.group_insert_feedback_configs = {}  # 存储各组反馈配置
         self.group_indexes_configs = {}  # 存储各组索引配置
+        self.group_dict_fields = {}  # 存储各组需自动维护字典表的列名
         self.points_dict = points_dict or {}  # 数据点配置字典
         self.insert_feedback_callback = insert_feedback_callback
         self.data_queue = deque()
@@ -260,6 +264,17 @@ class DataStorageProcessor:
         若能恢复未结批批次上下文，再按开批年份确保分表明细表。
         未配置 batch_upsert 的旧配置继续按当前年份做一次兼容建表。
         """
+        # 预建字典表：让查询页/DB Admin 配置 batch_source 时表已存在，不必等首批数据
+        for group_name, fields in self.group_dict_fields.items():
+            for field_name in fields:
+                table_name = f"dict_{field_name}"
+                if table_name in self.ensured_tables:
+                    continue
+                if self.db_manager.ensure_dict_table(table_name):
+                    self.ensured_tables.add(table_name)
+                else:
+                    self.logger.warning("字典表预建失败（写入期会重试）: %s", table_name)
+
         if self.batch_master_group_name:
             if not self._ensure_group_table(self.batch_master_group_name, fixed_table=True):
                 return False
@@ -745,6 +760,59 @@ class DataStorageProcessor:
             len(self.dead_letter_queue),
         )
     
+    def _collect_dict_values(
+        self, group_name: str, group_data_list: List[Dict[str, Any]]
+    ) -> Dict[str, set]:
+        """收集本批次中字典字段的去重值。
+
+        ponytail: 每批同步一次全量去重值；若把高频列误配为字典字段，单批
+        去重值可能很大，_DICT_FIELD_BATCH_CAP 处硬性跳过保护主流程。
+        """
+        collected: Dict[str, set] = {}
+        configured = self.group_dict_fields.get(group_name) or []
+        if not configured:
+            return collected
+        allowed_points = set(self.group_data_points.get(group_name) or [])
+        for field_name in configured:
+            if field_name not in allowed_points:
+                continue
+            values = {
+                v for v in (
+                    self._get_data_point_value(item, field_name)
+                    for item in group_data_list
+                )
+                if self._has_data_value(v)
+            }
+            if values:
+                collected[field_name] = values
+        return collected
+
+    async def _sync_dict_fields(
+        self, group_name: str, group_data_list: List[Dict[str, Any]]
+    ) -> None:
+        """把本批次的字典字段值幂等写入 dict_<field> 表；失败只告警，不影响主数据落库。"""
+        try:
+            collected = self._collect_dict_values(group_name, group_data_list)
+            for field_name, values in collected.items():
+                if len(values) > _DICT_FIELD_BATCH_CAP:
+                    self.logger.warning(
+                        "组 %s 字典字段 %s 单批去重值 %d 超过上限 %d，疑似误配高频列，跳过本次同步",
+                        group_name, field_name, len(values), _DICT_FIELD_BATCH_CAP,
+                    )
+                    continue
+                table_name = f"dict_{field_name}"
+                if table_name not in self.ensured_tables:
+                    if not await asyncio.to_thread(self.db_manager.ensure_dict_table, table_name):
+                        self.logger.warning("字典表创建失败，跳过本次同步: %s", table_name)
+                        continue
+                    self.ensured_tables.add(table_name)
+                if not await asyncio.to_thread(
+                    self.db_manager.insert_dict_values_ignore, table_name, sorted(values, key=str)
+                ):
+                    self.logger.warning("字典值写入失败: %s (%d 个值)", table_name, len(values))
+        except Exception:
+            self.logger.warning("组 %s 字典字段同步失败", group_name, exc_info=True)
+
     async def _process_group_data(
         self, group_name: str, group_data_list: List[Dict[str, Any]]
     ) -> Dict[str, int]:
@@ -758,6 +826,9 @@ class DataStorageProcessor:
         try:
             if not group_data_list:
                 return self._empty_outcomes()
+
+            # 同步字典字段（dict_<field> 表自动维护，供查询页筛选下拉使用）
+            await self._sync_dict_fields(group_name, group_data_list)
 
             # 获取第一个数据项来确定表结构
             sample_data = group_data_list[0]

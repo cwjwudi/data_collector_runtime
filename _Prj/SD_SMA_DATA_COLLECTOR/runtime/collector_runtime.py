@@ -256,6 +256,8 @@ class DataCollectionSystem:
                         }
                         for idx in group.indexes
                     ]
+                if group.dict_fields:
+                    self.storage_processor.group_dict_fields[group.name] = list(group.dict_fields)
                 self.logger.debug("设置组 %s 的batch_size为 %s", group.name, group.batch_insert_size)
 
             if not self.storage_processor.initialize_tables_for_runtime():

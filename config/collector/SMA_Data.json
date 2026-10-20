@@ -397,19 +397,21 @@
       "trigger_point": "ProductInsertTrigger",
       "reset_trigger_after_read": true,
       "recreate_interval_days": 1,
-      "batch_insert_size": 1
+      "batch_insert_size": 1,
+      "partition_interval_years": 1
     }
   ],
   "database": {
     "type": "mysql",
     "name": "sma_data_test",
-    "host": "192.168.50.22",
+    "host": "127.0.0.1",
     "port": 3306,
     "username": "root",
-    "password": "Br54644800@",
+    "auto_create": true,
     "data_groups": [
       "Data_Product"
-    ]
+    ],
+    "password_enc": "gAAAAABq1wDu-X3LY6iA6SygozK22f3LG94IhAAmaan8-OquNL47xaNfBfMv0Qo5RdEelfLuPsCX_hUTeTYUa50yPceTa49V3w=="
   },
   "logging": {
     "level": "DEBUG",
@@ -418,5 +420,18 @@
     "rotation_when": "midnight",
     "rotation_interval": 1,
     "console_enabled": true
+  },
+  "persistent_queue": {
+    "enabled": false,
+    "path": "runtime/queue/collector_outbox.db",
+    "synchronous": "FULL",
+    "busy_timeout_ms": 5000,
+    "lease_seconds": 60,
+    "retry_interval_seconds": 5,
+    "max_retry_interval_seconds": 300,
+    "max_attempts": 0,
+    "completed_retention_days": 1,
+    "cleanup_interval_seconds": 3600,
+    "max_queue_rows": 1000000
   }
 }

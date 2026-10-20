@@ -3,13 +3,7 @@
     {
       "name": "PLC_TPS",
       "type": "opcua",
-      "host": "192.168.50.233",
-      "port": 4840
-    },
-    {
-      "name": "PLC_TPS_SECONDARY",
-      "type": "opcua",
-      "host": "192.168.50.233",
+      "host": "127.0.0.1",
       "port": 4840
     }
   ],
@@ -20,18 +14,12 @@
       "data_groups": [
         "Data_Recipe",
         "Data_Product",
-        "Data_Batch"
-      ],
-      "heartbeat": "gDataSQLHeartBeat"
-    },
-    {
-      "name": "Connection_TPS_SECONDARY",
-      "communication": "PLC_TPS_SECONDARY",
-      "data_groups": [
         "Data_Alarm",
         "Data_Audit",
+        "Data_Batch",
         "Data_BatchInfo"
-      ]
+      ],
+      "heartbeat": "gDataSQLHeartBeat"
     }
   ],
   "points": [
@@ -654,7 +642,20 @@
       "is_parallel": false,
       "trigger_interval_seconds": 1,
       "partition_interval_years": 0,
-      "trigger_mode": "subscription"
+      "trigger_mode": "subscription",
+      "indexes": [
+        {
+          "name": "",
+          "columns": [
+            "BatchCode"
+          ],
+          "unique": false,
+          "index_type": "btree"
+        }
+      ],
+      "dict_fields": [
+        "BatchCode"
+      ]
     },
     {
       "name": "Data_Alarm",
@@ -670,6 +671,9 @@
       ],
       "trigger_point": "AlarmInsertTrigger",
       "enable_point": "AlarmCollectEnable",
+      "dict_fields": [
+        "AlarmState"
+      ],
       "reset_trigger_after_read": true,
       "recreate_interval_days": 1,
       "batch_insert_size": 100,
@@ -691,6 +695,9 @@
       ],
       "trigger_point": "AuditInsertTrigger",
       "enable_point": "AuditCollectEnable",
+      "dict_fields": [
+        "AuditOperator"
+      ],
       "reset_trigger_after_read": true,
       "recreate_interval_days": 1,
       "batch_insert_size": 10,
@@ -775,19 +782,18 @@
   "database": {
     "type": "mysql",
     "name": "sma_data_collector_fulltest_20260729",
-    "host": "192.168.50.22",
+    "host": "127.0.0.1",
     "port": 3306,
     "username": "root",
     "auto_create": true,
     "data_groups": [
-      "Data_Recipe",
       "Data_Product",
       "Data_Alarm",
       "Data_Audit",
       "Data_Batch",
       "Data_BatchInfo"
     ],
-    "password_enc": "gAAAAABqaWL4riPtPIBDtXJ04tpKnxXzkV5TkbirylLoHvds1IAwB7UeYhVJwiwjUJFBj3hWJP8EoWFJkH2wOiBXMJcITLD6nw=="
+    "password_enc": "gAAAAABq1wFev2CBsMrNbZOF_s8QQMONjs2ULZK9y3k6FE7UV2lxlfpxy8ajRiVl9xqYIBMr85ZGuk6fG-IpRMO9WC9mL-n9cw=="
   },
   "logging": {
     "level": "INFO",

@@ -121,6 +121,13 @@ class ConfigLoader:
                         index_type=idx_entry.get('index_type', 'btree'),
                     ))
 
+            # 解析字典字段配置（自动维护 dict_<field> 表，供查询页筛选下拉使用）
+            dict_fields = [
+                str(item).strip()
+                for item in (group_data.get('dict_fields') or [])
+                if str(item).strip()
+            ]
+
             raw_trigger_interval = group_data.get('trigger_interval_seconds')
             raw_trigger_mode = group_data.get('trigger_mode', TriggerMode.POLL.value)
             # 兼容手工把下拉框值直接保存为 "subscription" 的配置。
@@ -162,6 +169,7 @@ class ConfigLoader:
                 insert_feedback=insert_feedback,
                 batch_upsert=batch_upsert,
                 indexes=indexes,
+                dict_fields=dict_fields,
             )
             groups.append(group)
         

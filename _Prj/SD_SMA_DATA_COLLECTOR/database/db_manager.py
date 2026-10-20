@@ -460,7 +460,59 @@ class DatabaseManager:
                     "创建索引失败: %s ON %s (%s): %s",
                     index_name, table_name, col_list, e,
                 )
-    
+
+    def ensure_dict_table(self, table_name: str) -> bool:
+        """创建字典表（幂等）：value 唯一约束 + 幂等插入，作为查询页筛选下拉的数据源。
+
+        表行数预期为几十条（字段的不同取值），value 的 UNIQUE 约束是字典表语义
+        的一部分，固定在建表语句里，不走 indexes 配置。
+        """
+        try:
+            is_mysql = self.db_config.get('type', '').lower() == 'mysql'
+            if is_mysql:
+                create_sql = (
+                    f"CREATE TABLE IF NOT EXISTS `{table_name}` ("
+                    "`id` BIGINT AUTO_INCREMENT PRIMARY KEY, "
+                    "`value` VARCHAR(255) NOT NULL, "
+                    "`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "UNIQUE KEY `uk_value` (`value`)"
+                    ")"
+                )
+            else:
+                create_sql = (
+                    f"CREATE TABLE IF NOT EXISTS `{table_name}` ("
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "`value` TEXT NOT NULL UNIQUE, "
+                    "`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP"
+                    ")"
+                )
+            self._log_mysql_sql(create_sql, force_info=True)
+            with self.engine.connect() as conn:
+                conn.execute(text(create_sql))
+                conn.commit()
+            self.logger.info("字典表已确保存在: %s", table_name)
+            return True
+        except Exception as e:
+            self._log_db_error("创建字典表", e)
+            return False
+
+    def insert_dict_values_ignore(self, table_name: str, values: List[Any]) -> bool:
+        """幂等插入字典值：重复值被唯一约束静默忽略（MySQL INSERT IGNORE / SQLite INSERT OR IGNORE）。"""
+        clean_values = [str(v).strip() for v in values if v is not None and str(v).strip()]
+        if not clean_values:
+            return True
+        try:
+            is_mysql = self.db_config.get('type', '').lower() == 'mysql'
+            verb = "INSERT IGNORE INTO" if is_mysql else "INSERT OR IGNORE INTO"
+            sql = f"{verb} `{table_name}` (`value`) VALUES (:value)"
+            with self.engine.connect() as conn:
+                conn.execute(text(sql), [{"value": v} for v in clean_values])
+                conn.commit()
+            return True
+        except Exception as e:
+            self._log_db_error("插入字典值", e)
+            return False
+
     def get_recreate_interval_days(self, group_name: str = None) -> int:
         """
         获取指定数据组的分表间隔天数

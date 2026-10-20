@@ -694,14 +694,33 @@ function openIndexesConfig(groupIndex) {
     ),
   ];
   const draft = Array.isArray(group.indexes)
-    ? group.indexes.map((idx) => ({ ...idx, columns: [...(idx.columns || [])] }))
+    ? group.indexes.map((idx) => ({
+        ...idx,
+        columns: [...(idx.columns || [])],
+        dict:
+          (idx.columns || []).length > 0 &&
+          (idx.columns || []).every((c) =>
+            (Array.isArray(group.dict_fields) ? group.dict_fields : []).includes(c)
+          ),
+      }))
     : [];
+  // 游离字典字段：已配置但没有索引行覆盖到（不随行勾选丢失）
+  const anyRowColumns = new Set(draft.flatMap((idx) => idx.columns || []));
+  const residualDictFields = (Array.isArray(group.dict_fields) ? group.dict_fields : []).filter(
+    (c) => !anyRowColumns.has(c)
+  );
 
   showGroupConfigModal({
     title: "配置索引",
     buildBody: (body) => {
       function renderIndexList() {
         body.innerHTML = "";
+
+        const tip = document.createElement("p");
+        tip.style.cssText = "font-size:12px;color:#888;margin:0 0 8px;";
+        tip.textContent =
+          "勾选「字典」的行会自动维护 dict_<列名> 去重表，供查询页筛选下拉使用；同列跨组共用一张表。";
+        body.appendChild(tip);
 
         draft.forEach((idx, i) => {
           const row = document.createElement("div");
@@ -734,6 +753,20 @@ function openIndexesConfig(groupIndex) {
           uniqueWrap.appendChild(uniqueCb);
           uniqueWrap.appendChild(uniqueLabel);
 
+          const dictCb = createCheckbox(idx.dict || false, (v) => {
+            draft[i].dict = v;
+          });
+          const dictLabel = document.createElement("label");
+          dictLabel.style.padding = "0 4px";
+          dictLabel.style.fontSize = "12px";
+          dictLabel.textContent = "字典";
+          dictLabel.title = "自动维护 dict_<列名> 去重表，供查询页筛选下拉使用";
+          const dictWrap = document.createElement("div");
+          dictWrap.style.display = "flex";
+          dictWrap.style.alignItems = "center";
+          dictWrap.appendChild(dictCb);
+          dictWrap.appendChild(dictLabel);
+
           const typeSelect = createSelect(
             [
               { value: "btree", label: "btree" },
@@ -756,6 +789,7 @@ function openIndexesConfig(groupIndex) {
           row.appendChild(nameInput);
           row.appendChild(colWrapper);
           row.appendChild(uniqueWrap);
+          row.appendChild(dictWrap);
           row.appendChild(typeSelect);
           row.appendChild(delBtn);
           body.appendChild(row);
@@ -775,9 +809,24 @@ function openIndexesConfig(groupIndex) {
     },
     onConfirm: () => {
       if (draft.length > 0) {
-        currentConfig.groups[groupIndex].indexes = draft.map((idx) => ({ ...idx }));
+        // dict 是行内 UI 状态，不写入 indexes 配置
+        currentConfig.groups[groupIndex].indexes = draft.map(({ dict, ...idx }) => ({
+          ...idx,
+          columns: [...(idx.columns || [])],
+        }));
       } else {
         delete currentConfig.groups[groupIndex].indexes;
+      }
+      // 字典字段 = 游离保留 + 勾了「字典」的行的所有列（Set 去重，同列跨行/跨组合并同一张表）
+      const dictFieldSet = new Set(residualDictFields);
+      for (const idx of draft) {
+        if (idx.dict) for (const col of idx.columns || []) dictFieldSet.add(col);
+      }
+      const dictFields = [...dictFieldSet];
+      if (dictFields.length > 0) {
+        currentConfig.groups[groupIndex].dict_fields = dictFields;
+      } else {
+        delete currentConfig.groups[groupIndex].dict_fields;
       }
       return true;
     },
@@ -1147,6 +1196,14 @@ function renderGroups() {
             !values.includes(currentConfig.groups[idx].unique_key_point)
           ) {
             currentConfig.groups[idx].unique_key_point = "";
+          }
+          if (Array.isArray(currentConfig.groups[idx].dict_fields)) {
+            const remaining = currentConfig.groups[idx].dict_fields.filter((f) => values.includes(f));
+            if (remaining.length > 0) {
+              currentConfig.groups[idx].dict_fields = remaining;
+            } else {
+              delete currentConfig.groups[idx].dict_fields;
+            }
           }
           renderGroups();
         }),
