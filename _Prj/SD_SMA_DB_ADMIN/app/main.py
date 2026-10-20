@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import ipaddress
 import json
 import logging
 import os
@@ -35,9 +34,8 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
 from sd_sma_common import FilesystemBrowser, FilesystemBrowserError, windows_removable_roots
+from sd_sma_common.session_bridge import install_session_middleware
 
-AUTH_TOKEN_ENV = "SD_SMA_WEB_TOKEN"
-AUTH_TOKEN_HEADER = "X-SD-SMA-Token"
 AUTH_EXEMPT_PATHS = {"/api/health"}
 BACKUP_DIR_ENV = "SD_SMA_DB_ADMIN_BACKUP_DIR"
 JOB_LOGGER = logging.getLogger("sd_sma.db_admin.job")
@@ -55,25 +53,6 @@ def configure_console_logging() -> None:
     # Access / request spam is INFO by default; keep WARNING+ only.
     for name in ("uvicorn.access", "uvicorn.protocols.http", "uvicorn.protocols.http.h11_impl"):
         logging.getLogger(name).setLevel(logging.WARNING)
-
-
-def _is_loopback_host(host: str | None) -> bool:
-    if not host:
-        return False
-    h = host.strip().lower()
-    if h in ("localhost", "127.0.0.1", "::1", "[::1]"):
-        return True
-    try:
-        return ipaddress.ip_address(h.strip("[]")).is_loopback
-    except ValueError:
-        return False
-
-
-def _remote_token_ok(provided: str | None) -> bool:
-    expected = (os.getenv(AUTH_TOKEN_ENV) or "").strip()
-    if not expected or not provided or not provided.strip():
-        return False
-    return secrets.compare_digest(provided.strip(), expected)
 
 
 def _resolve_config_dir() -> Path:
@@ -1890,10 +1869,11 @@ async def _app_lifespan(_app: FastAPI):
 configure_console_logging()
 app = FastAPI(title="SD SMA DB Admin", version="0.1.0", lifespan=_app_lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
+install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 
 @app.middleware("http")
-async def enforce_remote_token(request: Request, call_next):
+async def forbid_cross_origin_writes(request: Request, call_next):
     if request.url.path in AUTH_EXEMPT_PATHS:
         return await call_next(request)
     if request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
@@ -1904,15 +1884,7 @@ async def enforce_remote_token(request: Request, call_next):
             request_host = (request.headers.get("host") or "").lower()
             if parsed.scheme not in {"http", "https"} or origin_host != request_host:
                 return JSONResponse(status_code=403, content={"detail": "Cross-origin state-changing request is forbidden"})
-    client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host):
-        return await call_next(request)
-    if _remote_token_ok(request.headers.get(AUTH_TOKEN_HEADER)):
-        return await call_next(request)
-    return JSONResponse(
-        status_code=403,
-        content={"detail": f"非本机访问需在请求头 {AUTH_TOKEN_HEADER} 提供有效令牌（服务端环境变量 {AUTH_TOKEN_ENV}）"},
-    )
+    return await call_next(request)
 
 
 @app.get("/")

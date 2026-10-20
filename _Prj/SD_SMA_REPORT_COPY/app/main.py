@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import ctypes
-import ipaddress
 import json
 import os
 import re
-import secrets
 import sys
 import threading
 import time
@@ -14,8 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -28,29 +26,9 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
 from sd_sma_common import FilesystemBrowser, FilesystemBrowserError
+from sd_sma_common.session_bridge import install_session_middleware
 
-AUTH_TOKEN_ENV = "SD_SMA_WEB_TOKEN"
-AUTH_TOKEN_HEADER = "X-SD-SMA-Token"
 AUTH_EXEMPT_PATHS = {"/api/health"}
-
-
-def _is_loopback_host(host: str | None) -> bool:
-    if not host:
-        return False
-    h = host.strip().lower()
-    if h in ("localhost", "127.0.0.1", "::1", "[::1]"):
-        return True
-    try:
-        return ipaddress.ip_address(h.strip("[]")).is_loopback
-    except ValueError:
-        return False
-
-
-def _remote_token_ok(provided: str | None) -> bool:
-    expected = (os.getenv(AUTH_TOKEN_ENV) or "").strip()
-    if not expected or not provided or not provided.strip():
-        return False
-    return secrets.compare_digest(provided.strip(), expected)
 
 
 def _resolve_config_dir() -> Path:
@@ -586,21 +564,7 @@ def copy_reports_job(job_id: str, req: CopyRequest) -> dict[str, Any]:
 
 app = FastAPI(title="SD SMA Report Copy", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
-
-
-@app.middleware("http")
-async def enforce_remote_token(request: Request, call_next):
-    if request.url.path in AUTH_EXEMPT_PATHS:
-        return await call_next(request)
-    client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host):
-        return await call_next(request)
-    if _remote_token_ok(request.headers.get(AUTH_TOKEN_HEADER)):
-        return await call_next(request)
-    return JSONResponse(
-        status_code=403,
-        content={"detail": f"非本机访问需在请求头 {AUTH_TOKEN_HEADER} 提供有效令牌（服务端环境变量 {AUTH_TOKEN_ENV}）"},
-    )
+install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 
 @app.get("/")

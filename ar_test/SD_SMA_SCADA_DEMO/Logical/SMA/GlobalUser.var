@@ -1,9 +1,0 @@
-(*UserBridge globals - OPC ::AsGlobalPV:*)
-VAR CONSTANT
-	SDSMA_MAX_CLIENTS : USINT := 4; (*>= mappView MaxClientConnections*)
-	SDSMA_MAX_CLIENTS_MINUS : USINT := SDSMA_MAX_CLIENTS - 1;
-END_VAR
-VAR
-	gSdSmaClient : ARRAY[0..SDSMA_MAX_CLIENTS_MINUS] OF SdSmaClientInfo_typ;
-	gSdSmaSession : ARRAY[0..SDSMA_MAX_CLIENTS_MINUS] OF SdSmaSession_typ;
-END_VAR

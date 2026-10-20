@@ -42,17 +42,31 @@ SD SMA Runtime：独立运行时工程。统一 Launcher 管理 4 个 FastAPI �
 
 ## 冻结区（暂缓，只读）
 
-- **`FDA21Cfr11/`**：FDA 21 CFR Part 11 合规资料包（原文 PDF + 汇报报告），整体冻结。
-  不新增、不修改、不删除；仅在用户明确要求时阅读引用。
-- `_Docs/` 中的 Part 11 计划类文档（Part 11 升级说明、合规性审查清单、三个月计划任务表）
-  仅为规划存档。**不要据此实现任何 Part 11 功能**（审计上传、电子签名、身份传递等），
-  相关开发与测试整体暂缓。
-- `ar_test/`：B&R Automation Studio 测试工程（ARSim/PLC 侧），非本仓库维护范围，不改。
+- **`_Archive/`**：归档区。原 `_Docs/` 全部文档已归档至 `_Archive/_Docs/`，只读封存，
+  不再更新；仅在用户明确要求时阅读引用。
+  - `FDA21Cfr11/`：FDA 21 CFR Part 11 合规资料包（原文 PDF + 汇报报告）。
+  - Part 11 计划类文档（Part 11 升级说明、合规性审查清单、三个月计划任务表）
+    仅为规划存档。**不要据此实现任何 Part 11 功能**（审计上传、电子签名、身份传递等），
+    相关开发与测试整体暂缓。
 
 ## 代码约定
 
 - 修 bug 先 grep 所有调用方，在共享函数修根因，不在单个调用处贴补丁
-- 非平凡逻辑留一个可运行自检（assert 式脚本，无框架）。范例：
+- 非平凡逻辑留一个可运行自检（assert 式脚本，无框架，命名 `*_check.py`）。范例：
   `_Prj/SD_SMA_COMMON/sd_sma_common/session_bridge_check.py`
   （`python -m sd_sma_common.session_bridge_check` 离线 FakePlc 自检；`--live` 连真实 PLC）
-- 详细架构与数据流见 `_Docs/SD_SMA_Runtime 架构与数据流.md`
+- 详细架构与数据流见（已归档）`_Archive/_Docs/SD_SMA_Runtime 架构与数据流.md`
+
+## AI 交付要求（DoD）
+
+每次改动的交付必须满足，缺一不算完成：
+
+1. **自检跑过并贴结果**：改动涉及 Python 代码时，交付前运行
+   `python selfcheck.py`（仓库根，自动发现并运行所有 `*_check.py`），
+   汇报中附上最后的 `x/y passed` 行；新增逻辑必须新增/更新对应 `*_check.py`。
+2. **文档不散落**：不新建顶层 `.md`/`.html`；说明写进 commit message 或代码 docstring。
+   确需成文，放 `_Prj/<服务>/docs/` 下并在汇报中说明理由。
+3. **汇报三要素**：改了哪些文件、怎么验证的（自检输出/命令）、遗留什么（未覆盖项、
+   已知边界）。没有验证项时写"仅静态检查"。
+4. **提交规范**：commit message 一行中文，`<类型>: <摘要>`，类型取
+   `feat / fix / refactor / docs / chore`；不动 `logs/`、`secrets/`、`backups/`、`state/`。

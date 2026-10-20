@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import socket
 import threading
 from pathlib import Path
@@ -15,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from launcher_imports import ConfigImportManager, FilesystemBrowserError
 from launcher_security import LauncherSecurityStore
+from sd_sma_common.session_bridge import COOKIE_NAME as SDSMA_COOKIE, parse_cookie
 
 
 SESSION_COOKIE = "sd_sma_launcher_admin"
@@ -41,14 +43,24 @@ def create_management_app(
                 return Response("Forbidden origin", status_code=403)
         return await call_next(request)
 
+    def hmi_user(request: Request) -> str | None:
+        secret = (os.environ.get("SD_SMA_SESSION_SECRET") or "").strip()
+        if not secret:
+            return None
+        ident = parse_cookie(request.cookies.get(SDSMA_COOKIE), secret.encode("utf-8"))
+        return ident.user_id if ident else None
+
     def require_admin(request: Request) -> str:
+        user = hmi_user(request)
+        if user:
+            return user
         if security.pin_mode == "undecided":
             raise HTTPException(428, "请先选择是否启用管理员 PIN")
         if security.pin_mode == "disabled":
             return "pin-disabled"
         token = request.cookies.get(SESSION_COOKIE)
         if not security.verify_session(token):
-            raise HTTPException(401, "需要管理员 PIN 解锁")
+            raise HTTPException(401, "需要 mappView 用户会话或管理员 PIN")
         return str(token)
 
     @app.get("/")
@@ -105,8 +117,11 @@ def create_management_app(
 
     @app.get("/api/launcher/auth/session")
     def session(request: Request) -> dict[str, Any]:
+        user = hmi_user(request)
+        pin_ok = security.pin_mode == "disabled" or security.verify_session(request.cookies.get(SESSION_COOKIE))
         return {
-            "unlocked": security.pin_mode == "disabled" or security.verify_session(request.cookies.get(SESSION_COOKIE)),
+            "unlocked": bool(user) or pin_ok,
+            "hmi_user": user,
             "pin_configured": security.pin_configured,
             "pin_enabled": security.pin_enabled,
             "pin_mode": security.pin_mode,

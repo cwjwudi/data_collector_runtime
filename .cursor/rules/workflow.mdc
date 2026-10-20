@@ -1,0 +1,30 @@
+---
+description: SD SMA 开发流程约束：先追踪再动手、根因修复、PLC 侧只读、交付可验证
+alwaysApply: true
+---
+
+# 开发流程约束
+
+项目事实（入口/端口/目录红线/冻结区）见仓库根 `AGENTS.md`，本规则只管**流程**。
+
+## 动手前
+
+1. 先读任务涉及的代码，用 grep 追踪所有调用方，确认改动落在共享函数/根因处，
+   不在单个调用点贴补丁。
+2. 复用优先：先找仓库里已有的 helper/模式（`session_bridge`、`filesystem_browser` 等），
+   再考虑新写；跨服务代码只进 `_Prj/SD_SMA_COMMON/sd_sma_common/`，不复制副本。
+3. 不确定需求边界时先问一句，不要按猜测实现整套功能。
+
+## 边界
+
+- **PLC 侧只读**：AS 工程、`ar_test/`、`.st/.c/.typ/.var` 等运行时侧文件一律不修改、
+  不生成；联调发现问题报告给人处理。
+- 归档区 `_Archive/` 只读封存，除非用户明确要求。
+
+## 交付（与 AGENTS.md「AI 交付要求」一致）
+
+1. 涉及 Python 代码：交付前跑 `python selfcheck.py` 并在汇报中贴结果行；
+   新增非平凡逻辑同时新增/更新 `*_check.py`。
+2. 新建文档只放 `_Prj/<服务>/docs/`，不在仓库根散落 `.md`。
+3. 汇报三要素：改了哪些文件 / 怎么验证 / 遗留什么。
+4. commit message：一行中文 `<类型>: <摘要>`，类型 `feat/fix/refactor/docs/chore`。

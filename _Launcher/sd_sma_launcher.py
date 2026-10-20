@@ -62,6 +62,7 @@ from launcher_settings import (  # noqa: E402
 )
 from launcher_supervisor import ServiceSupervisor  # noqa: E402
 from launcher_web import ManagementServer, create_management_app  # noqa: E402
+from sd_sma_common.session_bridge import load_or_create_secret  # noqa: E402
 
 DEFAULT_SERVICE_LOG_MAX_BYTES = 5 * 1024 * 1024
 DEFAULT_SERVICE_LOG_BACKUP_COUNT = 5
@@ -916,6 +917,21 @@ def start_service(python: Path, config: dict[str, Any], service: dict[str, Any])
     # Let query_web also write its own rotated app.log when SD_SMA_LOG_DIR is set.
     if "SD_SMA_LOG_DIR" not in service_env:
         service_env = {**service_env, "SD_SMA_LOG_DIR": str(log_dir)}
+    session_secret = os.environ.get("SD_SMA_SESSION_SECRET", "").strip()
+    if session_secret:
+        service_env = {**service_env, "SD_SMA_SESSION_SECRET": session_secret}
+    if "SD_SMA_OPCUA_URL" not in service_env and "SD_SMA_OPCUA_URL" in os.environ:
+        service_env = {**service_env, "SD_SMA_OPCUA_URL": os.environ["SD_SMA_OPCUA_URL"]}
+    if "SD_SMA_RUNTIME_USER" not in service_env:
+        service_env = {
+            **service_env,
+            "SD_SMA_RUNTIME_USER": os.environ.get("SD_SMA_RUNTIME_USER", "sdsma"),
+        }
+    if "SD_SMA_RUNTIME_PASSWORD" not in service_env:
+        service_env = {
+            **service_env,
+            "SD_SMA_RUNTIME_PASSWORD": os.environ.get("SD_SMA_RUNTIME_PASSWORD", "123"),
+        }
     command = [
         str(python),
         "-m",
@@ -1214,6 +1230,7 @@ def main() -> int:
             print("[check] ok")
             return 0
         security = LauncherSecurityStore(DATA_ROOT / "secrets" / "launcher_security.json")
+        os.environ["SD_SMA_SESSION_SECRET"] = load_or_create_secret(DATA_ROOT / "secrets" / "session.secret")
         importer = ConfigImportManager(DATA_ROOT)
         network_store = NetworkSettingsStore(DATA_ROOT / "state" / "network.json")
         runtime_services = apply_network_host(
