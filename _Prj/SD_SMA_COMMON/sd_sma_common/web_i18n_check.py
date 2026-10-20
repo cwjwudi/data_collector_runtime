@@ -16,7 +16,7 @@ from pathlib import Path
 WEB_DIR = Path(__file__).resolve().parent / "web"
 REPO_ROOT = WEB_DIR.parents[3]
 QUERY_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR_QUERY_WEB" / "app" / "static"
-CACHE_VERSION = "20261020_01"
+CACHE_VERSION = "20261020_03"
 
 
 def load_dict() -> dict:
@@ -31,6 +31,7 @@ def check_engine() -> None:
     i18n = (WEB_DIR / "i18n.js").read_text(encoding="utf-8")
     for fn in ("function t(", "function apply(", "function register(", "function setLang("):
         assert fn in i18n, f"i18n.js 缺少 {fn}"
+    assert "DICT_WINDOW_KEY + String(lang).toUpperCase()" in i18n, "i18n.js 字典名须按大写语言码查找"
     base = (WEB_DIR / "base.css").read_text(encoding="utf-8")
     for sel in (".page-nav", ".layout", ".panel", ".row", "button", ".muted", ".hint", ":root"):
         assert sel in base, f"base.css 缺少公共选择器 {sel}"

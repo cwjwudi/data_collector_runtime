@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>配置页 — SD SMA Query Web</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260723_01" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261020_02" />
   </head>
   <body class="config-page">
     <nav class="page-nav" aria-label="站内导航">
@@ -153,18 +153,16 @@
 
       <section class="panel">
         <h2>Group 与列</h2>
-        <p class="hint">配置各表的时间字段、批次号绑定字段、列顺序、排序、分页与列中英文显示名；仅在查询中引用已配置的组。</p>
+        <p class="hint">配置各表的时间字段、列顺序、排序、分页与列中英文显示名；仅在查询中引用已配置的组。</p>
         <div class="settings-subsection">
-          <h3 class="subsection-title">批次号选项来源（View 级）</h3>
-          <p class="hint subsection-hint">决定查询页下拉框从哪张表、哪个字段读取；留空表示禁用批次号查询。</p>
+          <h3 class="subsection-title">查询条件（View 级）</h3>
+          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。查询时选择不同条件，就是从不同来源表读取下拉值。未保存本列表时，仍使用原来的批次号来源和各组绑定字段；保存后以本列表为准。</p>
+          <div id="queryConditionList"></div>
           <div class="row">
-            <label for="batchSourceTable">来源表</label>
-            <select id="batchSourceTable"></select>
-            <label for="batchSourceField">来源字段</label>
-            <select id="batchSourceField"></select>
-            <button type="button" id="btnSaveBatchSource">保存批次来源</button>
+            <button type="button" id="btnAddQueryCondition">添加条件</button>
+            <button type="button" id="btnSaveQueryConditions">保存查询条件</button>
           </div>
-          <div id="batchSourceHint" class="muted"></div>
+          <div id="queryConditionHint" class="muted"></div>
         </div>
         <div class="row">
           <label for="editViewName">View</label>
@@ -179,8 +177,6 @@
         <div class="row">
           <label for="tableTimeField">TimeField</label>
           <select id="tableTimeField"></select>
-          <label for="tableBatchField">批次号绑定字段</label>
-          <select id="tableBatchField"></select>
           <label for="tableSortBy">SortBy</label>
           <select id="tableSortBy"></select>
           <label for="tableSortDir">SortDir</label>
@@ -373,6 +369,6 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20260723_01"></script>
+    <script src="/static/config.js?v=20261020_02"></script>
   </body>
 </html>

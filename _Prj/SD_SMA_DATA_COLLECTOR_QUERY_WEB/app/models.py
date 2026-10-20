@@ -62,6 +62,8 @@ class ViewHistoryQueryRequest(BaseModel):
     columns: list[str] | None = None
     query_mode: Literal["time", "batch"] = "time"
     batch_code: str | None = None
+    condition_name: str | None = None
+    condition_value: str | None = None
     pagination_mode: Literal["offset", "cursor"] = "cursor"
     cursor: HistoryCursor | None = None
     include_total: bool = False
@@ -93,6 +95,18 @@ class QueryBatchSourceUpdateRequest(BaseModel):
     field: str = ""
 
 
+class QueryConditionConfig(BaseModel):
+    name: str
+    source_table: str
+    source_field: str
+    bind_field: str
+
+
+class QueryConditionsUpdateRequest(BaseModel):
+    view_name: str
+    conditions: list[QueryConditionConfig] = Field(default_factory=list)
+
+
 class QueryGroupConfigUpdateRequest(BaseModel):
     view_name: str
     group: str
@@ -110,6 +124,8 @@ class PluginQueryRequest(BaseModel):
     end_time: datetime | None = None
     query_mode: Literal["time", "batch"] = "time"
     batch_code: str | None = None
+    condition_name: str | None = None
+    condition_value: str | None = None
     page: int = 1
     page_size: int | None = None
     table: str | None = None

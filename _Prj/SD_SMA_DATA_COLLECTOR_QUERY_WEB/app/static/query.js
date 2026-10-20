@@ -8,8 +8,7 @@ let cursorStack = [];
 let lastQueryContext = null;
 let lastResultData = null;
 let pageSizeOverridden = false;
-let batchCodesAvailable = false;
-let currentBatchSource = {};
+let currentQueryConditions = [];
 let timeRangePicker = null;
 const QUERY_STATE_KEY = 'sd_sma_query_page_state_v1';
 const t = (key, params) => window.SdI18n.t(key, params);
@@ -41,74 +40,69 @@ function safeStorageSet(key, value) {
   }
 }
 
-function getQueryMode() {
-  return document.querySelector('input[name="queryMode"]:checked')?.value || 'time';
+function appendSelectOption(select, value, label) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  select.appendChild(option);
 }
 
-function getConfiguredBatchField() {
+function selectedCondition() {
+  const name = document.getElementById('queryCondition').value || '';
+  return currentQueryConditions.find(item => item.name === name) || null;
+}
+
+async function loadConditionValues(preferredValue) {
+  const valueSelect = document.getElementById('queryConditionValue');
+  const condition = selectedCondition();
+  valueSelect.innerHTML = '';
+  appendSelectOption(valueSelect, '', t('query.condition.valuePlaceholder'));
+  valueSelect.disabled = !condition;
+  if (!condition) return;
+
   const viewName = document.getElementById('viewName').value;
   const group = document.getElementById('group').value;
-  const groupConfig = queryViews[viewName]?.per_group?.[group];
-  return String(groupConfig?.batch_field || '').trim();
-}
-
-function updateQueryModeControls() {
-  const batchModeRadio = document.getElementById('queryModeBatch');
-  const batchSupported = Boolean(getConfiguredBatchField()) && batchCodesAvailable;
-  batchModeRadio.disabled = !batchSupported;
-  if (!batchSupported && getQueryMode() === 'batch') {
-    document.getElementById('queryModeTime').checked = true;
-  }
-
-  const batchMode = getQueryMode() === 'batch';
-  document.getElementById('batchCode').disabled = !batchMode || !batchSupported;
-  timeRangePicker?.setDisabled(batchMode);
-  for (const id of quickRangeButtonIds) document.getElementById(id).disabled = batchMode;
-  if (!batchMode) {
-    document.getElementById('batchCode').value = '';
-  }
-}
-
-async function loadBatchCodes() {
-  const viewName = document.getElementById('viewName').value;
-  const group = document.getElementById('group').value;
-  const select = document.getElementById('batchCode');
-  select.innerHTML = '';
-  const empty = document.createElement('option');
-  empty.value = '';
-  empty.textContent = t('query.batch.placeholder');
-  select.appendChild(empty);
-  batchCodesAvailable = false;
-  currentBatchSource = {};
-  if (!viewName || !group) return;
-
   const data = await fetchJson(
-    '/api/meta/batch-codes?view_name=' + encodeURIComponent(viewName) +
-      '&group=' + encodeURIComponent(group),
+    '/api/meta/condition-values?view_name=' + encodeURIComponent(viewName) +
+      '&group=' + encodeURIComponent(group) +
+      '&name=' + encodeURIComponent(condition.name),
   );
-  currentBatchSource = data.source || {};
-  for (const batchCode of data.items || []) {
-    const option = document.createElement('option');
-    option.value = batchCode;
-    option.textContent = batchCode;
-    select.appendChild(option);
+  for (const item of data.items || []) appendSelectOption(valueSelect, item, item);
+  if (preferredValue && Array.from(valueSelect.options).some(option => option.value === preferredValue)) {
+    valueSelect.value = preferredValue;
   }
-  batchCodesAvailable = select.options.length > 1;
+  const source = data.source || {};
+  document.getElementById('queryWarnings').textContent = (data.items || []).length
+    ? t('query.js.conditionSource', { name: condition.name, src: `${source.table || '-'} . ${source.field || '-'}` })
+    : t('query.js.conditionEmpty', { name: condition.name });
 }
 
-async function reloadBatchCodesForCurrentContext() {
-  try {
-    await loadBatchCodes();
-    document.getElementById('queryWarnings').textContent = batchCodesAvailable
-      ? t('query.js.batchSource', { src: `${currentBatchSource.table || '-'} . ${currentBatchSource.field || '-'}` })
-      : t('query.js.batchSourceEmpty');
-  } catch (err) {
-    batchCodesAvailable = false;
-    currentBatchSource = {};
-    document.getElementById('queryWarnings').textContent =
-      t('query.js.batchSourceError', { msg: err.message });
+async function reloadQueryConditions(preferredName, preferredValue) {
+  const select = document.getElementById('queryCondition');
+  const viewName = document.getElementById('viewName').value;
+  const group = document.getElementById('group').value;
+  select.innerHTML = '';
+  appendSelectOption(select, '', t('query.condition.none'));
+  currentQueryConditions = [];
+  if (!viewName || !group) {
+    document.getElementById('queryConditionValue').disabled = true;
+    return;
   }
-  updateQueryModeControls();
+  try {
+    const data = await fetchJson(
+      '/api/meta/query-conditions?view_name=' + encodeURIComponent(viewName) +
+        '&group=' + encodeURIComponent(group),
+    );
+    currentQueryConditions = Array.isArray(data.conditions) ? data.conditions : [];
+    for (const item of currentQueryConditions) appendSelectOption(select, item.name, item.name);
+    if (preferredName && currentQueryConditions.some(item => item.name === preferredName)) {
+      select.value = preferredName;
+    }
+    await loadConditionValues(preferredValue);
+  } catch (err) {
+    document.getElementById('queryConditionValue').disabled = true;
+    document.getElementById('queryWarnings').textContent = t('query.js.conditionError', { msg: err.message });
+  }
 }
 
 async function fetchJson(url, opts) {
@@ -131,8 +125,8 @@ function saveQueryPageState() {
     quickActive: quickRangeButtonIds.find(
       id => document.getElementById(id)?.classList.contains('is-selected'),
     ) || '',
-    queryMode: getQueryMode(),
-    batchCode: document.getElementById('batchCode').value || '',
+    conditionName: document.getElementById('queryCondition').value || '',
+    conditionValue: document.getElementById('queryConditionValue').value || '',
     pageNumber: document.getElementById('pageNumber').value || '1',
     currentPage,
     totalPages,
@@ -264,7 +258,7 @@ async function loadGroupsForCurrentView(preferredGroup) {
   }
   await loadGroupSchemaHint();
   await loadTablesForCurrentGroup();
-  await reloadBatchCodesForCurrentContext();
+  await reloadQueryConditions();
 }
 
 async function loadViews() {
@@ -355,27 +349,24 @@ async function runQueryAtPage(page) {
     page_size: pageSize,
     pagination_mode: 'cursor',
     include_total: false,
-    query_mode: getQueryMode(),
   };
   if (table) payload.table = table;
 
-  let start = '';
-  let end = '';
-  let batchCode = '';
-  if (payload.query_mode === 'batch') {
-    batchCode = document.getElementById('batchCode').value.trim();
-    if (!batchCode) return alert(t('query.js.batchNeedsCode'));
-    payload.batch_code = batchCode;
-  } else {
-    start = document.getElementById('startTime').value;
-    end = document.getElementById('endTime').value;
-    if (!start || !end) return alert(t('query.js.timeNeedsRange'));
-    if (new Date(start).getTime() > new Date(end).getTime()) {
-      return alert(t('query.js.timeOrder'));
-    }
-    // 选择器保存本地时间字符串，直接传递可避免 toISOString() 产生时区偏移
+  const start = document.getElementById('startTime').value;
+  const end = document.getElementById('endTime').value;
+  if (Boolean(start) !== Boolean(end)) return alert(t('query.js.timePartial'));
+  if (start && end && new Date(start).getTime() > new Date(end).getTime()) {
+    return alert(t('query.js.timeOrder'));
+  }
+  if (start && end) {
     payload.start_time = start;
     payload.end_time = end;
+  }
+  const conditionName = document.getElementById('queryCondition').value || '';
+  const conditionValue = document.getElementById('queryConditionValue').value || '';
+  if (conditionName && conditionValue) {
+    payload.condition_name = conditionName;
+    payload.condition_value = conditionValue;
   }
 
   const data = await fetchJson('/api/history/by-view', {
@@ -393,8 +384,8 @@ async function runQueryAtPage(page) {
     ...context,
     start,
     end,
-    queryMode: payload.query_mode,
-    batchCode,
+    conditionName,
+    conditionValue,
   };
   lastResultData = data;
 
@@ -411,7 +402,7 @@ async function runQueryAtPage(page) {
 
 async function runLastQueryAtPage(page) {
   if (!lastQueryContext) return;
-  const { viewName, group, start, end, batchCode, queryMode } = lastQueryContext;
+  const { viewName, group, start, end, conditionName, conditionValue } = lastQueryContext;
   const table = lastQueryContext.table || '';
   const pageSize = getCurrentPageSize();
   const targetPage = Math.max(1, page);
@@ -434,12 +425,14 @@ async function runLastQueryAtPage(page) {
     page_size: pageSize,
     pagination_mode: 'cursor',
     include_total: false,
-    query_mode: queryMode || 'time',
   };
   if (table) payload.table = table;
   if (start) payload.start_time = start;
   if (end) payload.end_time = end;
-  if (batchCode) payload.batch_code = batchCode;
+  if (conditionName && conditionValue) {
+    payload.condition_name = conditionName;
+    payload.condition_value = conditionValue;
+  }
   if (requestedCursor) payload.cursor = requestedCursor;
 
   const data = await fetchJson('/api/history/by-view', {
@@ -524,7 +517,6 @@ async function restoreQueryPageState() {
   if (saved.labelLang) document.getElementById('labelLang').value = saved.labelLang;
   pageSizeOverridden = Boolean(saved.pageSizeOverridden);
   if (saved.pageSize) document.getElementById('pageSize').value = saved.pageSize;
-  if (saved.queryMode === 'batch') document.getElementById('queryModeBatch').checked = true;
   if (saved.startTime) document.getElementById('startTime').value = saved.startTime;
   if (saved.endTime) document.getElementById('endTime').value = saved.endTime;
   timeRangePicker?.refresh();
@@ -536,10 +528,7 @@ async function restoreQueryPageState() {
   updateViewSummary();
   await loadGroupsForCurrentView(saved.group || '');
   await loadTablesForCurrentGroup(saved.table || '');
-  if (saved.batchCode && Array.from(document.getElementById('batchCode').options).some(o => o.value === saved.batchCode)) {
-    document.getElementById('batchCode').value = saved.batchCode;
-  }
-  updateQueryModeControls();
+  await reloadQueryConditions(saved.conditionName || '', saved.conditionValue || '');
 
   lastQueryContext = saved.lastQueryContext || null;
   lastResultData = saved.lastResultData || null;
@@ -566,7 +555,7 @@ document.getElementById('btnNextPage').addEventListener('click', () => {
 });
 document.getElementById('group').addEventListener('change', () => {
   Promise.all([loadGroupSchemaHint(), loadTablesForCurrentGroup()])
-    .then(() => reloadBatchCodesForCurrentContext())
+    .then(() => reloadQueryConditions())
     .then(() => {
       saveQueryPageState();
     })
@@ -586,13 +575,10 @@ document.getElementById('startTime').addEventListener('input', clearQuickRangeAc
 document.getElementById('endTime').addEventListener('input', clearQuickRangeActive);
 document.getElementById('startTime').addEventListener('change', saveQueryPageState);
 document.getElementById('endTime').addEventListener('change', saveQueryPageState);
-document.getElementById('batchCode').addEventListener('change', saveQueryPageState);
-for (const radio of document.querySelectorAll('input[name="queryMode"]')) {
-  radio.addEventListener('change', () => {
-    updateQueryModeControls();
-    saveQueryPageState();
-  });
-}
+document.getElementById('queryCondition').addEventListener('change', () => {
+  loadConditionValues().then(saveQueryPageState).catch(err => alert(err.message));
+});
+document.getElementById('queryConditionValue').addEventListener('change', saveQueryPageState);
 document.getElementById('labelLang').addEventListener('change', saveQueryPageState);
 document.getElementById('pageSize').addEventListener('change', () => {
   pageSizeOverridden = true;

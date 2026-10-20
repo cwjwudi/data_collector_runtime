@@ -484,6 +484,15 @@ th {
   background: #fafafa;
 }
 
+#queryConditionList .row {
+  margin-bottom: 6px;
+}
+
+#queryConditionList input,
+#queryConditionList select {
+  min-width: 120px;
+}
+
 .settings-subsection:first-of-type {
   margin-top: 8px;
 }

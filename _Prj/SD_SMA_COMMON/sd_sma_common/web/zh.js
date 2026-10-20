@@ -11,7 +11,7 @@ window.SD_SMA_I18N_ZH = {
 
   /* 查询页:查询条件 */
   "query.conditions.title": "查询条件",
-  "query.conditions.hint": "选择按时间或按批次号查询，两种条件互斥；结果按游标分页展示。",
+  "query.conditions.hint": "时间范围可留空，留空时查询全部匹配记录，单页条数仍有上限。可再选一条附加条件，取值来自该条件配置的来源表。",
   "query.label.table": "表选择",
   "query.label.lang": "列名显示",
   "query.lang.zh": "中文",
@@ -24,10 +24,10 @@ window.SD_SMA_I18N_ZH = {
   "query.page.prefix": "第",
   "query.page.suffix": "页",
   "query.page.aria": "当前页码",
-  "query.label.mode": "查询方式",
-  "query.mode.time": "按时间",
-  "query.mode.batch": "按批次号",
-  "query.batch.placeholder": "请选择批次号",
+  "query.label.condition": "附加条件",
+  "query.condition.none": "不附加",
+  "query.label.conditionValue": "条件值",
+  "query.condition.valuePlaceholder": "请选择",
   "query.label.timeRange": "时间范围",
   "query.time.empty": "尚未设置时间范围",
   "query.range.15m": "最近15分钟",
@@ -44,9 +44,9 @@ window.SD_SMA_I18N_ZH = {
   "query.result.aria": "查询结果，可横向滚动",
 
   /* 查询页:JS 动态文案 */
-  "query.js.batchSource": "批次号来源：{src}",
-  "query.js.batchSourceEmpty": "批次号来源没有可选数据，仍可按时间查询",
-  "query.js.batchSourceError": "批次号列表不可用，仍可按时间查询：{msg}",
+  "query.js.conditionSource": "条件「{name}」来源：{src}",
+  "query.js.conditionEmpty": "条件「{name}」的来源表还没有可选值",
+  "query.js.conditionError": "条件取值不可用：{msg}",
   "query.js.groupReady": "group={group} 已配置，可查询；当前基准表={table}，共 {count} 张表",
   "query.js.groupSchemaMismatch": "group={group} 表结构不一致，将按已配置基准表 {table} 查询",
   "query.js.fixedTable": "{table}（固定表）",
@@ -57,7 +57,6 @@ window.SD_SMA_I18N_ZH = {
   "query.js.pageInfoMore": "当前第 {page} 页，每页 {size} 条，还有更多",
   "query.js.pageInfoEnd": "当前第 {page} 页，每页 {size} 条，已到末页",
   "query.js.pageInfoTotal": "总条数 {total}，共 {pages} 页，当前第 {page} 页",
-  "query.js.batchNeedsCode": "按批次号查询时必须选择 BatchCode",
-  "query.js.timeNeedsRange": "按时间查询时必须填写开始时间和结束时间",
+  "query.js.timePartial": "开始时间和结束时间需要同时填写，或同时留空",
   "query.js.timeOrder": "开始时间不能大于结束时间"
 };

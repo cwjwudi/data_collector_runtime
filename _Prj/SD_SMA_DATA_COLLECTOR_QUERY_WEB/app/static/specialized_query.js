@@ -15,8 +15,7 @@
   let runtimePollTimer = null;
   let runtimePollGeneration = 0;
   let pluginStateKey = null;
-  let batchCodesAvailable = false;
-  let currentBatchSource = {};
+  let currentQueryConditions = [];
   let timeRangePicker = null;
 
   function safeStorageGet(key) {
@@ -58,10 +57,6 @@
     return match ? decodeURIComponent(match[1]) : "";
   }
 
-  function getQueryMode() {
-    return document.querySelector('input[name="queryMode"]:checked')?.value || "time";
-  }
-
   function enableButtonClickFeedback() {
     for (const btn of document.querySelectorAll("button")) {
       btn.addEventListener("click", () => {
@@ -94,51 +89,64 @@
     return quickButtons.find((id) => document.getElementById(id)?.classList.contains("active")) || "";
   }
 
-  function updateQueryModeControls() {
-    const batchSupported = !advancedOpcuaMode && Boolean(currentBinding?.batch_field) && batchCodesAvailable;
-    const batchRadio = document.getElementById("queryModeBatch");
-    batchRadio.disabled = !batchSupported;
-    if (!batchSupported && getQueryMode() === "batch") {
-      document.getElementById("queryModeTime").checked = true;
+  function updateConditionControls() {
+    const locked = advancedOpcuaMode;
+    document.getElementById("queryCondition").disabled = locked;
+    document.getElementById("queryConditionValue").disabled = locked || !document.getElementById("queryCondition").value;
+    timeRangePicker?.setDisabled(locked);
+    for (const id of quickButtons) document.getElementById(id).disabled = locked;
+  }
+
+  async function loadConditionValues(preferredValue) {
+    const valueSelect = document.getElementById("queryConditionValue");
+    const name = document.getElementById("queryCondition").value || "";
+    valueSelect.innerHTML = '<option value="">请选择</option>';
+    valueSelect.disabled = advancedOpcuaMode || !name;
+    if (!name || advancedOpcuaMode) return;
+    const data = await fetchJson(
+      `/api/meta/condition-values?view_name=${encodeURIComponent(currentBinding.view_name)}` +
+        `&group=${encodeURIComponent(currentBinding.resolved_group)}` +
+        `&name=${encodeURIComponent(name)}`,
+    );
+    for (const item of data.items || []) {
+      const option = document.createElement("option");
+      option.value = item;
+      option.textContent = item;
+      valueSelect.appendChild(option);
     }
-    const batchMode = getQueryMode() === "batch";
-    document.getElementById("batchCode").disabled = !batchMode || !batchSupported;
-    timeRangePicker?.setDisabled(advancedOpcuaMode || batchMode);
-    for (const id of quickButtons) document.getElementById(id).disabled = advancedOpcuaMode || batchMode;
-    if (!batchMode) {
-      document.getElementById("batchCode").value = "";
+    if (preferredValue && Array.from(valueSelect.options).some((option) => option.value === preferredValue)) {
+      valueSelect.value = preferredValue;
     }
   }
 
-  async function loadBatchCodes(preferredValue) {
-    const select = document.getElementById("batchCode");
-    select.innerHTML = '<option value="">请选择批次号</option>';
-    batchCodesAvailable = false;
-    currentBatchSource = {};
+  async function loadQueryConditions(preferredName, preferredValue) {
+    const select = document.getElementById("queryCondition");
+    select.innerHTML = '<option value="">不附加</option>';
+    currentQueryConditions = [];
     if (advancedOpcuaMode || !currentBinding?.view_name || !currentBinding?.resolved_group) {
-      updateQueryModeControls();
+      updateConditionControls();
       return;
     }
     try {
       const data = await fetchJson(
-        `/api/meta/batch-codes?view_name=${encodeURIComponent(currentBinding.view_name)}` +
+        `/api/meta/query-conditions?view_name=${encodeURIComponent(currentBinding.view_name)}` +
           `&group=${encodeURIComponent(currentBinding.resolved_group)}`,
       );
-      currentBatchSource = data.source || {};
-      for (const code of data.items || []) {
+      currentQueryConditions = Array.isArray(data.conditions) ? data.conditions : [];
+      for (const item of currentQueryConditions) {
         const option = document.createElement("option");
-        option.value = code;
-        option.textContent = code;
+        option.value = item.name;
+        option.textContent = item.name;
         select.appendChild(option);
       }
-      batchCodesAvailable = select.options.length > 1;
-      if (preferredValue && Array.from(select.options).some((option) => option.value === preferredValue)) {
-        select.value = preferredValue;
+      if (preferredName && currentQueryConditions.some((item) => item.name === preferredName)) {
+        select.value = preferredName;
       }
+      await loadConditionValues(preferredValue);
     } catch (error) {
-      currentBatchSource = { error: error.message };
+      document.getElementById("meta").textContent = error.message;
     }
-    updateQueryModeControls();
+    updateConditionControls();
   }
 
   function savePluginState() {
@@ -146,8 +154,8 @@
     safeStorageSet(pluginStateKey, JSON.stringify({
       startDate: document.getElementById("startDate").value || "",
       endDate: document.getElementById("endDate").value || "",
-      queryMode: getQueryMode(),
-      batchCode: document.getElementById("batchCode").value || "",
+      conditionName: document.getElementById("queryCondition").value || "",
+      conditionValue: document.getElementById("queryConditionValue").value || "",
       table: document.getElementById("tableSelector").value || "",
       currentPage,
       totalPages,
@@ -183,11 +191,8 @@
       infoParts.push(`total=${totalRecords}`, `pages=${totalPages}`);
     }
     if (!advancedOpcuaMode) {
-      if (currentBatchSource.table) {
-        infoParts.push(`batch_source=${currentBatchSource.table}.${currentBatchSource.field}`);
-      } else if (currentBatchSource.error) {
-        infoParts.push(`batch_warning=${currentBatchSource.error}`);
-      }
+      const condition = currentQueryConditions.find((item) => item.name === document.getElementById("queryCondition").value);
+      if (condition) infoParts.push(`condition=${condition.name}:${condition.source_table}.${condition.source_field}`);
     }
     if (Array.isArray(warnings) && warnings.length) infoParts.push(`warnings=${warnings.join(" | ")}`);
     document.getElementById("meta").textContent = infoParts.join(" ; ");
@@ -275,23 +280,22 @@
   function buildQueryContext() {
     const context = {
       table: document.getElementById("tableSelector").value || undefined,
-      queryMode: advancedOpcuaMode ? "time" : getQueryMode(),
       startTime: null,
       endTime: null,
-      batchCode: null,
+      conditionName: "",
+      conditionValue: "",
     };
     if (advancedOpcuaMode) return context;
-    if (context.queryMode === "batch") {
-      context.batchCode = document.getElementById("batchCode").value.trim();
-      if (!context.batchCode) throw new Error("按批次号查询时必须选择 BatchCode");
-    } else {
-      context.startTime = document.getElementById("startDate").value;
-      context.endTime = document.getElementById("endDate").value;
-      if (!context.startTime || !context.endTime) throw new Error("按时间查询时必须填写开始时间和结束时间");
-      if (new Date(context.startTime).getTime() > new Date(context.endTime).getTime()) {
-        throw new Error("开始时间不能大于结束时间");
-      }
+    context.startTime = document.getElementById("startDate").value;
+    context.endTime = document.getElementById("endDate").value;
+    if (Boolean(context.startTime) !== Boolean(context.endTime)) {
+      throw new Error("开始时间和结束时间需要同时填写，或同时留空");
     }
+    if (context.startTime && context.endTime && new Date(context.startTime).getTime() > new Date(context.endTime).getTime()) {
+      throw new Error("开始时间不能大于结束时间");
+    }
+    context.conditionName = document.getElementById("queryCondition").value || "";
+    context.conditionValue = document.getElementById("queryConditionValue").value || "";
     return context;
   }
 
@@ -301,13 +305,15 @@
       page_size: currentBinding.page_size || 10,
       table: context.table,
       cursor: -1,
-      query_mode: context.queryMode,
       pagination_mode: advancedOpcuaMode ? "offset" : "cursor",
       include_total: advancedOpcuaMode || Boolean(includeTotal),
     };
     if (context.startTime) payload.start_time = context.startTime;
     if (context.endTime) payload.end_time = context.endTime;
-    if (context.batchCode) payload.batch_code = context.batchCode;
+    if (context.conditionName && context.conditionValue) {
+      payload.condition_name = context.conditionName;
+      payload.condition_value = context.conditionValue;
+    }
     if (pageCursor) payload.page_cursor = pageCursor;
     return payload;
   }
@@ -456,12 +462,8 @@
     } else {
       setQuickActive(saved.quickActive || "");
     }
-    await loadBatchCodes(saved?.batchCode);
-    if (saved?.queryMode === "batch" && !advancedOpcuaMode && batchCodesAvailable) {
-      document.getElementById("queryModeBatch").checked = true;
-      await loadBatchCodes(saved.batchCode);
-    }
-    updateQueryModeControls();
+    await loadQueryConditions(saved?.conditionName, saved?.conditionValue);
+    updateConditionControls();
 
     document.getElementById("btnGo").addEventListener("click", () => {
       runFreshQuery(1).catch((error) => (document.getElementById("meta").textContent = error.message));
@@ -478,13 +480,17 @@
     document.getElementById("btnNextPage").addEventListener("click", () => {
       runAdjacentPage(1).catch((error) => (document.getElementById("meta").textContent = error.message));
     });
-    for (const radio of document.querySelectorAll('input[name="queryMode"]')) {
-      radio.addEventListener("change", () => {
-        updateQueryModeControls();
-        savePluginState();
-      });
-    }
-    document.getElementById("batchCode").addEventListener("change", savePluginState);
+    document.getElementById("queryCondition").addEventListener("change", () => {
+      loadConditionValues()
+        .then(() => {
+          updateConditionControls();
+          savePluginState();
+        })
+        .catch((error) => {
+          document.getElementById("meta").textContent = error.message;
+        });
+    });
+    document.getElementById("queryConditionValue").addEventListener("change", savePluginState);
     for (const [id, preset] of Object.entries(quickPresets)) {
       document.getElementById(id).addEventListener("click", () => applyQuickRange(preset, id));
     }

@@ -208,10 +208,10 @@
   <div id="app" class="root">
     <div class="toolbar">
       <div class="toolbar-row">
-        <span>查询方式</span>
-        <label><input id="queryModeTime" name="queryMode" type="radio" value="time" checked /> 按时间</label>
-        <label><input id="queryModeBatch" name="queryMode" type="radio" value="batch" /> 按批次号</label>
-        <label>BatchCode</label><select id="batchCode" disabled><option value="">请选择批次号</option></select>
+        <label for="queryCondition">附加条件</label>
+        <select id="queryCondition"><option value="">不附加</option></select>
+        <label for="queryConditionValue">条件值</label>
+        <select id="queryConditionValue" disabled><option value="">请选择</option></select>
         <button id="btnGo">查询</button>
       </div>
       <div id="pluginTimePanel" class="toolbar-row">
@@ -245,6 +245,6 @@
     </div>
   </div>
   <script src="/static/touch_time_range.js?v=20260727_02"></script>
-  <script src="/static/specialized_query.js?v=20260727_04"></script>
+  <script src="/static/specialized_query.js?v=20261020_02"></script>
 </body>
 </html>

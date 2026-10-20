@@ -37,7 +37,7 @@
 
   function loadDict(lang) {
     if (dicts[lang]) return dicts[lang];
-    var fromWindow = global[DICT_WINDOW_KEY + lang];
+    var fromWindow = global[DICT_WINDOW_KEY + String(lang).toUpperCase()];
     dicts[lang] = fromWindow || {};
     return dicts[lang];
   }

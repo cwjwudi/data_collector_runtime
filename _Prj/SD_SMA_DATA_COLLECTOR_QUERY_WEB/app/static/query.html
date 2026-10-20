@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>查询页 — SD SMA Query Web</title>
-    <link rel="stylesheet" href="/common/base.css?v=20261020_01" />
-    <link rel="stylesheet" href="/static/styles.css?v=20261020_01" />
+    <link rel="stylesheet" href="/common/base.css?v=20261020_03" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261020_03" />
     <link rel="stylesheet" href="/static/touch_time_range.css?v=20260727_02" />
   </head>
   <body class="query-page">
@@ -17,7 +17,7 @@
     <div class="layout layout-stack">
       <section class="panel">
         <h2 data-i18n="query.conditions.title">查询条件</h2>
-        <p class="hint" data-i18n="query.conditions.hint">选择按时间或按批次号查询，两种条件互斥；结果按游标分页展示。</p>
+        <p class="hint" data-i18n="query.conditions.hint">时间范围可留空，留空时查询全部匹配记录，单页条数仍有上限。可再选一条附加条件，取值来自该条件配置的来源表。</p>
         <div class="row query-primary-row">
           <label for="viewName">View</label>
           <select id="viewName"></select>
@@ -47,11 +47,14 @@
         </div>
         <div id="schemaHint" class="muted"></div>
         <div class="row query-filter-row">
-          <span class="inline-label" data-i18n="query.label.mode">查询方式</span>
-          <label><input id="queryModeTime" name="queryMode" type="radio" value="time" checked /> <span data-i18n="query.mode.time">按时间</span></label>
-          <label><input id="queryModeBatch" name="queryMode" type="radio" value="batch" /> <span data-i18n="query.mode.batch">按批次号</span></label>
-          <label for="batchCode">BatchCode</label>
-          <select id="batchCode" disabled><option value="" data-i18n="query.batch.placeholder">请选择批次号</option></select>
+          <label for="queryCondition" data-i18n="query.label.condition">附加条件</label>
+          <select id="queryCondition">
+            <option value="" data-i18n="query.condition.none">不附加</option>
+          </select>
+          <label for="queryConditionValue" data-i18n="query.label.conditionValue">条件值</label>
+          <select id="queryConditionValue" disabled>
+            <option value="" data-i18n="query.condition.valuePlaceholder">请选择</option>
+          </select>
         </div>
         <div id="queryTimePanel" class="row query-filter-row">
           <span class="inline-label" data-i18n="query.label.timeRange">时间范围</span>
@@ -78,9 +81,9 @@
         </div>
       </section>
     </div>
-    <script src="/common/zh.js?v=20261020_01"></script>
-    <script src="/common/i18n.js?v=20261020_01"></script>
+    <script src="/common/zh.js?v=20261020_03"></script>
+    <script src="/common/i18n.js?v=20261020_03"></script>
     <script src="/static/touch_time_range.js?v=20260727_02"></script>
-    <script src="/static/query.js?v=20261020_01"></script>
+    <script src="/static/query.js?v=20261020_03"></script>
   </body>
 </html>

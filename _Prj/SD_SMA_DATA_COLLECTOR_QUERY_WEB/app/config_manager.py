@@ -260,6 +260,8 @@ class UnifiedConfigStore:
                 "per_table": {},
                 "per_group": {},
             }
+            if isinstance(raw_view.get("query_conditions"), list):
+                views[str(view_name)]["query_conditions"] = cls._clone_json(raw_view.get("query_conditions"))
 
         if not views:
             return cls._default_query_view_config()
@@ -677,6 +679,8 @@ class ConfigManager:
                 source_field = str(batch_source.get("field", "") or "").strip()
                 if bool(source_table) != bool(source_field):
                     raise ValueError(f"view '{view_name}'.batch_source table/field must both be set or both be empty")
+            if "query_conditions" in view:
+                ConfigManager.normalize_query_conditions(view.get("query_conditions"))
 
             sort_dir = str(view.get("sort_dir", "desc")).lower()
             if sort_dir not in {"asc", "desc"}:
@@ -724,6 +728,8 @@ class ConfigManager:
                                 f"view '{view_name}'.per_group.{group_name}.batch_source table/field "
                                 "must both be set or both be empty"
                             )
+                    if "query_conditions" in group_cfg:
+                        ConfigManager.normalize_query_conditions(group_cfg.get("query_conditions"))
                     if "sort_dir" in group_cfg:
                         sdir = str(group_cfg["sort_dir"]).lower()
                         if sdir not in {"asc", "desc"}:
@@ -747,6 +753,190 @@ class ConfigManager:
         if not isinstance(views, dict):
             return {}
         return views
+
+    LEGACY_QUERY_CONDITION_NAME = "批次号"
+    _DICT_CONDITION_SKIP = {"id", "collection_time", "created_at", "is_backfill"}
+
+    @staticmethod
+    def normalize_query_conditions(raw: Any) -> list[dict[str, str]]:
+        """校验并规整查询条件。每条必须有名称、来源表、来源字段、结果表绑定列。"""
+        if not isinstance(raw, list):
+            raise ValueError("query_conditions must be a list")
+        normalized: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for index, item in enumerate(raw):
+            if not isinstance(item, dict):
+                raise ValueError(f"query_conditions[{index}] must be an object")
+            name = str(item.get("name") or "").strip()
+            source_table = str(item.get("source_table") or "").strip()
+            source_field = str(item.get("source_field") or "").strip()
+            bind_field = str(item.get("bind_field") or "").strip()
+            if not name or not source_table or not source_field or not bind_field:
+                raise ValueError(
+                    f"query_conditions[{index}] 需要名称、来源表、来源字段和绑定列"
+                )
+            if name in seen:
+                raise ValueError(f"query_conditions 名称重复: {name}")
+            seen.add(name)
+            normalized.append(
+                {
+                    "name": name,
+                    "source_table": source_table,
+                    "source_field": source_field,
+                    "bind_field": bind_field,
+                }
+            )
+        return normalized
+
+    @classmethod
+    def conditions_from_view(
+        cls,
+        view: dict[str, Any],
+        group: str | None = None,
+        *,
+        allow_empty_bind: bool = False,
+    ) -> list[dict[str, str]]:
+        """解析某个 view（及可选 group）当前生效的查询条件。
+
+        显式 query_conditions（含空列表）优先于旧的 batch_source + batch_field。
+        旧配置收成一条名称固定为「批次号」的条件。
+        """
+        if not isinstance(view, dict):
+            return []
+        if group:
+            per_group = view.get("per_group")
+            group_cfg = per_group.get(group) if isinstance(per_group, dict) else None
+            if isinstance(group_cfg, dict) and "query_conditions" in group_cfg:
+                return cls.normalize_query_conditions(group_cfg.get("query_conditions"))
+        if "query_conditions" in view:
+            return cls.normalize_query_conditions(view.get("query_conditions"))
+
+        raw_source = view.get("batch_source") if isinstance(view.get("batch_source"), dict) else {}
+        bind_field = str(view.get("batch_field") or "").strip()
+        if group:
+            per_group = view.get("per_group")
+            group_cfg = per_group.get(group) if isinstance(per_group, dict) else None
+            if isinstance(group_cfg, dict):
+                if isinstance(group_cfg.get("batch_source"), dict) and "batch_source" in group_cfg:
+                    raw_source = group_cfg.get("batch_source") or {}
+                if "batch_field" in group_cfg:
+                    bind_field = str(group_cfg.get("batch_field") or "").strip()
+        source_table = str((raw_source or {}).get("table") or "").strip()
+        source_field = str((raw_source or {}).get("field") or "").strip()
+        if not source_table or not source_field:
+            return []
+        if not bind_field and not allow_empty_bind:
+            return []
+        return [
+            {
+                "name": cls.LEGACY_QUERY_CONDITION_NAME,
+                "source_table": source_table,
+                "source_field": source_field,
+                "bind_field": bind_field,
+            }
+        ]
+
+    @classmethod
+    def _conditions_explicit(cls, view: dict[str, Any], group: str | None) -> bool:
+        if group:
+            per_group = view.get("per_group")
+            group_cfg = per_group.get(group) if isinstance(per_group, dict) else None
+            if isinstance(group_cfg, dict) and "query_conditions" in group_cfg:
+                return True
+        return "query_conditions" in view
+
+    @classmethod
+    def conditions_from_dict_tables(
+        cls,
+        columns: list[str],
+        labels: dict[str, dict[str, str]],
+        tables: list[str],
+        *,
+        skip_fields: set[str] | None = None,
+    ) -> list[dict[str, str]]:
+        """组里已配置、且存在 dict_<列名> 字典表的列，收成可选条件。"""
+        skip = {str(name) for name in (skip_fields or set())} | set(cls._DICT_CONDITION_SKIP)
+        table_by_lower = {str(table).lower(): str(table) for table in tables}
+        conditions: list[dict[str, str]] = []
+        used_names: set[str] = set()
+        for column in columns:
+            if not column or column in skip:
+                continue
+            source_table = table_by_lower.get(f"dict_{column}".lower())
+            if not source_table:
+                continue
+            label = str((labels.get(column) or {}).get("label_zh") or "").strip() or column
+            name = label if label not in used_names else column
+            if name in used_names:
+                continue
+            used_names.add(name)
+            conditions.append(
+                {
+                    "name": name,
+                    "source_table": source_table,
+                    "source_field": "value",
+                    "bind_field": column,
+                }
+            )
+        return conditions
+
+    def resolve_query_conditions(
+        self,
+        view_name: str,
+        group: str | None = None,
+        *,
+        source_tables: list[str] | None = None,
+    ) -> list[dict[str, str]]:
+        config = self.get_query_view_config()
+        self._validate_query_view_config(config)
+        views = config.get("views", {})
+        if view_name not in views:
+            raise ValueError(f"Unknown view_name: {view_name}")
+        view = views[view_name]
+        resolved = self.conditions_from_view(view, group)
+        if self._conditions_explicit(view, group) or not group or not source_tables:
+            return resolved
+        view_fields = self.resolve_query_view(view_name, group=group)
+        skip = {str(view_fields.get("time_field") or "")}
+        used_names = {item["name"] for item in resolved}
+        used_binds = {item["bind_field"] for item in resolved}
+        for item in self.conditions_from_dict_tables(
+            list(view_fields.get("columns") or []),
+            view_fields.get("column_labels") or {},
+            source_tables,
+            skip_fields=skip,
+        ):
+            if item["name"] in used_names or item["bind_field"] in used_binds:
+                continue
+            resolved.append(item)
+        return resolved
+
+    def describe_query_conditions(self, view_name: str) -> dict[str, Any]:
+        """配置页读取：未保存过 query_conditions 时带回旧批次号来源，绑定列可先为空。"""
+        config = self.get_query_view_config()
+        self._validate_query_view_config(config)
+        views = config.get("views", {})
+        if view_name not in views:
+            raise ValueError(f"Unknown view_name: {view_name}")
+        view = views[view_name]
+        legacy = "query_conditions" not in view
+        return {
+            "view_name": view_name,
+            "legacy": legacy,
+            "conditions": self.conditions_from_view(view, allow_empty_bind=legacy),
+        }
+
+    def update_query_conditions(self, view_name: str, conditions: list[dict[str, Any]]) -> list[dict[str, str]]:
+        config = self.get_query_view_config()
+        self._validate_query_view_config(config)
+        views = config.get("views", {})
+        if view_name not in views:
+            raise ValueError(f"Unknown view_name: {view_name}")
+        normalized = self.normalize_query_conditions(conditions)
+        views[view_name]["query_conditions"] = normalized
+        self._validate_query_view_config(config)
+        self._write_query_view_config(config)
+        return normalized
 
     def resolve_batch_source(self, view_name: str, group: str | None = None) -> dict[str, str]:
         config = self.get_query_view_config()

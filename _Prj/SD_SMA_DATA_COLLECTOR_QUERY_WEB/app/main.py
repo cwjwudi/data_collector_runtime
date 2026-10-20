@@ -25,6 +25,7 @@ from .models import (
     HistoryQueryRequest,
     HistoryQueryResponse,
     QueryBatchSourceUpdateRequest,
+    QueryConditionsUpdateRequest,
     QueryGroupConfigUpdateRequest,
     PluginCursorRequest,
     PluginQueryRequest,
@@ -306,6 +307,57 @@ def _resolve_batch_field(view: dict[str, Any], available_columns: list[str]) -> 
     if configured and configured in available_columns:
         return configured
     return None
+
+
+def _resolve_optional_time(
+    start_time: datetime | None,
+    end_time: datetime | None,
+    *,
+    apply_window_cap: bool,
+) -> tuple[datetime | None, datetime | None, list[str]]:
+    """时间为空则不加时间条件。填了一侧或两侧时，沿用原有窗口补齐；仅插件路径截断超长窗口。"""
+    if start_time is None and end_time is None:
+        return None, None, ["未指定时间范围，按全部记录查询，单页条数仍受分页上限约束"]
+    if apply_window_cap:
+        return _apply_time_guardrails(start_time, end_time)
+    warnings: list[str] = []
+    if start_time and end_time and start_time > end_time:
+        start_time, end_time = end_time, start_time
+        warnings.append("开始/结束时间顺序已自动纠正")
+    return start_time, end_time, warnings
+
+
+def _condition_filter(
+    view_name: str,
+    group: str | None,
+    available_columns: list[str],
+    *,
+    condition_name: str | None,
+    condition_value: str | None,
+    query_mode: str,
+    batch_code: str | None,
+) -> QueryFilter | None:
+    """附加条件可选。旧的 query_mode=batch 仍映射到名称为「批次号」的条件，且必须有值。"""
+    legacy_batch = query_mode == "batch" and not str(condition_name or "").strip()
+    name = str(condition_name or "").strip()
+    value = str(condition_value or "").strip()
+    if legacy_batch:
+        name = ConfigManager.LEGACY_QUERY_CONDITION_NAME
+        value = value or str(batch_code or "").strip()
+        if not value:
+            raise ValueError("按批次号查询时必须选择条件值")
+    if not name or not value:
+        return None
+    match = next(
+        (item for item in cfg.resolve_query_conditions(view_name, group, source_tables=db.list_tables()) if item["name"] == name),
+        None,
+    )
+    if match is None:
+        raise ValueError(f"未配置查询条件: {name}")
+    bind_field = match["bind_field"]
+    if bind_field not in available_columns:
+        raise ValueError(f"查询条件「{name}」的绑定列不存在于当前表: {bind_field}")
+    return QueryFilter(field=bind_field, op="eq", value=value)
 
 
 def _load_plugin_config() -> dict[str, Any]:
@@ -755,6 +807,8 @@ def _execute_plugin_query(
     end_time: datetime | None = None,
     query_mode: str = "time",
     batch_code: str | None = None,
+    condition_name: str | None = None,
+    condition_value: str | None = None,
     pagination_mode: str = "offset",
     page_cursor: Any = None,
     include_total: bool = True,
@@ -782,32 +836,32 @@ def _execute_plugin_query(
 
     view = cfg.resolve_query_view(binding["view_name"], table=target_table, group=target_group)
     table_list_cfg = _get_table_list_writeback_config(binding)
+    extra_filter: QueryFilter | None = None
     if table_list_cfg is not None and table_list_cfg.is_advanced_mode:
         resolved_start, resolved_end = None, None
-        resolved_batch_field, resolved_batch_code = None, None
         pagination_mode, page_cursor, include_total = "offset", None, True
         if start_time is not None or end_time is not None:
             warnings.append("高级 OPC UA 模式：已忽略时间范围限制")
-        if batch_code:
-            warnings.append("高级 OPC UA 模式：已忽略批次号条件")
-    elif query_mode == "batch":
-        if start_time is not None or end_time is not None:
-            raise ValueError("按批次号查询时不能填写时间条件")
-        resolved_batch_code = str(batch_code or "").strip() or None
-        if resolved_batch_code is None:
-            raise ValueError("按批次号查询时必须选择 BatchCode")
-        resolved_batch_field = _resolve_batch_field(view, db.list_columns(target_table))
-        if resolved_batch_field is None:
-            raise ValueError("当前插件绑定的 Group 未配置有效的批次号绑定字段")
-        resolved_start, resolved_end = None, None
+        if batch_code or str(condition_value or "").strip():
+            warnings.append("高级 OPC UA 模式：已忽略附加条件")
     else:
-        if str(batch_code or "").strip():
-            raise ValueError("按时间查询时不能填写 BatchCode")
-        if pagination_mode == "cursor" and (start_time is None or end_time is None):
-            raise ValueError("按时间查询时必须填写开始时间和结束时间")
-        resolved_start, resolved_end, time_warnings = _apply_time_guardrails(start_time, end_time)
-        resolved_batch_field, resolved_batch_code = None, None
+        resolved_start, resolved_end, time_warnings = _resolve_optional_time(
+            start_time,
+            end_time,
+            apply_window_cap=True,
+        )
         warnings.extend(time_warnings)
+        extra_filter = _condition_filter(
+            binding["view_name"],
+            target_group,
+            db.list_columns(target_table),
+            condition_name=condition_name,
+            condition_value=condition_value,
+            query_mode=query_mode,
+            batch_code=batch_code,
+        )
+        if extra_filter is not None:
+            warnings.append(f"附加条件 {extra_filter.field}={extra_filter.value}")
 
     if snapshot_all:
         resolved_page_size = MAX_PLUGIN_SNAPSHOT_ROWS + 1
@@ -821,9 +875,9 @@ def _execute_plugin_query(
         start_time=resolved_start,
         end_time=resolved_end,
         time_field=view["time_field"],
-        filters=[],
-        batch_field=resolved_batch_field,
-        batch_code=resolved_batch_code,
+        filters=[extra_filter] if extra_filter is not None else [],
+        batch_field=None,
+        batch_code=None,
         page=max(page, 1),
         page_size=resolved_page_size,
         sort_by=view["sort_by"],
@@ -1279,27 +1333,69 @@ def meta_database_tables(request: Request) -> dict[str, list[str]]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _condition_value_payload(view_name: str, name: str, group: str | None) -> dict[str, Any]:
+    match = next(
+        (item for item in cfg.resolve_query_conditions(view_name, group, source_tables=db.list_tables()) if item["name"] == name),
+        None,
+    )
+    if match is None:
+        raise HTTPException(status_code=400, detail=f"未配置查询条件: {name}")
+    source = {"table": match["source_table"], "field": match["source_field"]}
+    # dict_ 字典表由 data_collector 自动维护：表或字段尚未创建时返回空列表
+    pending = source["table"].startswith(DICT_TABLE_PREFIX) and not _dict_source_ready(source)
+    if not pending:
+        available_columns = db.list_columns(source["table"])
+        if source["field"] not in available_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"条件来源字段不存在于表 {source['table']}: {source['field']}",
+            )
+    return {
+        "items": [] if pending else db.list_batch_codes(source["table"], source["field"], limit=1000),
+        "source": {**source, "pending": pending, "name": match["name"], "bind_field": match["bind_field"]},
+    }
+
+
+@app.get("/api/meta/query-conditions")
+def meta_query_conditions(view_name: str, request: Request, group: str | None = None) -> dict[str, Any]:
+    _enforce_rate_limit(request)
+    try:
+        return {"conditions": cfg.resolve_query_conditions(view_name, group, source_tables=db.list_tables())}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/meta/condition-values")
+def meta_condition_values(
+    view_name: str,
+    name: str,
+    request: Request,
+    group: str | None = None,
+) -> dict[str, Any]:
+    _enforce_rate_limit(request)
+    try:
+        return _condition_value_payload(view_name, name, group)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (OperationalError, SQLAlchemyError) as exc:
+        _raise_db_error(exc)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"读取条件来源失败: {exc}") from exc
+
+
 @app.get("/api/meta/batch-codes")
 def meta_batch_codes(view_name: str, request: Request, group: str | None = None) -> dict[str, Any]:
     _enforce_rate_limit(request)
     try:
-        source = cfg.resolve_batch_source(view_name, group)
-        if not source["table"] or not source["field"]:
-            raise HTTPException(status_code=400, detail="当前 View 未配置批次号来源表和字段")
-        # dict_ 字典表由 data_collector 自动维护（dict_fields 配置）：
-        # 表或字段尚未创建（collector 未启动/未配 dict_fields）时返回空列表，等表就绪后自然出现
-        pending = source["table"].startswith(DICT_TABLE_PREFIX) and not _dict_source_ready(source)
-        if not pending:
-            available_columns = db.list_columns(source["table"])
-            if source["field"] not in available_columns:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"批次号来源字段不存在于表 {source['table']}: {source['field']}",
-                )
-        return {
-            "items": [] if pending else db.list_batch_codes(source["table"], source["field"], limit=1000),
-            "source": {**source, "pending": pending},
+        payload = _condition_value_payload(view_name, ConfigManager.LEGACY_QUERY_CONDITION_NAME, group)
+        payload["source"] = {
+            "table": payload["source"]["table"],
+            "field": payload["source"]["field"],
+            "pending": payload["source"]["pending"],
         }
+        return payload
     except HTTPException:
         raise
     except ValueError as exc:
@@ -1460,6 +1556,8 @@ async def query_plugin(plugin_key: str, payload: PluginQueryRequest, request: Re
             end_time=payload.end_time,
             query_mode=payload.query_mode,
             batch_code=payload.batch_code,
+            condition_name=payload.condition_name,
+            condition_value=payload.condition_value,
             pagination_mode=payload.pagination_mode,
             page_cursor=payload.page_cursor,
             include_total=payload.include_total,
@@ -1546,29 +1644,26 @@ def history_by_view(req: ViewHistoryQueryRequest, request: Request) -> HistoryQu
         sort_by = time_field
         warnings.append(f"视图排序字段不存在，已回退为 {sort_by}")
 
-    batch_code = str(req.batch_code or "").strip() or None
-    if req.query_mode == "batch":
-        if req.start_time is not None or req.end_time is not None:
-            raise HTTPException(status_code=400, detail="按批次号查询时不能填写时间条件")
-        if batch_code is None:
-            raise HTTPException(status_code=400, detail="按批次号查询时必须选择 BatchCode")
-        batch_field = _resolve_batch_field(view, available_columns)
-        if batch_field is None:
-            raise HTTPException(status_code=400, detail="当前 Group 未配置有效的批次号绑定字段")
-        start_time = None
-        end_time = None
-    else:
-        if batch_code is not None:
-            raise HTTPException(status_code=400, detail="按时间查询时不能填写 BatchCode")
-        if req.start_time is None or req.end_time is None:
-            raise HTTPException(status_code=400, detail="按时间查询时必须填写开始时间和结束时间")
-        batch_field = None
-        start_time = req.start_time
-        end_time = req.end_time
-
-    if req.pagination_mode == "offset" and req.query_mode == "time":
-        start_time, end_time, time_warnings = _apply_time_guardrails(start_time, end_time)
-        warnings.extend(time_warnings)
+    start_time, end_time, time_warnings = _resolve_optional_time(
+        req.start_time,
+        req.end_time,
+        apply_window_cap=req.pagination_mode == "offset",
+    )
+    warnings.extend(time_warnings)
+    try:
+        extra_filter = _condition_filter(
+            req.view_name,
+            target_group,
+            available_columns,
+            condition_name=req.condition_name,
+            condition_value=req.condition_value,
+            query_mode=req.query_mode,
+            batch_code=req.batch_code,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if extra_filter is not None:
+        merged_filters.append(extra_filter)
 
     history_req = HistoryQueryRequest(
         table=target_table,
@@ -1577,8 +1672,8 @@ def history_by_view(req: ViewHistoryQueryRequest, request: Request) -> HistoryQu
         end_time=end_time,
         time_field=time_field,
         filters=merged_filters,
-        batch_field=batch_field,
-        batch_code=batch_code,
+        batch_field=None,
+        batch_code=None,
         combine_mode="and",
         page=req.page,
         page_size=page_size,
@@ -1678,6 +1773,43 @@ def set_group_baseline(payload: GroupBaselineUpdateRequest) -> dict[str, str]:
     cfg.set_group_baseline(payload.group, payload.baseline_table)
     _clear_plugin_snapshots()
     return {"status": "saved"}
+
+
+@app.get("/api/config/query-conditions")
+def get_query_conditions(view_name: str) -> dict[str, Any]:
+    try:
+        return cfg.describe_query_conditions(view_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/config/query-conditions")
+def save_query_conditions(payload: QueryConditionsUpdateRequest) -> dict[str, Any]:
+    try:
+        conditions = [item.model_dump() for item in payload.conditions]
+        for item in conditions:
+            source_table = item["source_table"]
+            source_field = item["source_field"]
+            if source_table.startswith(DICT_TABLE_PREFIX):
+                continue
+            try:
+                available_columns = db.list_columns(source_table)
+            except (OperationalError, SQLAlchemyError) as exc:
+                _raise_db_error(exc)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"读取条件来源表失败: {exc}") from exc
+            if source_field not in available_columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"条件来源字段不存在于表 {source_table}: {source_field}",
+                )
+        saved = cfg.update_query_conditions(payload.view_name, conditions)
+        _clear_plugin_snapshots()
+        return {"status": "saved", "view_name": payload.view_name, "conditions": saved}
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/config/query-batch-source")

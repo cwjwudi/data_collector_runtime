@@ -11,6 +11,9 @@ const LOCKED_GROUP_VIEW = 'table';
 const LOCKED_PLUGIN_MODULE = 'general';
 const LOCKED_PLUGIN_VIEW = 'table';
 let currentConfigProfile = '';
+let preservedBatchField = '';
+let queryConditionRows = [];
+let conditionSourceTables = [];
 
 function safeStorageGet(key) {
   try {
@@ -210,9 +213,6 @@ function saveConfigPageState() {
     group: document.getElementById('editGroupName').value || '',
     baselineTable: document.getElementById('editTableName').value || '',
     timeField: document.getElementById('tableTimeField').value || '',
-    batchField: document.getElementById('tableBatchField').value || '',
-    batchSourceTable: document.getElementById('batchSourceTable').value || '',
-    batchSourceField: document.getElementById('batchSourceField').value || '',
     sortBy: document.getElementById('tableSortBy').value || '',
     sortDir: document.getElementById('tableSortDir').value || 'desc',
     pageSize: document.getElementById('tablePageSize').value || '50',
@@ -259,20 +259,15 @@ function getSelectedValues(selectId) {
   return Array.from(sel.selectedOptions).map(x => x.value);
 }
 
-function populateFieldSelectors(columns, preferredTimeField, preferredSortBy, preferredBatchField = '') {
+function populateFieldSelectors(columns, preferredTimeField, preferredSortBy) {
   const normalizedColumns = Array.isArray(columns) ? columns : [];
   const timeField = document.getElementById('tableTimeField');
-  const batchField = document.getElementById('tableBatchField');
   const sortBy = document.getElementById('tableSortBy');
   timeField.innerHTML = '';
-  batchField.innerHTML = '';
   sortBy.innerHTML = '';
-
-  appendOption(batchField, '', '不支持批次号查询');
 
   for (const column of normalizedColumns) {
     appendOption(timeField, column);
-    appendOption(batchField, column);
     appendOption(sortBy, column);
   }
 
@@ -291,11 +286,10 @@ function populateFieldSelectors(columns, preferredTimeField, preferredSortBy, pr
   } else if (normalizedColumns.length > 0) {
     sortBy.value = normalizedColumns[0];
   }
-
-  batchField.value = normalizedColumns.includes(preferredBatchField) ? preferredBatchField : '';
+  refreshConditionBindOptions();
 }
 
-async function loadColumnsForTable(tableName, preferredTimeField, preferredSortBy, preferredBatchField = '') {
+async function loadColumnsForTable(tableName, preferredTimeField, preferredSortBy) {
   if (!tableName) {
     availableColumns = [];
     document.getElementById('availableColumns').innerHTML = '';
@@ -308,7 +302,7 @@ async function loadColumnsForTable(tableName, preferredTimeField, preferredSortB
   const available = document.getElementById('availableColumns');
   available.innerHTML = '';
   for (const c of availableColumns) appendOption(available, c);
-  populateFieldSelectors(availableColumns, preferredTimeField, preferredSortBy, preferredBatchField);
+  populateFieldSelectors(availableColumns, preferredTimeField, preferredSortBy);
 }
 
 async function loadViews() {
@@ -320,81 +314,160 @@ async function loadViews() {
     LOCKED_GROUP_VIEW,
     `${LOCKED_GROUP_VIEW} - ${lockedView.title || LOCKED_GROUP_VIEW}`,
   );
-  await loadBatchSourceConfig();
+  await loadQueryConditionEditor();
 }
 
-async function loadBatchSourceFields(tableName, preferredField = '') {
-  const fieldSelect = document.getElementById('batchSourceField');
-  fieldSelect.innerHTML = '';
-  appendOption(fieldSelect, '', '不启用批次号来源');
-  if (!tableName) return;
+function readConditionRowsFromDom() {
+  const host = document.getElementById('queryConditionList');
+  if (!host) return queryConditionRows;
+  const rows = [];
+  for (const wrap of host.querySelectorAll('[data-condition-index]')) {
+    rows.push({
+      name: wrap.querySelector('[data-field="name"]').value.trim(),
+      source_table: wrap.querySelector('[data-field="source_table"]').value || '',
+      source_field: wrap.querySelector('[data-field="source_field"]').value || '',
+      bind_field: wrap.querySelector('[data-field="bind_field"]').value || '',
+    });
+  }
+  queryConditionRows = rows;
+  return rows;
+}
 
-  const meta = await fetchJson('/api/meta/columns?table=' + encodeURIComponent(tableName));
-  const fields = Array.isArray(meta.columns) ? meta.columns : [];
-  for (const field of fields) appendOption(fieldSelect, field);
-  if (preferredField && fields.includes(preferredField)) {
-    fieldSelect.value = preferredField;
+function fillConditionSelect(select, values, preferred, emptyLabel, missingLabel) {
+  select.innerHTML = '';
+  appendOption(select, '', emptyLabel);
+  const known = Array.isArray(values) ? values : [];
+  for (const value of known) appendOption(select, value);
+  if (preferred && !known.includes(preferred)) {
+    appendOption(select, preferred, missingLabel ? `${preferred}（${missingLabel}）` : preferred);
+  }
+  select.value = preferred && Array.from(select.options).some(option => option.value === preferred) ? preferred : '';
+}
+
+function refreshConditionBindOptions() {
+  const host = document.getElementById('queryConditionList');
+  if (!host) return;
+  for (const wrap of host.querySelectorAll('[data-condition-index]')) {
+    const select = wrap.querySelector('[data-field="bind_field"]');
+    const preferred = select.value || '';
+    fillConditionSelect(select, availableColumns, preferred, '绑定列', '当前基准表没有此列');
   }
 }
 
-async function loadBatchSourceConfig() {
+async function loadConditionSourceFields(tableName, fieldSelect, preferredField) {
+  fillConditionSelect(fieldSelect, [], preferredField, '来源字段');
+  if (!tableName) return;
+  try {
+    const meta = await fetchJson('/api/meta/columns?table=' + encodeURIComponent(tableName));
+    fillConditionSelect(fieldSelect, meta.columns || [], preferredField, '来源字段', '来源表中不存在');
+  } catch (_) {
+    fillConditionSelect(fieldSelect, [], preferredField, '来源字段', '来源表暂不可读');
+  }
+}
+
+function renderQueryConditionEditor() {
+  const host = document.getElementById('queryConditionList');
+  host.innerHTML = '';
+  queryConditionRows.forEach((row, index) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'row';
+    wrap.dataset.conditionIndex = String(index);
+
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = '名称';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.dataset.field = 'name';
+    nameInput.value = row.name || '';
+    nameInput.placeholder = '例如批次号';
+
+    const tableLabel = document.createElement('label');
+    tableLabel.textContent = '来源表';
+    const tableSelect = document.createElement('select');
+    tableSelect.dataset.field = 'source_table';
+    fillConditionSelect(
+      tableSelect,
+      conditionSourceTables,
+      row.source_table || '',
+      '来源表',
+      '当前数据库不存在',
+    );
+
+    const fieldLabel = document.createElement('label');
+    fieldLabel.textContent = '来源字段';
+    const fieldSelect = document.createElement('select');
+    fieldSelect.dataset.field = 'source_field';
+
+    const bindLabel = document.createElement('label');
+    bindLabel.textContent = '绑定列';
+    const bindSelect = document.createElement('select');
+    bindSelect.dataset.field = 'bind_field';
+    fillConditionSelect(bindSelect, availableColumns, row.bind_field || '', '绑定列', '当前基准表没有此列');
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.textContent = '删除';
+    removeButton.addEventListener('click', () => {
+      readConditionRowsFromDom();
+      queryConditionRows.splice(index, 1);
+      renderQueryConditionEditor();
+    });
+
+    tableSelect.addEventListener('change', () => {
+      loadConditionSourceFields(tableSelect.value, fieldSelect, '').catch(catchHintError('queryConditionHint'));
+    });
+
+    wrap.append(nameLabel, nameInput, tableLabel, tableSelect, fieldLabel, fieldSelect, bindLabel, bindSelect, removeButton);
+    host.appendChild(wrap);
+    loadConditionSourceFields(row.source_table || '', fieldSelect, row.source_field || '')
+      .catch(catchHintError('queryConditionHint'));
+  });
+}
+
+async function loadQueryConditionEditor() {
   const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
-  const [source, tableData] = await Promise.all([
-    fetchJson('/api/config/query-batch-source?view_name=' + encodeURIComponent(viewName)),
+  const [data, tableData] = await Promise.all([
+    fetchJson('/api/config/query-conditions?view_name=' + encodeURIComponent(viewName)),
     fetchJson('/api/meta/database-tables'),
   ]);
-  const tableSelect = document.getElementById('batchSourceTable');
-  tableSelect.innerHTML = '';
-  appendOption(tableSelect, '', '不启用批次号来源');
-  const tables = Array.isArray(tableData.tables) ? tableData.tables : [];
-  for (const table of tables) appendOption(tableSelect, table);
-  if (source.table && !tables.includes(source.table)) {
-    appendOption(tableSelect, source.table, `${source.table}（当前数据库不存在）`);
-  }
-  tableSelect.value = source.table || '';
-  if (source.table && !tables.includes(source.table)) {
-    const fieldSelect = document.getElementById('batchSourceField');
-    fieldSelect.innerHTML = '';
-    appendOption(fieldSelect, '', '不启用批次号来源');
-    if (source.field) appendOption(fieldSelect, source.field, `${source.field}（来源表不存在，无法校验）`);
-    fieldSelect.value = source.field || '';
-  } else {
-    await loadBatchSourceFields(source.table || '', source.field || '');
-  }
-  const hint = document.getElementById('batchSourceHint');
-  if (source.table && source.field) {
-    hint.textContent = `当前来源：${source.table}.${source.field}`;
-    hint.className = tables.includes(source.table) ? 'muted ok' : 'muted warn';
-  } else {
-    hint.textContent = '当前 View 未配置批次号来源，查询页将禁用按批次号查询';
+  conditionSourceTables = Array.isArray(tableData.tables) ? tableData.tables : [];
+  queryConditionRows = (Array.isArray(data.conditions) ? data.conditions : []).map(item => ({
+    name: item.name || '',
+    source_table: item.source_table || '',
+    source_field: item.source_field || '',
+    bind_field: item.bind_field || '',
+  }));
+  renderQueryConditionEditor();
+  const hint = document.getElementById('queryConditionHint');
+  if (data.legacy) {
+    hint.textContent = queryConditionRows.length
+      ? '尚未保存查询条件列表，当前显示由原批次号来源生成。保存后以本列表为准。'
+      : '尚未保存查询条件列表。若各组仍配置了批次号绑定，查询页会继续使用原批次号条件。';
     hint.className = 'muted warn';
+  } else {
+    hint.textContent = `已保存 ${queryConditionRows.length} 条查询条件`;
+    hint.className = 'muted ok';
   }
 }
 
-async function saveBatchSourceConfig() {
+async function saveQueryConditionEditor() {
   const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
-  const table = document.getElementById('batchSourceTable').value || '';
-  const field = document.getElementById('batchSourceField').value || '';
-  if (table && !field) {
-    setHintMessage('batchSourceHint', '选择来源表后必须选择来源字段');
-    return;
+  const conditions = readConditionRowsFromDom();
+  for (const [index, row] of conditions.entries()) {
+    if (!row.name || !row.source_table || !row.source_field || !row.bind_field) {
+      setHintMessage('queryConditionHint', `第 ${index + 1} 条条件需要名称、来源表、来源字段和绑定列`);
+      return;
+    }
   }
-  const result = await fetchJson('/api/config/query-batch-source', {
+  const result = await fetchJson('/api/config/query-conditions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ view_name: viewName, table, field }),
+    body: JSON.stringify({ view_name: viewName, conditions }),
   });
   queryViews[viewName] = queryViews[viewName] || {};
-  queryViews[viewName].batch_source = { table: result.table || '', field: result.field || '' };
-  setHintMessage(
-    'batchSourceHint',
-    table ? `已保存批次号来源：${table}.${field}` : '已清空批次号来源，查询页将禁用按批次号查询',
-    'ok',
-  );
-  setConfigStatus(
-    table ? `保存成功：批次号来源=${table}.${field}` : '保存成功：已清空批次号来源',
-    'ok',
-  );
+  queryViews[viewName].query_conditions = result.conditions || [];
+  setHintMessage('queryConditionHint', `已保存 ${result.conditions.length} 条查询条件`, 'ok');
+  setConfigStatus(`保存成功：查询条件 ${result.conditions.length} 条`, 'ok');
   saveConfigPageState();
 }
 
@@ -678,7 +751,6 @@ function clearGroupConfigEditor() {
   document.getElementById('editTableName').innerHTML = '';
   document.getElementById('availableColumns').innerHTML = '';
   document.getElementById('tableTimeField').innerHTML = '';
-  document.getElementById('tableBatchField').innerHTML = '';
   document.getElementById('tableSortBy').innerHTML = '';
   document.getElementById('schemaHint').textContent = '当前数据库下没有可用 group，请先检查连接设置。';
   document.getElementById('schemaHint').className = 'muted warn';
@@ -934,7 +1006,8 @@ async function loadTableConfig() {
     };
   }
 
-  populateFieldSelectors(availableColumns, cfg.time_field, cfg.sort_by, cfg.batch_field);
+  preservedBatchField = cfg.batch_field || '';
+  populateFieldSelectors(availableColumns, cfg.time_field, cfg.sort_by);
   document.getElementById('tableSortDir').value = cfg.sort_dir === 'asc' ? 'asc' : 'desc';
   document.getElementById('tablePageSize').value = Number(cfg.page_size || 50);
   renderOrderedColumns();
@@ -1018,7 +1091,7 @@ async function saveTableConfig() {
     group,
     baseline_table: baselineTable,
     time_field: document.getElementById('tableTimeField').value || 'collection_time',
-    batch_field: document.getElementById('tableBatchField').value || '',
+    batch_field: preservedBatchField,
     sort_by: document.getElementById('tableSortBy').value || 'collection_time',
     sort_dir: document.getElementById('tableSortDir').value || 'desc',
     page_size: Number(document.getElementById('tablePageSize').value || 50),
@@ -1117,12 +1190,6 @@ async function restoreConfigPageState() {
           timeFieldSel.value = saved.timeField;
         }
       }
-      if (saved.batchField) {
-        const batchFieldSel = document.getElementById('tableBatchField');
-        if (Array.from(batchFieldSel.options).some(o => o.value === saved.batchField)) {
-          batchFieldSel.value = saved.batchField;
-        }
-      }
       if (saved.sortBy) {
         const sortBySel = document.getElementById('tableSortBy');
         if (Array.from(sortBySel.options).some(o => o.value === saved.sortBy)) {
@@ -1206,8 +1273,13 @@ document.getElementById('btnMoveDown').addEventListener('click', () => moveSelec
 document.getElementById('btnSaveTableConfig').addEventListener('click', () => {
   saveTableConfig().catch(catchHintError('columnEditorHint'));
 });
-document.getElementById('btnSaveBatchSource').addEventListener('click', () => {
-  saveBatchSourceConfig().catch(catchHintError('batchSourceHint'));
+document.getElementById('btnAddQueryCondition').addEventListener('click', () => {
+  readConditionRowsFromDom();
+  queryConditionRows.push({ name: '', source_table: '', source_field: '', bind_field: '' });
+  renderQueryConditionEditor();
+});
+document.getElementById('btnSaveQueryConditions').addEventListener('click', () => {
+  saveQueryConditionEditor().catch(catchHintError('queryConditionHint'));
 });
 document.getElementById('btnDeleteGroupConfig').addEventListener('click', () => {
   deleteGroupConfig().catch(catchHintError('columnEditorHint'));
@@ -1231,18 +1303,10 @@ document.getElementById('editTableName').addEventListener('change', () => {
     document.getElementById('editTableName').value,
     document.getElementById('tableTimeField').value,
     document.getElementById('tableSortBy').value,
-    document.getElementById('tableBatchField').value,
   ).catch(catchHintError('columnEditorHint'));
   saveConfigPageState();
 });
 document.getElementById('tableTimeField').addEventListener('change', saveConfigPageState);
-document.getElementById('tableBatchField').addEventListener('change', saveConfigPageState);
-document.getElementById('batchSourceTable').addEventListener('change', () => {
-  loadBatchSourceFields(document.getElementById('batchSourceTable').value, '')
-    .then(saveConfigPageState)
-    .catch(catchHintError('batchSourceHint'));
-});
-document.getElementById('batchSourceField').addEventListener('change', saveConfigPageState);
 document.getElementById('tableSortBy').addEventListener('change', saveConfigPageState);
 document.getElementById('tableSortDir').addEventListener('change', saveConfigPageState);
 document.getElementById('tablePageSize').addEventListener('change', saveConfigPageState);
