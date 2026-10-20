@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 COOKIE_NAME = "sdsma_session"
 CODE_PARAM = "sdsma_code"
@@ -157,14 +157,6 @@ def _extract_code(query: str) -> str:
 def _is_access_denied(exc: BaseException) -> bool:
     blob = f"{type(exc).__name__} {exc}".lower()
     return "baduseraccessdenied" in blob or "useraccessdenied" in blob
-
-
-def _needs_session(path: str, method: str, allowed: set[str]) -> bool:
-    if path in allowed:
-        return False
-    if path.startswith("/api/"):
-        return True
-    return method.upper() not in {"GET", "HEAD", "OPTIONS"}
 
 
 def attach_cookie(response: Response, token: str) -> None:
@@ -417,9 +409,11 @@ class LivePlc:
 
 
 def install_session_middleware(app: Any, bridge: SessionBridge | None = None, *, exempt: set[str] | None = None) -> SessionBridge:
-    """HMI cookie or machine token. Document GET is served without a session so
-    WebViewer first paint (empty query) is HTML, not JSON 401. /api/* still 401s.
-    Do not 303 after exchange: iframe+Set-Cookie on a redirect hop often drops.
+    """Best-effort identity resolution, no request is rejected.
+
+    mappView 用户会话限制已移除：所有请求一律放行。中间件只负责
+    解析 cookie/code 并在交换成功时下发会话 cookie（保留 WebViewer
+    单点登录），`request.state.sdsma_identity` 无会话时为 None。
     """
 
     session = bridge or SessionBridge.from_env()
@@ -435,23 +429,13 @@ def install_session_middleware(app: Any, bridge: SessionBridge | None = None, *,
             return await call_next(request)
         request.state.sdsma_machine = False
         had_code = CODE_PARAM in request.query_params
-        error: str | None = None
         try:
             identity = await session.resolve_request(request)
-        except SessionBridgeError as exc:
-            identity = None
-            error = str(exc)
-        except Exception as exc:
+        except Exception:
             logger.exception("session resolve failed")
             identity = None
-            error = f"会话交换失败: {exc}"
         if identity is None:
             request.state.sdsma_identity = None
-            if _needs_session(request.url.path, request.method, allowed) or (had_code and error):
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": error or "需要 mappView 用户会话"},
-                )
             return await call_next(request)
         request.state.sdsma_identity = identity
         response = await call_next(request)

@@ -116,7 +116,8 @@ def check_middleware() -> None:
 
     @app.get("/api/who")
     def who(request: Request) -> dict[str, str]:
-        return {"user": request.state.sdsma_identity.user_id}
+        ident = request.state.sdsma_identity
+        return {"user": ident.user_id if ident else ""}
 
     client = TestClient(app, follow_redirects=False)
     assert client.get("/api/health").status_code == 200
@@ -124,9 +125,10 @@ def check_middleware() -> None:
     first_paint = client.get("/config")
     assert first_paint.status_code == 200
     assert first_paint.json()["user"] == ""
-    denied = client.get("/api/who")
-    assert denied.status_code == 401
-    assert denied.json()["detail"] == "需要 mappView 用户会话"
+    # 会话限制已移除：未登录 /api/* 也放行，身份为 None
+    anonymous = client.get("/api/who")
+    assert anonymous.status_code == 200
+    assert anonymous.json()["user"] == ""
     first = client.get("/config?sdsma_code=" + "aa" * 16)
     assert first.status_code == 200
     assert first.json()["user"] == "br"
@@ -208,13 +210,15 @@ def check_live() -> None:
 
             @app.get("/api/who")
             def who(request: Request) -> dict[str, str]:
-                return {"user": request.state.sdsma_identity.user_id}
+                ident = request.state.sdsma_identity
+                return {"user": ident.user_id if ident else ""}
 
             from httpx import ASGITransport, AsyncClient
 
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
-                denied = await http.get("/api/who")
-                assert denied.status_code == 401
+                anonymous = await http.get("/api/who")
+                assert anonymous.status_code == 200
+                assert anonymous.json()["user"] == ""
                 token = bridge.cookie_for(ident)
                 ok = await http.get("/api/who", cookies={COOKIE_NAME: token})
                 assert ok.status_code == 200, ok.text
