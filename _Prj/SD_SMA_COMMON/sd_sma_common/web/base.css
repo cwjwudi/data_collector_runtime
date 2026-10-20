@@ -1,0 +1,183 @@
+/* ============================================================
+ * SD SMA 公共样式底座 (base.css)
+ *
+ * 所有服务页面统一引用: <link rel="stylesheet" href="/common/base.css?v=..." />
+ * - 页面专属样式放各服务 static/,在 base 之后加载、可覆盖此处
+ * - 调整整体风格只需改 :root 变量,全部服务生效
+ * - 公共组件类(页面导航/面板/按钮/表单)只在此维护,禁止复制副本
+ * ============================================================ */
+
+:root {
+  /* 颜色 */
+  --sd-color-bg: #f5f7fa;
+  --sd-color-text: #1f2937;
+  --sd-color-panel-bg: #fff;
+  --sd-color-border: #dbe1ea;
+  --sd-color-border-input: #c4ccd8;
+  --sd-color-link: #2563eb;
+  --sd-color-muted: #6b7280;
+  --sd-color-hover: #eef2f7;
+  --sd-color-danger: #dc2626;
+  --sd-color-danger-hover: #b91c1c;
+  --sd-color-th-bg: #f3f4f6;
+  /* 字体 */
+  --sd-font: Arial, sans-serif;
+  --sd-font-mono: Consolas, "Courier New", monospace;
+  --sd-font-base: 13px;
+  --sd-font-small: 12px;
+  /* 圆角 */
+  --sd-radius: 4px;
+  --sd-radius-lg: 8px;
+}
+
+/* ---- 页面基础 ---- */
+
+body {
+  margin: 0;
+  font-family: var(--sd-font);
+  background: var(--sd-color-bg);
+  color: var(--sd-color-text);
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+/* ---- 顶部页内导航 ---- */
+
+.page-nav {
+  padding: 10px 12px;
+  background: var(--sd-color-panel-bg);
+  border-bottom: 1px solid var(--sd-color-border);
+  font-size: 14px;
+}
+
+.page-nav a {
+  color: var(--sd-color-link);
+  text-decoration: none;
+}
+
+.page-nav a:hover {
+  text-decoration: underline;
+}
+
+.page-nav-sep {
+  margin: 0 8px;
+  color: #94a3b8;
+}
+
+.page-nav-current {
+  color: #334155;
+  font-weight: 600;
+}
+
+/* ---- 布局与面板 ---- */
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.layout.layout-stack {
+  grid-template-columns: 1fr;
+}
+
+.panel {
+  background: var(--sd-color-panel-bg);
+  border: 1px solid var(--sd-color-border);
+  border-radius: var(--sd-radius-lg);
+  padding: 12px;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* ---- 表单控件 ---- */
+
+input,
+select,
+button {
+  font-size: var(--sd-font-base);
+}
+
+input,
+select {
+  padding: 6px;
+  border: 1px solid var(--sd-color-border-input);
+  border-radius: var(--sd-radius);
+  flex: 1;
+  min-width: 120px;
+}
+
+input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+/* ---- 按钮 ---- */
+
+button {
+  padding: 6px 10px;
+  border: 1px solid var(--sd-color-border-input);
+  border-radius: var(--sd-radius);
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--sd-color-hover);
+}
+
+button.is-clicked {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.danger-btn {
+  background: var(--sd-color-danger);
+  border-color: var(--sd-color-danger-hover);
+  color: #fff;
+}
+
+.danger-btn:hover {
+  background: var(--sd-color-danger-hover);
+}
+
+/* ---- 文本修饰 ---- */
+
+.muted {
+  color: var(--sd-color-muted);
+  font-size: var(--sd-font-small);
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  margin: 8px 0;
+  color: #4b5563;
+}
+
+.ok {
+  color: #047857;
+}
+
+.warn {
+  color: #b45309;
+}
+
+/* ---- 表格 ---- */
+
+th {
+  background: var(--sd-color-th-bg);
+}

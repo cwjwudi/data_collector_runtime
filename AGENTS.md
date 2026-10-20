@@ -26,8 +26,25 @@ SD SMA Runtime：独立运行时工程。统一 Launcher 管理 4 个 FastAPI �
 ## 共享代码
 
 跨服务代码只放 `_Prj/SD_SMA_COMMON/sd_sma_common/`（现有 `session_bridge` 单点登录、
-`filesystem_browser` 白名单文件浏览）。各服务用 `sys.path` 注入 COMMON_ROOT 引用，
-**不要复制粘贴副本**。
+`filesystem_browser` 白名单文件浏览、`web/` 前端公共底座）。各服务用 `sys.path` 注入
+COMMON_ROOT 引用，**不要复制粘贴副本**。
+
+## 前端规范（页面/样式/文案）
+
+公共底座在 `_Prj/SD_SMA_COMMON/sd_sma_common/web/`（`base.css`、`i18n.js`、`zh.js`），
+各服务 `app.mount("/common", StaticFiles(...))` 后经 `/common/...` 引用。示范页：
+`SD_SMA_DATA_COLLECTOR_QUERY_WEB/app/static/query.html`。
+
+- **样式**：新页面先引 `/common/base.css` 再引页面自己的 css；页面 css 只写页面专属规则。
+  公共类（`page-nav`/`panel`/`row`/按钮/表单）只在 `base.css` 维护，**禁止复制副本**到服务 css；
+  颜色/字号/圆角用 `--sd-*` 变量。
+- **文案（语言系统）**：用户可见文案不写死。HTML 用 `data-i18n="key"`（属性用
+  `data-i18n-placeholder` / `data-i18n-aria`），JS 用 `SdI18n.t('key', {参数})`；
+  新 key 加到 `/common/zh.js`，命名 `页面.区块.元素`（跨页复用放 `nav.*` / `common.*`）。
+  当前单语言（中文）；加新语言 = 加一份 `<lang>.js` + 在 `i18n.js` 的 `LANGS` 注册，业务代码零改动。
+- **静态资源缓存**：css/js 引用统一带 `?v=YYYYMMDD_NN`，改动后递增。
+- **迁移**：老页面仍持有自己的公共样式副本与硬编码中文；动到哪页迁哪页，不一次性全量重写。
+- 改动文案/底座后跑 `python -m sd_sma_common.web_i18n_check`（详见 `.cursor/rules/web-style.mdc`）。
 
 ## 数据根目录 DATA_ROOT
 

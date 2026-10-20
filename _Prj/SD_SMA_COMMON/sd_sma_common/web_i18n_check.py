@@ -1,0 +1,76 @@
+"""公共前端底座(base.css / i18n.js / zh.js)与示范页迁移一致性自检。
+
+离线运行: python -m sd_sma_common.web_i18n_check
+校验:
+1. zh.js 字典可解析、i18n.js 引擎接口齐全、base.css 含公共组件选择器
+2. 各服务页面 data-i18n* 引用的 key 都在字典里(防漏配)
+3. 业务 JS 里 t('key') 引用的 key 都在字典里
+4. 字典无死 key(每个 key 至少被一处引用,防堆积)
+"""
+
+import json
+import re
+import sys
+from pathlib import Path
+
+WEB_DIR = Path(__file__).resolve().parent / "web"
+REPO_ROOT = WEB_DIR.parents[3]
+QUERY_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR_QUERY_WEB" / "app" / "static"
+CACHE_VERSION = "20261020_01"
+
+
+def load_dict() -> dict:
+    text = (WEB_DIR / "zh.js").read_text(encoding="utf-8")
+    marker = "window.SD_SMA_I18N_ZH"
+    start = text.index(marker) + len(marker)
+    payload = text[text.index("=", start) + 1 :].strip().rstrip(";").strip()
+    return json.loads(re.sub(r"/\*.*?\*/", "", payload, flags=re.S))
+
+
+def check_engine() -> None:
+    i18n = (WEB_DIR / "i18n.js").read_text(encoding="utf-8")
+    for fn in ("function t(", "function apply(", "function register(", "function setLang("):
+        assert fn in i18n, f"i18n.js 缺少 {fn}"
+    base = (WEB_DIR / "base.css").read_text(encoding="utf-8")
+    for sel in (".page-nav", ".layout", ".panel", ".row", "button", ".muted", ".hint", ":root"):
+        assert sel in base, f"base.css 缺少公共选择器 {sel}"
+    # 示范页确实引用了公共底座且版本号统一,防缓存旧脚本
+    html = (QUERY_STATIC / "query.html").read_text(encoding="utf-8")
+    assert f"/common/base.css?v={CACHE_VERSION}" in html, "query.html 未引用 base.css"
+    assert f"/common/i18n.js?v={CACHE_VERSION}" in html, "query.html 未引用 i18n.js"
+    assert f"/static/query.js?v={CACHE_VERSION}" in html, "query.js 版本号未更新"
+
+
+def collect_used_keys() -> set:
+    used = set()
+    for html in QUERY_STATIC.glob("*.html"):
+        for m in re.finditer(r'data-i18n(?:-placeholder|-aria)?="([^"]+)"', html.read_text(encoding="utf-8")):
+            used.add(m.group(1))
+    for js in QUERY_STATIC.glob("*.js"):
+        for m in re.finditer(r"\bt\(\s*'([^']+)'", js.read_text(encoding="utf-8")):
+            used.add(m.group(1))
+    return used
+
+
+def main() -> int:
+    check_engine()
+    zh = load_dict()
+    assert isinstance(zh, dict) and len(zh) >= 40, f"zh.js 字典异常小: {len(zh)} 条"
+
+    used = collect_used_keys()
+    missing = sorted(k for k in used if k not in zh)
+    assert not missing, f"引用了字典里不存在的 key: {missing}"
+    dead = sorted(k for k in zh if k not in used)
+    assert not dead, f"字典里无人引用的死 key: {dead}"
+
+    # 示范页业务 JS 不应再残留写死的用户文案(检查已迁移的告警/提示路径)
+    query_js = (QUERY_STATIC / "query.js").read_text(encoding="utf-8")
+    for legacy in ("请选择批次号", "批次号来源：", "暂无可用 view", "开始时间不能大于结束时间"):
+        assert legacy not in query_js, f"query.js 仍硬编码文案: {legacy}"
+
+    print(f"web_i18n_check: OK — 字典 {len(zh)} 条, 引用 {len(used)} 处, 底座挂载正常")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

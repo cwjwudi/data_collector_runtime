@@ -12,6 +12,7 @@ let batchCodesAvailable = false;
 let currentBatchSource = {};
 let timeRangePicker = null;
 const QUERY_STATE_KEY = 'sd_sma_query_page_state_v1';
+const t = (key, params) => window.SdI18n.t(key, params);
 const quickRangePresets = {
   btnRange15Min: 'last15m',
   btnRange1H: 'last1h',
@@ -75,7 +76,7 @@ async function loadBatchCodes() {
   select.innerHTML = '';
   const empty = document.createElement('option');
   empty.value = '';
-  empty.textContent = '请选择批次号';
+  empty.textContent = t('query.batch.placeholder');
   select.appendChild(empty);
   batchCodesAvailable = false;
   currentBatchSource = {};
@@ -99,13 +100,13 @@ async function reloadBatchCodesForCurrentContext() {
   try {
     await loadBatchCodes();
     document.getElementById('queryWarnings').textContent = batchCodesAvailable
-      ? `批次号来源：${currentBatchSource.table || '-'} . ${currentBatchSource.field || '-'}`
-      : '批次号来源没有可选数据，仍可按时间查询';
+      ? t('query.js.batchSource', { src: `${currentBatchSource.table || '-'} . ${currentBatchSource.field || '-'}` })
+      : t('query.js.batchSourceEmpty');
   } catch (err) {
     batchCodesAvailable = false;
     currentBatchSource = {};
     document.getElementById('queryWarnings').textContent =
-      `批次号列表不可用，仍可按时间查询：${err.message}`;
+      t('query.js.batchSourceError', { msg: err.message });
   }
   updateQueryModeControls();
 }
@@ -204,10 +205,10 @@ async function loadGroupSchemaHint() {
   const data = await fetchJson('/api/meta/group-schema?group=' + encodeURIComponent(group));
   const hint = document.getElementById('schemaHint');
   if (data.consistent) {
-    hint.textContent = `group=${group} 已配置，可查询；当前基准表=${data.baseline_table}，共 ${data.tables.length} 张表`;
+    hint.textContent = t('query.js.groupReady', { group, table: data.baseline_table, count: data.tables.length });
     hint.className = 'muted ok';
   } else {
-    hint.textContent = `group=${group} 表结构不一致，将按已配置基准表 ${data.baseline_table} 查询`;
+    hint.textContent = t('query.js.groupSchemaMismatch', { group, table: data.baseline_table });
     hint.className = 'muted warn';
   }
 }
@@ -224,7 +225,7 @@ async function loadTablesForCurrentGroup(preferredTable) {
     const op = document.createElement('option');
     op.value = table;
     const kind = data.table_kinds?.[table] || '';
-    op.textContent = kind === 'fixed' ? `${table}（固定表）` : table;
+    op.textContent = kind === 'fixed' ? t('query.js.fixedTable', { table }) : table;
     tableSel.appendChild(op);
   }
   if (preferredTable && tables.includes(preferredTable)) {
@@ -238,7 +239,7 @@ async function loadGroupsForCurrentView(preferredGroup) {
   if (!viewName) {
     const sel = document.getElementById('group');
     sel.innerHTML = '';
-    hint.textContent = '暂无可用 view';
+    hint.textContent = t('query.js.noView');
     hint.className = 'muted warn';
     return;
   }
@@ -254,7 +255,7 @@ async function loadGroupsForCurrentView(preferredGroup) {
     sel.appendChild(op);
   }
   if (configuredGroups.length === 0) {
-    hint.textContent = `view=${viewName} 暂无已配置 group，请先到配置页保存 group 配置`;
+    hint.textContent = t('query.js.noGroup', { view: viewName });
     hint.className = 'muted warn';
     return;
   }
@@ -315,8 +316,8 @@ function getCurrentQueryContext() {
   const viewName = document.getElementById('viewName').value;
   const group = document.getElementById('group').value;
   const table = document.getElementById('tableName').value;
-  if (!viewName) return alert('请先选择 view');
-  if (!group) return alert('请先选择已配置 group');
+  if (!viewName) return alert(t('query.js.selectView'));
+  if (!group) return alert(t('query.js.selectGroup'));
   return { viewName, group, table };
 }
 
@@ -330,8 +331,10 @@ function updatePageInfo(total, page, pageSize, more = false) {
   document.getElementById('btnPrevPage').disabled = currentPage <= 1;
   document.getElementById('btnNextPage').disabled = !hasMore;
   document.getElementById('pageInfo').textContent = total == null
-    ? `当前第 ${currentPage} 页，每页 ${pageSize} 条${hasMore ? '，还有更多' : '，已到末页'}`
-    : `总条数 ${total}，共 ${totalPages} 页，当前第 ${currentPage} 页`;
+    ? (hasMore
+      ? t('query.js.pageInfoMore', { page: currentPage, size: pageSize })
+      : t('query.js.pageInfoEnd', { page: currentPage, size: pageSize }))
+    : t('query.js.pageInfoTotal', { total, pages: totalPages, page: currentPage });
   saveQueryPageState();
 }
 
@@ -361,14 +364,14 @@ async function runQueryAtPage(page) {
   let batchCode = '';
   if (payload.query_mode === 'batch') {
     batchCode = document.getElementById('batchCode').value.trim();
-    if (!batchCode) return alert('按批次号查询时必须选择 BatchCode');
+    if (!batchCode) return alert(t('query.js.batchNeedsCode'));
     payload.batch_code = batchCode;
   } else {
     start = document.getElementById('startTime').value;
     end = document.getElementById('endTime').value;
-    if (!start || !end) return alert('按时间查询时必须填写开始时间和结束时间');
+    if (!start || !end) return alert(t('query.js.timeNeedsRange'));
     if (new Date(start).getTime() > new Date(end).getTime()) {
-      return alert('开始时间不能大于结束时间');
+      return alert(t('query.js.timeOrder'));
     }
     // 选择器保存本地时间字符串，直接传递可避免 toISOString() 产生时区偏移
     payload.start_time = start;

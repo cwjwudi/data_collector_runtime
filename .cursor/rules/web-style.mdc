@@ -1,0 +1,32 @@
+---
+description: SD SMA 前端统一规范:公共样式底座 + 可扩展 i18n,禁止复制 CSS 副本、禁止写死文案
+globs:
+  - _Prj/**/static/**
+  - _Prj/**/web_config/static/**
+alwaysApply: false
+---
+
+# 前端统一样式与语言规范
+
+公共底座在 `_Prj/SD_SMA_COMMON/sd_sma_common/web/`(`base.css`、`i18n.js`、`zh.js`),
+通过各服务 `app.mount("/common", StaticFiles(...))` 访问。示范页:`SD_SMA_DATA_COLLECTOR_QUERY_WEB/app/static/query.html`。
+
+## 样式
+
+- 新页面必须先引 `/common/base.css`,再引页面自己的 css;页面 css 只写页面专属规则。
+- ❌ 禁止把 `page-nav`/`panel`/`row`/按钮/表单等公共类复制进服务 css —— 改公共样式只改 `base.css`。
+- 颜色/字号/圆角用 `base.css` 的 `--sd-*` CSS 变量,不要写裸色值。
+- 静态资源引用统一带版本号 `?v=YYYYMMDD_NN`,改动后递增,防浏览器缓存旧 JS。
+
+## 文案(语言系统)
+
+- 用户可见文案一律走字典:`HTML` 用 `data-i18n="key"`(属性用 `data-i18n-placeholder` / `data-i18n-aria`),
+  `JS` 用 `SdI18n.t('key', {参数})`。❌ 不要写死中文字符串。
+- 新 key 加到 `/common/zh.js`,命名 `页面.区块.元素`(跨页复用放 `nav.*` / `common.*`)。
+- 当前单语言(中文);预留扩展:加语言 = 加一份 `<lang>.js` 字典 + 在 `i18n.js` 的 `LANGS` 注册,业务代码零改动。
+- 改动文案/底座后跑 `python -m sd_sma_common.web_i18n_check`(漏 key、死 key、硬编码残留会报错)。
+
+## 迁移中的页面
+
+未迁移的老页面仍持有自己的公共样式副本;动到哪页就把哪页的副本剥到 `base.css`,
+不要一次性全量重写。

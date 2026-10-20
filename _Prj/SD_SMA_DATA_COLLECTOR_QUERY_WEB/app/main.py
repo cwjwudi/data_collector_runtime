@@ -214,6 +214,10 @@ async def _app_lifespan(_app: FastAPI):
 
 app = FastAPI(title="SD SMA Query Web", version="0.1.0", lifespan=_app_lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
+# 公共前端底座(base.css / i18n.js / zh.js),来自 sd_sma_common/web
+_COMMON_WEB = COMMON_ROOT / "sd_sma_common" / "web"
+if _COMMON_WEB.is_dir():
+    app.mount("/common", StaticFiles(directory=str(_COMMON_WEB)), name="common")
 install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 
