@@ -38,12 +38,47 @@
         "per_table": {},
         "per_group": {
           "data_alarm": {
-            "columns": [],
+            "columns": [
+              {
+                "name": "AlarmTime",
+                "label_en": "AlarmTime",
+                "label_zh": "AlarmTime"
+              },
+              {
+                "name": "AlarmState",
+                "label_en": "AlarmState",
+                "label_zh": "AlarmState"
+              },
+              {
+                "name": "AlarmCode",
+                "label_en": "AlarmCode",
+                "label_zh": "AlarmCode"
+              },
+              {
+                "name": "AlarmText",
+                "label_en": "AlarmText",
+                "label_zh": "AlarmText"
+              }
+            ],
             "time_field": "collection_time",
             "batch_field": "",
             "sort_by": "collection_time",
             "sort_dir": "desc",
-            "page_size": 50
+            "page_size": 50,
+            "query_conditions": [
+              {
+                "name": "报警状态",
+                "source_table": "dict_alarmstate",
+                "source_field": "value",
+                "bind_field": "AlarmState"
+              },
+              {
+                "name": "批次号",
+                "source_table": "data_batch",
+                "source_field": "BatchCode",
+                "bind_field": "BatchCode"
+              }
+            ]
           },
           "data_audit": {
             "columns": [
@@ -67,7 +102,15 @@
             "batch_field": "",
             "sort_by": "collection_time",
             "sort_dir": "desc",
-            "page_size": 50
+            "page_size": 50,
+            "query_conditions": [
+              {
+                "name": "操作员",
+                "source_table": "dict_auditoperator",
+                "source_field": "value",
+                "bind_field": "AuditOperator"
+              }
+            ]
           },
           "data_batchinfo": {
             "columns": [],
@@ -84,16 +127,32 @@
             "sort_by": "id",
             "sort_dir": "desc",
             "page_size": 50
+          },
+          "data_batch": {
+            "columns": [],
+            "time_field": "collection_time",
+            "batch_field": "",
+            "sort_by": "collection_time",
+            "sort_dir": "desc",
+            "page_size": 50
+          },
+          "data_product": {
+            "columns": [],
+            "time_field": "collection_time",
+            "batch_field": "",
+            "sort_by": "collection_time",
+            "sort_dir": "desc",
+            "page_size": 50
+          },
+          "data_recipe": {
+            "columns": [],
+            "time_field": "collection_time",
+            "batch_field": "",
+            "sort_by": "collection_time",
+            "sort_dir": "desc",
+            "page_size": 50
           }
-        },
-        "query_conditions": [
-          {
-            "name": "操作员",
-            "source_table": "dict_auditoperator",
-            "source_field": "value",
-            "bind_field": "AuditOperator"
-          }
-        ]
+        }
       },
       "alarm": {
         "title": "报警列表",
@@ -149,7 +208,10 @@
       "data_alarm": "data_alarm",
       "data_audit": "data_audit",
       "data_batchinfo": "data_batchinfo",
-      "dict_alarmstate": "dict_alarmstate"
+      "dict_alarmstate": "dict_alarmstate",
+      "data_batch": "data_batch",
+      "data_product": "data_product",
+      "data_recipe": "data_recipe_y2026_span1"
     }
   },
   "plugins": {
@@ -172,7 +234,12 @@
             "enabled": true,
             "bind_group": "data_alarm",
             "view_name": "table",
-            "page_size": 10
+            "page_size": 10,
+            "sql_writeback": {
+              "enabled": true,
+              "node": "ns=6;s=::DataSQLAla:strSQLQuery",
+              "max_len": 500
+            }
           },
           "3": {
             "title": "审计",

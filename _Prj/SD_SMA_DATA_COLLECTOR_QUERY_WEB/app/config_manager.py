@@ -260,9 +260,6 @@ class UnifiedConfigStore:
                 "per_table": {},
                 "per_group": {},
             }
-            if isinstance(raw_view.get("query_conditions"), list):
-                views[str(view_name)]["query_conditions"] = cls._clone_json(raw_view.get("query_conditions"))
-
         if not views:
             return cls._default_query_view_config()
 
@@ -684,6 +681,7 @@ class UnifiedConfigStore:
         runtime_database.pop("password_enc", None)
         live_groups = ConfigManager.probe_groups(runtime_database)
         report = ConfigManager.prune_editor_profile(profile, live_groups)
+        ConfigManager.drop_view_query_conditions(profile.get("query_view"))
         ConfigManager(self)._validate_query_view_config(profile["query_view"])
         ConfigManager.validate_plugins(profile["plugins"])
         self.save_active_config(profile)
@@ -959,8 +957,8 @@ class ConfigManager:
     ) -> list[dict[str, str]]:
         """解析某个 view（及可选 group）当前生效的查询条件。
 
-        显式 query_conditions（含空列表）优先于旧的 batch_source + batch_field。
-        旧配置收成一条名称固定为「批次号」的条件。
+        显式 query_conditions（含空列表）只认当前 group。View 级列表不再生效。
+        没有分组列表时，旧配置收成一条名称固定为「批次号」的条件。
         """
         if not isinstance(view, dict):
             return []
@@ -969,9 +967,6 @@ class ConfigManager:
             group_cfg = per_group.get(group) if isinstance(per_group, dict) else None
             if isinstance(group_cfg, dict) and "query_conditions" in group_cfg:
                 return cls.normalize_query_conditions(group_cfg.get("query_conditions"))
-        if "query_conditions" in view:
-            return cls.normalize_query_conditions(view.get("query_conditions"))
-
         raw_source = view.get("batch_source") if isinstance(view.get("batch_source"), dict) else {}
         bind_field = str(view.get("batch_field") or "").strip()
         if group:
@@ -1004,7 +999,17 @@ class ConfigManager:
             group_cfg = per_group.get(group) if isinstance(per_group, dict) else None
             if isinstance(group_cfg, dict) and "query_conditions" in group_cfg:
                 return True
-        return "query_conditions" in view
+        return False
+
+    @staticmethod
+    def drop_view_query_conditions(query_view: dict[str, Any] | None) -> None:
+        """查询条件只按 group 保存。整份写入时丢掉 View 上残留的 query_conditions。"""
+        views = query_view.get("views") if isinstance(query_view, dict) else None
+        if not isinstance(views, dict):
+            return
+        for view in views.values():
+            if isinstance(view, dict):
+                view.pop("query_conditions", None)
 
     @classmethod
     def conditions_from_dict_tables(
@@ -1382,7 +1387,8 @@ class ConfigManager:
                 }
             )
 
-        per_group[group] = {
+        previous = per_group.get(group) if isinstance(per_group.get(group), dict) else {}
+        next_group = {
             "columns": normalized_columns,
             "time_field": str(time_field),
             "batch_field": str(batch_field or ""),
@@ -1390,6 +1396,9 @@ class ConfigManager:
             "sort_dir": "asc" if str(sort_dir).lower() == "asc" else "desc",
             "page_size": max(1, int(page_size)),
         }
+        if "query_conditions" in previous:
+            next_group["query_conditions"] = previous["query_conditions"]
+        per_group[group] = next_group
 
         if baseline_table:
             group_baselines = config.setdefault("group_baselines", {})

@@ -13,6 +13,7 @@ const LOCKED_PLUGIN_VIEW = 'table';
 let currentConfigProfile = '';
 let currentProfile = null;
 let loadedGroup = '';
+let loadedConditionGroup = '';
 let loadedPluginPage = '1';
 let conditionsDirty = false;
 let preservedBatchField = '';
@@ -343,7 +344,7 @@ async function loadViews() {
     LOCKED_GROUP_VIEW,
     `${LOCKED_GROUP_VIEW} - ${lockedView.title || LOCKED_GROUP_VIEW}`,
   );
-  await loadQueryConditionEditor();
+  await ensureConditionSourceTables();
 }
 
 function readConditionRowsFromDom() {
@@ -454,45 +455,107 @@ function renderQueryConditionEditor() {
   });
 }
 
-async function loadQueryConditionEditor() {
-  const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
-  const [data, tableData] = await Promise.all([
-    fetchJson('/api/config/query-conditions?view_name=' + encodeURIComponent(viewName)),
-    fetchJson('/api/meta/database-tables'),
-  ]);
-  conditionSourceTables = Array.isArray(tableData.tables) ? tableData.tables : [];
-  queryConditionRows = (Array.isArray(data.conditions) ? data.conditions : []).map(item => ({
+function cloneConditionRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map(item => ({
     name: item.name || '',
     source_table: item.source_table || '',
     source_field: item.source_field || '',
     bind_field: item.bind_field || '',
   }));
+}
+
+function resolveProfileConditions(viewName, group) {
+  const view = currentProfile?.query_view?.views?.[viewName] || {};
+  const groupCfg = group && view.per_group ? view.per_group[group] : null;
+  if (groupCfg && Array.isArray(groupCfg.query_conditions)) {
+    return { conditions: cloneConditionRows(groupCfg.query_conditions), scope: 'group' };
+  }
+  let source = view.batch_source && typeof view.batch_source === 'object' ? view.batch_source : {};
+  let bindField = String(view.batch_field || '');
+  if (groupCfg && typeof groupCfg === 'object') {
+    if (Object.prototype.hasOwnProperty.call(groupCfg, 'batch_source') && groupCfg.batch_source && typeof groupCfg.batch_source === 'object') {
+      source = groupCfg.batch_source;
+    }
+    if (Object.prototype.hasOwnProperty.call(groupCfg, 'batch_field')) {
+      bindField = String(groupCfg.batch_field || '');
+    }
+  }
+  const sourceTable = String(source.table || '').trim();
+  const sourceField = String(source.field || '').trim();
+  if (!sourceTable || !sourceField) {
+    return { conditions: [], scope: 'legacy' };
+  }
+  return {
+    conditions: [{
+      name: '批次号',
+      source_table: sourceTable,
+      source_field: sourceField,
+      bind_field: bindField,
+    }],
+    scope: 'legacy',
+  };
+}
+
+async function ensureConditionSourceTables() {
+  if (conditionSourceTables.length > 0) return;
+  const tableData = await fetchJson('/api/meta/database-tables');
+  conditionSourceTables = Array.isArray(tableData.tables) ? tableData.tables : [];
+}
+
+function clearQueryConditionEditor() {
+  queryConditionRows = [];
   conditionsDirty = false;
+  loadedConditionGroup = '';
+  const host = document.getElementById('queryConditionList');
+  if (host) host.innerHTML = '';
+  const hint = document.getElementById('queryConditionHint');
+  if (hint) {
+    hint.textContent = '';
+    hint.className = 'muted';
+  }
+}
+
+async function showQueryConditionsForGroup(group) {
+  if (!group) {
+    clearQueryConditionEditor();
+    return;
+  }
+  await ensureConditionSourceTables();
+  const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
+  const resolved = resolveProfileConditions(viewName, group);
+  queryConditionRows = resolved.conditions;
+  conditionsDirty = false;
+  loadedConditionGroup = group;
   renderQueryConditionEditor();
   const hint = document.getElementById('queryConditionHint');
-  if (data.legacy) {
-    hint.textContent = queryConditionRows.length
-      ? '尚未保存查询条件列表，当前显示由原批次号来源生成。保存后以本列表为准。'
-      : '尚未保存查询条件列表。若各组仍配置了批次号绑定，查询页会继续使用原批次号条件。';
+  const count = queryConditionRows.length;
+  if (resolved.scope === 'group') {
+    hint.textContent = `分组 ${group} 已保存 ${count} 条查询条件`;
+    hint.className = 'muted ok';
+  } else if (count) {
+    hint.textContent = `分组 ${group} 尚未保存查询条件列表，当前显示由原批次号来源生成。保存后以本列表为准。`;
     hint.className = 'muted warn';
   } else {
-    hint.textContent = `已保存 ${queryConditionRows.length} 条查询条件`;
-    hint.className = 'muted ok';
+    hint.textContent = `分组 ${group} 尚未保存查询条件。`;
+    hint.className = 'muted warn';
   }
 }
 
 function applyConditionsToProfile() {
-  if (!conditionsDirty || !currentProfile) return;
+  if (!conditionsDirty || !currentProfile || !loadedConditionGroup) return;
   const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
   const conditions = readConditionRowsFromDom();
   for (const [index, row] of conditions.entries()) {
     if (!row.name || !row.source_table || !row.source_field || !row.bind_field) {
       activateConfigTab('groups');
-      throw new Error(`第 ${index + 1} 条查询条件需要名称、来源表、来源字段和绑定列`);
+      throw new Error(`分组 ${loadedConditionGroup} 的第 ${index + 1} 条查询条件需要名称、来源表、来源字段和绑定列`);
     }
   }
   const view = ensureProfileView(viewName);
-  view.query_conditions = conditions;
+  if (!view.per_group[loadedConditionGroup] || typeof view.per_group[loadedConditionGroup] !== 'object') {
+    view.per_group[loadedConditionGroup] = {};
+  }
+  view.per_group[loadedConditionGroup].query_conditions = conditions;
   queryViews[viewName] = view;
 }
 
@@ -503,9 +566,18 @@ async function loadWorkingProfile() {
   currentProfile.query_view.group_baselines = currentProfile.query_view.group_baselines || {};
   currentProfile.plugins = currentProfile.plugins || { modules: {} };
   currentProfile.plugins.modules = currentProfile.plugins.modules || {};
+  stripViewLevelQueryConditions(currentProfile);
   pluginConfigData = currentProfile.plugins;
   fillAppSettingsForm(currentProfile.app_settings || {});
   fillOpcuaForm(currentProfile.opcua || {});
+}
+
+function stripViewLevelQueryConditions(profile) {
+  const views = profile?.query_view?.views;
+  if (!views || typeof views !== 'object') return;
+  for (const view of Object.values(views)) {
+    if (view && typeof view === 'object') delete view.query_conditions;
+  }
 }
 
 function ensureProfileView(viewName) {
@@ -658,6 +730,7 @@ async function reloadActiveConfigData(message) {
   pluginConfigData = { modules: {} };
   currentProfile = null;
   loadedGroup = '';
+  loadedConditionGroup = '';
   conditionsDirty = false;
   await loadConfigProfiles();
   await loadWorkingProfile();
@@ -798,6 +871,7 @@ function clearGroupConfigEditor() {
   document.getElementById('schemaHint').className = 'muted warn';
   document.getElementById('columnEditorHint').textContent = '';
   renderOrderedColumns();
+  clearQueryConditionEditor();
 }
 
 async function refreshMetadataFromCurrentDatabase() {
@@ -872,6 +946,7 @@ async function saveWorkingProfile(options = {}) {
   applyGroupEditorToProfile();
   applyPluginPageToProfile();
   applyConditionsToProfile();
+  stripViewLevelQueryConditions(currentProfile);
   const result = await fetchJson('/api/config/profile', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -886,6 +961,7 @@ async function saveWorkingProfile(options = {}) {
   });
   currentProfile = result.profile;
   currentProfile.query_view = currentProfile.query_view || { views: {}, group_baselines: {} };
+  stripViewLevelQueryConditions(currentProfile);
   currentProfile.plugins = currentProfile.plugins || { modules: {} };
   pluginConfigData = currentProfile.plugins;
   conditionsDirty = false;
@@ -1038,7 +1114,8 @@ function applyGroupEditorToProfile() {
   if (!viewName || !baselineTable) return;
   syncLabelInputsToState();
   const view = ensureProfileView(viewName);
-  view.per_group[loadedGroup] = {
+  const previous = view.per_group[loadedGroup];
+  const nextGroup = {
     columns: orderedColumns.map(name => ({
       name,
       label_en: (columnLabels[name] || {}).label_en || name,
@@ -1050,6 +1127,10 @@ function applyGroupEditorToProfile() {
     sort_dir: document.getElementById('tableSortDir').value || 'desc',
     page_size: Number(document.getElementById('tablePageSize').value || 50),
   };
+  if (previous && Array.isArray(previous.query_conditions)) {
+    nextGroup.query_conditions = previous.query_conditions;
+  }
+  view.per_group[loadedGroup] = nextGroup;
   currentProfile.query_view.group_baselines[loadedGroup] = baselineTable;
 }
 
@@ -1094,6 +1175,7 @@ async function loadTableConfig() {
     }
   }
   loadedGroup = group;
+  await showQueryConditionsForGroup(group);
   document.getElementById('columnEditorHint').textContent =
     cfg.columns.length
       ? `当前编辑: view=${viewName}, group=${group}, 基准表=${baselineTable}, columns=${orderedColumns.length}`
@@ -1185,6 +1267,7 @@ async function deleteGroupConfig() {
   delete view.per_group[group];
   delete currentProfile.query_view.group_baselines[group];
   loadedGroup = '';
+  await showQueryConditionsForGroup(group);
   orderedColumns = [];
   columnLabels = {};
   renderOrderedColumns();
@@ -1308,8 +1391,19 @@ document.getElementById('btnDeleteGroupConfig').addEventListener('click', () => 
   deleteGroupConfig().catch(catchHintError('columnEditorHint'));
 });
 document.getElementById('editGroupName').addEventListener('change', async () => {
+  const select = document.getElementById('editGroupName');
+  const previousGroup = loadedConditionGroup;
   try {
     applyGroupEditorToProfile();
+    applyConditionsToProfile();
+  } catch (err) {
+    if (previousGroup && hasOption(select, previousGroup)) {
+      select.value = previousGroup;
+    }
+    catchHintError('queryConditionHint')(err);
+    return;
+  }
+  try {
     loadedGroup = '';
     await loadTables();
     if (!document.getElementById('editTableName').value) {

@@ -73,7 +73,7 @@ def main() -> None:
     preview = ConfigManager.conditions_from_view(_view(), None, allow_empty_bind=True)
     assert preview[0]["bind_field"] == "", preview
 
-    explicit = ConfigManager.conditions_from_view(
+    ignored_view = ConfigManager.conditions_from_view(
         _view(
             query_conditions=[
                 {
@@ -86,11 +86,22 @@ def main() -> None:
         ),
         "Data_Main",
     )
-    assert explicit[0]["name"] == "操作员", explicit
-    assert "批次号" not in [item["name"] for item in explicit]
+    assert ignored_view[0]["name"] == "批次号", ignored_view
+    assert "操作员" not in [item["name"] for item in ignored_view]
 
-    cleared = ConfigManager.conditions_from_view(_view(query_conditions=[]), "Data_Main")
+    cleared = ConfigManager.conditions_from_view(
+        _view(
+            per_group={
+                "Data_Main": {"batch_field": "BatchCode", "query_conditions": []},
+            }
+        ),
+        "Data_Main",
+    )
     assert cleared == [], cleared
+
+    profile = {"views": {"table": {"query_conditions": [{"name": "操作员"}], "per_group": {}}}}
+    ConfigManager.drop_view_query_conditions(profile)
+    assert "query_conditions" not in profile["views"]["table"]
 
     grouped = ConfigManager.conditions_from_view(
         _view(

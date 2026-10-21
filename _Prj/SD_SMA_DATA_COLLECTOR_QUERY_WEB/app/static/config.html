@@ -147,15 +147,6 @@
       <div id="tab-groups" class="tab-panel">
         <h2>Group 与列</h2>
         <p class="hint">只列出当前数据库里的分组。列和查询条件先记在本页，和插件页一起由上方「保存」整份写入。</p>
-        <div class="settings-subsection">
-          <h3 class="subsection-title">查询条件（View 级）</h3>
-          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。未改本列表时，仍使用原来的批次号来源；改过之后，上方保存会把本列表整份写入。</p>
-          <div id="queryConditionList"></div>
-          <div class="row">
-            <button type="button" id="btnAddQueryCondition">添加条件</button>
-          </div>
-          <div id="queryConditionHint" class="muted"></div>
-        </div>
         <div class="row">
           <label for="editViewName">View</label>
           <select id="editViewName" disabled></select>
@@ -199,6 +190,15 @@
           <span class="inline-label">列显示名编辑</span>
         </div>
         <table id="columnLabelTable"></table>
+        <div class="settings-subsection">
+          <h3 class="subsection-title">查询条件（当前 Group）</h3>
+          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。切换上方 Group 时只显示该分组自己保存过的条件；没配置过的分组列表为空。</p>
+          <div id="queryConditionList"></div>
+          <div class="row">
+            <button type="button" id="btnAddQueryCondition">添加条件</button>
+          </div>
+          <div id="queryConditionHint" class="muted"></div>
+        </div>
         <div class="row">
           <button type="button" id="btnDeleteGroupConfig" class="danger-btn">删除当前分组</button>
         </div>
@@ -392,6 +392,6 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20261021_01"></script>
+    <script src="/static/config.js?v=20261021_03"></script>
   </body>
 </html>
