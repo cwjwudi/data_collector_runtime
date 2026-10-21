@@ -95,6 +95,9 @@ async def _lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SD SMA Collector Config Web", version="1.5.1", lifespan=_lifespan)
+_COMMON_WEB = COMMON_ROOT / "sd_sma_common" / "web"
+if _COMMON_WEB.is_dir():
+    app.mount("/common", StaticFiles(directory=str(_COMMON_WEB)), name="common")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 

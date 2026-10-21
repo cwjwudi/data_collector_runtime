@@ -1,36 +1,4 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f5f7fa;
-  color: #1f2937;
-}
-
-.page-nav {
-  padding: 10px 12px;
-  background: #fff;
-  border-bottom: 1px solid #dbe1ea;
-  font-size: 14px;
-}
-
-.page-nav a {
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.page-nav a:hover {
-  text-decoration: underline;
-}
-
-.page-nav-sep {
-  margin: 0 8px;
-  color: #94a3b8;
-}
-
-.page-nav-current {
-  color: #334155;
-  font-weight: 600;
-}
-
+/* Collector page styles — common chrome in /common/base.css */
 .home-layout {
   max-width: 900px;
   margin: 0 auto;
@@ -88,13 +56,6 @@ body {
   line-height: 1.45;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 12px;
-  padding: 12px;
-}
-
 .panel-span {
   grid-column: 1 / -1;
 }
@@ -142,11 +103,6 @@ body {
   flex: 0 0 auto;
 }
 
-.muted {
-  color: #64748b;
-  font-size: 12px;
-}
-
 .subheading {
   font-size: 14px;
   margin: 12px 0 6px;
@@ -175,38 +131,6 @@ body {
   border-radius: 6px;
   margin: 0;
   font-family: Consolas, "Courier New", monospace;
-}
-
-.panel {
-  background: #fff;
-  border: 1px solid #dbe1ea;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-h2 {
-  margin-top: 0;
-  font-size: 18px;
-}
-
-.row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-input,
-select,
-button {
-  font-size: 13px;
-}
-
-input,
-select {
-  padding: 6px;
-  border: 1px solid #c4ccd8;
-  border-radius: 4px;
-  flex: 1;
 }
 
 #config-file-select {
@@ -337,33 +261,6 @@ input[type="checkbox"] {
   gap: 8px;
   margin-bottom: 6px;
   font-size: 13px;
-}
-
-button {
-  padding: 6px 10px;
-  border: 1px solid #c4ccd8;
-  border-radius: 4px;
-  background: #f8fafc;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #eef2f7;
-}
-
-.danger-btn {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #fff;
-}
-
-.danger-btn:hover {
-  background: #b91c1c;
-}
-
-.hint {
-  margin: 8px 0;
-  color: #4b5563;
 }
 
 .action-result {
@@ -586,3 +483,7 @@ button:hover {
   width: fit-content;
 }
 
+
+.page-nav .lang-switch { display: inline-flex; gap: 4px; margin-left: 4px; vertical-align: middle; }
+.page-nav .lang-switch button { padding: 2px 8px; font-size: 12px; }
+.page-nav .lang-switch button.is-active { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; }

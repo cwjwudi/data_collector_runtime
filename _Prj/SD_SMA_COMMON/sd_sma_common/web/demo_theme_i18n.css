@@ -1,0 +1,54 @@
+/* 示范页专属样式 — 不复制 base.css 公共类;只用 --sd-* 变量 */
+.demo-page .demo-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.demo-page .demo-swatch {
+  width: 112px;
+  border: 1px solid var(--sd-color-border);
+  border-radius: var(--sd-radius);
+  overflow: hidden;
+  background: var(--sd-color-panel-bg);
+}
+
+.demo-page .demo-swatch-chip {
+  height: 36px;
+  border-bottom: 1px solid var(--sd-color-border);
+}
+
+.demo-page .demo-swatch-label {
+  padding: 6px 8px;
+  font-size: var(--sd-font-small);
+  color: var(--sd-color-muted);
+}
+
+.demo-page .demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sd-font-base);
+}
+
+.demo-page .demo-table th,
+.demo-page .demo-table td {
+  border: 1px solid var(--sd-color-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.demo-page .demo-lang-row {
+  align-items: center;
+}
+
+.demo-page .demo-lang-row button.is-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.demo-page .demo-status {
+  margin-top: 4px;
+}

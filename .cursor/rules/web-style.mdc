@@ -8,7 +8,7 @@ alwaysApply: false
 
 # 前端统一样式与语言规范
 
-公共底座在 `_Prj/SD_SMA_COMMON/sd_sma_common/web/`(`base.css`、`i18n.js`、`zh.js`),
+公共底座在 `_Prj/SD_SMA_COMMON/sd_sma_common/web/`(`base.css`、`i18n.js`、`zh.js`、`en.js`),
 通过各服务 `app.mount("/common", StaticFiles(...))` 访问。示范页:`SD_SMA_DATA_COLLECTOR_QUERY_WEB/app/static/query.html`。
 
 ## 样式
@@ -23,7 +23,7 @@ alwaysApply: false
 - 用户可见文案一律走字典:`HTML` 用 `data-i18n="key"`(属性用 `data-i18n-placeholder` / `data-i18n-aria`),
   `JS` 用 `SdI18n.t('key', {参数})`。❌ 不要写死中文字符串。
 - 新 key 加到 `/common/zh.js`,命名 `页面.区块.元素`(跨页复用放 `nav.*` / `common.*`)。
-- 当前单语言(中文);预留扩展:加语言 = 加一份 `<lang>.js` 字典 + 在 `i18n.js` 的 `LANGS` 注册,业务代码零改动。
+- 已支持中/英(`zh.js`/`en.js`);再加语言 = 加一份 `<lang>.js` 字典 + 在 `i18n.js` 的 `LANGS` 注册,业务代码零改动。主题/多语言静态示范:`web/demo_theme_i18n.html`。
 - 改动文案/底座后跑 `python -m sd_sma_common.web_i18n_check`(漏 key、死 key、硬编码残留会报错)。
 
 ## 迁移中的页面

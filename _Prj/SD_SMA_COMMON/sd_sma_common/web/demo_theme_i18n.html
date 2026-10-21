@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="demoDocTitle">SD SMA 主题与语言示范</title>
+    <!-- 相对路径: 既可用 python -m http.server 从本目录打开,也可经服务 /common/ 挂载 -->
+    <link rel="stylesheet" href="./base.css?v=20261021_03" />
+    <link rel="stylesheet" href="./demo_theme_i18n.css?v=20261021_03" />
+  </head>
+  <body class="demo-page">
+    <nav class="page-nav" data-i18n-aria="nav.aria" aria-label="站内导航">
+      <span class="page-nav-current" data-i18n="demo.nav.current">主题 / 多语言示范</span>
+    </nav>
+
+    <div class="layout layout-stack">
+      <section class="panel">
+        <h2 data-i18n="demo.title">SD SMA 主题与语言示范</h2>
+        <p class="hint" data-i18n="demo.intro">
+          本页使用公共 /common/base.css 的 --sd-* 变量与 SdI18n（中/英）。仅作前端预览，尚未迁移全部服务。
+        </p>
+        <div class="row demo-lang-row">
+          <span class="inline-label" data-i18n="demo.lang.label">语言</span>
+          <button type="button" data-demo-lang="zh" data-i18n="demo.lang.zh">中文</button>
+          <button type="button" data-demo-lang="en" data-i18n="demo.lang.en">English</button>
+          <span id="demoSwitchNote" class="muted"></span>
+        </div>
+        <p id="demoGreeting" class="muted demo-status"></p>
+        <p id="demoStatus" class="ok demo-status"></p>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="demo.panel.theme.title">主题色板</h2>
+        <p class="hint" data-i18n="demo.panel.theme.hint">
+          色块绑定 --sd-* CSS 变量。改 base.css 的 :root 即可影响全部服务。
+        </p>
+        <div class="demo-swatches">
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-bg)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.bg">背景</div>
+          </div>
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-panel-bg)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.panel">面板</div>
+          </div>
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-text)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.text">正文</div>
+          </div>
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-link)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.link">链接</div>
+          </div>
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-danger)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.danger">危险</div>
+          </div>
+          <div class="demo-swatch">
+            <div class="demo-swatch-chip" style="background: var(--sd-color-border)"></div>
+            <div class="demo-swatch-label" data-i18n="demo.token.border">边框</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="demo.panel.form.title">表单与按钮</h2>
+        <div class="row">
+          <label for="demoName" data-i18n="demo.panel.form.name">名称</label>
+          <input
+            id="demoName"
+            type="text"
+            data-i18n-placeholder="demo.panel.form.namePlaceholder"
+            placeholder="请输入名称"
+          />
+          <label for="demoRole" data-i18n="demo.panel.form.role">角色</label>
+          <select id="demoRole">
+            <option value="op" data-i18n="demo.panel.form.roleA">操作员</option>
+            <option value="admin" data-i18n="demo.panel.form.roleB">管理员</option>
+          </select>
+        </div>
+        <div class="row">
+          <button type="button" data-i18n="demo.panel.form.submit">主按钮</button>
+          <button type="button" data-i18n="demo.panel.form.reset">次按钮</button>
+          <button type="button" class="danger-btn" data-i18n="demo.panel.form.danger">危险操作</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="demo.panel.table.title">样例表格</h2>
+        <table class="demo-table">
+          <thead>
+            <tr>
+              <th data-i18n="demo.panel.table.col.name">名称</th>
+              <th data-i18n="demo.panel.table.col.value">数值</th>
+              <th data-i18n="demo.panel.table.col.note">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="demo.panel.table.row1.name">心跳</td>
+              <td data-i18n="demo.panel.table.row1.value">正常</td>
+              <td data-i18n="demo.panel.table.row1.note">表头使用公共 th 样式</td>
+            </tr>
+            <tr>
+              <td data-i18n="demo.panel.table.row2.name">批次</td>
+              <td data-i18n="demo.panel.table.row2.value">BAT-001</td>
+              <td data-i18n="demo.panel.table.row2.note">仅示范数据</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <script src="./zh.js?v=20261021_03"></script>
+    <script src="./en.js?v=20261021_03"></script>
+    <script src="./i18n.js?v=20261021_03"></script>
+    <script src="./demo_theme_i18n.js?v=20261021_03"></script>
+  </body>
+</html>

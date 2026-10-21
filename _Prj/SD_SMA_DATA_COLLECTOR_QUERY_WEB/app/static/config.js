@@ -1,3 +1,9 @@
+const t = (key, params) => {
+  if (!window.SdI18n || typeof window.SdI18n.t !== 'function') {
+    throw new Error('SdI18n is not loaded; check /common/i18n.js script order');
+  }
+  return window.SdI18n.t(key, params);
+};
 let queryViews = {};
 let availableColumns = [];
 let orderedColumns = [];
@@ -96,12 +102,12 @@ function renderOpcuaNodeList() {
     wrap.className = 'row';
     wrap.dataset.nodeIndex = String(index);
     const nameLabel = document.createElement('label');
-    nameLabel.textContent = '名称';
+    nameLabel.textContent = t('config.js.name');
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.dataset.field = 'name';
     nameInput.value = row.name || '';
-    nameInput.placeholder = '例如心跳';
+    nameInput.placeholder = t('config.js.exampleHeartbeat');
     const nodeLabel = document.createElement('label');
     nodeLabel.textContent = 'NodeId';
     const nodeInput = document.createElement('input');
@@ -112,7 +118,7 @@ function renderOpcuaNodeList() {
     nodeInput.placeholder = 'ns=6;s=::DataRev:bHeartBeat';
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
-    removeButton.textContent = '删除';
+    removeButton.textContent = t('config.js.delete');
     removeButton.addEventListener('click', () => {
       syncOpcuaNodesFromDom();
       opcuaNodes.splice(index, 1);
@@ -129,10 +135,10 @@ function addOpcuaNode(name, nodeId) {
   const nextName = String(name || '').trim();
   const nextId = String(nodeId || '').trim();
   if (nextId && opcuaNodes.some(row => row.node_id === nextId)) {
-    throw new Error(`点位已存在: ${nextId}`);
+    throw new Error(t('config.js.nodeIdExists', { id: nextId }));
   }
   if (nextName && opcuaNodes.some(row => row.name === nextName)) {
-    throw new Error(`点位名称已存在: ${nextName}`);
+    throw new Error(t('config.js.nodeExists', { name: nextName }));
   }
   opcuaNodes.push({ name: nextName, node_id: nextId });
   renderOpcuaNodeList();
@@ -147,13 +153,13 @@ function renderOpcuaBrowseNodes(items, container) {
     const addButton = document.createElement('button');
     addButton.type = 'button';
     addButton.className = 'node-button';
-    addButton.textContent = '加入点位';
+    addButton.textContent = t('config.js.addNode');
     addButton.addEventListener('click', () => {
       try {
         addOpcuaNode(item.display_name || item.node_id, item.node_id);
         addButton.disabled = true;
-        addButton.textContent = '已加入';
-        setHintMessage('opcuaNodeHint', `已加入 ${item.display_name || item.node_id}`, 'ok');
+        addButton.textContent = t('config.js.added');
+        setHintMessage('opcuaNodeHint', t('config.js.addedNode', { name: item.display_name || item.node_id }), 'ok');
       } catch (err) {
         setHintMessage('opcuaNodeHint', err.message || String(err));
       }
@@ -166,11 +172,11 @@ function renderOpcuaBrowseNodes(items, container) {
       const expandButton = document.createElement('button');
       expandButton.type = 'button';
       expandButton.className = 'node-button';
-      expandButton.textContent = '展开';
+      expandButton.textContent = t('config.js.expand');
       expandButton.addEventListener('click', () => {
         if (!children.hidden) {
           children.hidden = true;
-          expandButton.textContent = '展开';
+          expandButton.textContent = t('config.js.expand');
           return;
         }
         const load = children.dataset.loaded
@@ -180,7 +186,7 @@ function renderOpcuaBrowseNodes(items, container) {
           });
         load.then(() => {
           children.hidden = false;
-          expandButton.textContent = '收起';
+          expandButton.textContent = t('config.js.collapse');
         }).catch(err => setHintMessage('opcuaNodeHint', err.message || String(err)));
       });
       li.append(expandButton, children);
@@ -189,7 +195,7 @@ function renderOpcuaBrowseNodes(items, container) {
   }
   if (!items.length) {
     const li = document.createElement('li');
-    li.textContent = '没有子节点';
+    li.textContent = t('config.js.noChildren');
     container.appendChild(li);
   }
 }
@@ -287,7 +293,7 @@ function fillAppSettingsForm(data) {
   document.getElementById('appDbUsername').value = database.username || '';
   const passwordInput = document.getElementById('appDbPassword');
   passwordInput.value = '';
-  passwordInput.placeholder = database.password_configured ? '已配置；留空保持不变' : '输入数据库密码';
+  passwordInput.placeholder = database.password_configured ? t('config.js.passwordKeep') : t('config.js.enterDbPassword');
   document.getElementById('appDbClearPassword').checked = false;
   document.getElementById('appRequestsPerMinute').value = Number(queryLimits.requests_per_minute || 120);
   document.getElementById('appDefaultWindowHours').value = Number(queryLimits.default_window_hours || 24);
@@ -379,7 +385,7 @@ function fillOpcuaForm(data) {
   document.getElementById('appOpcuaUsername').value = settings.username || '';
   const passwordInput = document.getElementById('appOpcuaPassword');
   passwordInput.value = '';
-  passwordInput.placeholder = settings.password_configured ? '已配置；留空保持不变' : '输入 OPC UA 密码';
+  passwordInput.placeholder = settings.password_configured ? t('config.js.passwordKeep') : t('config.js.enterOpcPassword');
   document.getElementById('appOpcuaClearPassword').checked = false;
   document.getElementById('appOpcuaHeartbeatNode').value = settings.heartbeat_node || '';
   document.getElementById('appOpcuaPollIntervalMs').value = clampPollIntervalMs(
@@ -404,7 +410,7 @@ async function fetchJson(url, opts) {
   if (!resp.ok) {
     const detail = data.detail || data.message || JSON.stringify(data);
     if (resp.status === 404) {
-      throw new Error(`${detail}（接口不存在，请重启 Query Web 服务后再试）`);
+      throw new Error(t('config.js.apiMissing', { detail }));
     }
     throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
   }
@@ -432,7 +438,7 @@ function catchHintError(hintId) {
   return (err) => {
     const message = err?.message || String(err);
     setHintMessage(hintId, message);
-    setConfigStatus(`操作失败：${message}`, 'error');
+    setConfigStatus(t('config.js.opFailed', { message }), 'error');
   };
 }
 
@@ -579,18 +585,18 @@ function refreshConditionBindOptions() {
   for (const wrap of host.querySelectorAll('[data-condition-index]')) {
     const select = wrap.querySelector('[data-field="bind_field"]');
     const preferred = select.value || '';
-    fillConditionSelect(select, availableColumns, preferred, '绑定列', '当前基准表没有此列');
+    fillConditionSelect(select, availableColumns, preferred, t('config.js.bindColumn'), t('config.js.colMissing'));
   }
 }
 
 async function loadConditionSourceFields(tableName, fieldSelect, preferredField) {
-  fillConditionSelect(fieldSelect, [], preferredField, '来源字段');
+  fillConditionSelect(fieldSelect, [], preferredField, t('config.js.sourceField'));
   if (!tableName) return;
   try {
     const meta = await fetchJson('/api/meta/columns?table=' + encodeURIComponent(tableName));
-    fillConditionSelect(fieldSelect, meta.columns || [], preferredField, '来源字段', '来源表中不存在');
+    fillConditionSelect(fieldSelect, meta.columns || [], preferredField, t('config.js.sourceField'), t('config.js.sourceMissing'));
   } catch (_) {
-    fillConditionSelect(fieldSelect, [], preferredField, '来源字段', '来源表暂不可读');
+    fillConditionSelect(fieldSelect, [], preferredField, t('config.js.sourceField'), t('config.js.sourceUnreadable'));
   }
 }
 
@@ -603,39 +609,39 @@ function renderQueryConditionEditor() {
     wrap.dataset.conditionIndex = String(index);
 
     const nameLabel = document.createElement('label');
-    nameLabel.textContent = '名称';
+    nameLabel.textContent = t('config.js.name');
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.dataset.field = 'name';
     nameInput.value = row.name || '';
-    nameInput.placeholder = '例如批次号';
+    nameInput.placeholder = t('config.js.exampleBatch');
 
     const tableLabel = document.createElement('label');
-    tableLabel.textContent = '来源表';
+    tableLabel.textContent = t('config.js.sourceTable');
     const tableSelect = document.createElement('select');
     tableSelect.dataset.field = 'source_table';
     fillConditionSelect(
       tableSelect,
       conditionSourceTables,
       row.source_table || '',
-      '来源表',
-      '当前数据库不存在',
+      t('config.js.sourceTable'),
+      t('config.js.dbMissing'),
     );
 
     const fieldLabel = document.createElement('label');
-    fieldLabel.textContent = '来源字段';
+    fieldLabel.textContent = t('config.js.sourceField');
     const fieldSelect = document.createElement('select');
     fieldSelect.dataset.field = 'source_field';
 
     const bindLabel = document.createElement('label');
-    bindLabel.textContent = '绑定列';
+    bindLabel.textContent = t('config.js.bindColumn');
     const bindSelect = document.createElement('select');
     bindSelect.dataset.field = 'bind_field';
-    fillConditionSelect(bindSelect, availableColumns, row.bind_field || '', '绑定列', '当前基准表没有此列');
+    fillConditionSelect(bindSelect, availableColumns, row.bind_field || '', t('config.js.bindColumn'), t('config.js.colMissing'));
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
-    removeButton.textContent = '删除';
+    removeButton.textContent = t('config.js.delete');
     removeButton.addEventListener('click', () => {
       conditionsDirty = true;
       readConditionRowsFromDom();
@@ -686,7 +692,7 @@ function resolveProfileConditions(viewName, group) {
   }
   return {
     conditions: [{
-      name: '批次号',
+      name: t('config.js.batchNo'),
       source_table: sourceTable,
       source_field: sourceField,
       bind_field: bindField,
@@ -729,13 +735,13 @@ async function showQueryConditionsForGroup(group) {
   const hint = document.getElementById('queryConditionHint');
   const count = queryConditionRows.length;
   if (resolved.scope === 'group') {
-    hint.textContent = `分组 ${group} 已保存 ${count} 条查询条件`;
+    hint.textContent = t('config.js.condSaved', { group, count });
     hint.className = 'muted ok';
   } else if (count) {
-    hint.textContent = `分组 ${group} 尚未保存查询条件列表，当前显示由原批次号来源生成。保存后以本列表为准。`;
+    hint.textContent = t('config.js.condLegacy', { group });
     hint.className = 'muted warn';
   } else {
-    hint.textContent = `分组 ${group} 尚未保存查询条件。`;
+    hint.textContent = t('config.js.condEmpty', { group });
     hint.className = 'muted warn';
   }
 }
@@ -747,7 +753,7 @@ function applyConditionsToProfile() {
   for (const [index, row] of conditions.entries()) {
     if (!row.name || !row.source_table || !row.source_field || !row.bind_field) {
       activateConfigTab('groups');
-      throw new Error(`分组 ${loadedConditionGroup} 的第 ${index + 1} 条查询条件需要名称、来源表、来源字段和绑定列`);
+      throw new Error(t('config.js.condNeedFields', { group: loadedConditionGroup, index: index + 1 }));
     }
   }
   const view = ensureProfileView(viewName);
@@ -800,10 +806,10 @@ async function loadAppSettings() {
   if (!currentProfile) await loadWorkingProfile();
   fillAppSettingsForm(currentProfile.app_settings || {});
   fillOpcuaForm(currentProfile.opcua || {});
-  document.getElementById('appSettingsHint').textContent = '已加载数据库设定（数据库与查询限制）';
+  document.getElementById('appSettingsHint').textContent = t('config.js.loadedDb');
   const opcuaHint = document.getElementById('opcuaSettingsHint');
   if (opcuaHint) {
-    opcuaHint.textContent = '已加载 OPCUA设定（连接、轮询间隔与心跳）';
+    opcuaHint.textContent = t('config.js.loadedOpcua');
   }
 }
 
@@ -829,7 +835,7 @@ async function loadConfigProfiles() {
   const profiles = data.profiles || [];
   fillConfigProfileSelect(document.getElementById('configProfileSelect'), profiles, currentConfigProfile);
   document.getElementById('configProfileHint').textContent =
-    currentConfigProfile ? `当前文件: ${currentConfigProfile}` : '未找到可用 config';
+    currentConfigProfile ? t('config.js.currentFile', { name: currentConfigProfile }) : t('config.js.noConfigFound');
 }
 
 async function switchConfigProfile(sourceSelectId) {
@@ -842,20 +848,20 @@ async function switchConfigProfile(sourceSelectId) {
     body: JSON.stringify({ filename }),
   });
   currentConfigProfile = result.active || filename;
-  await reloadActiveConfigData(`已激活并加载 config: ${currentConfigProfile}`);
+  await reloadActiveConfigData(t('config.js.activated', { name: currentConfigProfile }));
 }
 
 async function refreshConfigProfiles() {
   await loadConfigProfiles();
   document.getElementById('configProfileHint').textContent =
-    currentConfigProfile ? `config 列表已刷新，当前加载: ${currentConfigProfile}` : '未找到可用 config';
+    currentConfigProfile ? t('config.js.listRefreshed', { name: currentConfigProfile }) : t('config.js.noConfigFound');
 }
 
 async function createConfigProfile() {
   const filename = await showNameModal(suggestConfigBaseName());
   const hint = document.getElementById('configProfileHint');
   if (!filename) {
-    hint.textContent = '已取消新建';
+    hint.textContent = t('config.js.cancelCreate');
     return;
   }
 
@@ -865,7 +871,7 @@ async function createConfigProfile() {
     body: JSON.stringify({ filename }),
   });
   currentConfigProfile = result.active || filename;
-  await reloadActiveConfigData(`已新建配置文件: ${currentConfigProfile}`);
+  await reloadActiveConfigData(t('config.js.created', { name: currentConfigProfile }));
 }
 
 function suggestConfigBaseName() {
@@ -887,25 +893,25 @@ async function deleteCurrentConfigProfile() {
   const filename = (document.getElementById('configProfileSelect').value || currentConfigProfile || '').trim();
   const hint = document.getElementById('configProfileHint');
   if (!filename) {
-    hint.textContent = '没有可删除的 config';
+    hint.textContent = t('config.js.nothingToDelete');
     return;
   }
 
   const confirmed = await showConfirmModal({
-    title: '删除确认（1/2）',
-    message: `确认删除配置文件 ${filename} 吗？`,
+    title: t('config.js.confirmDelete1'),
+    message: t('config.js.confirmDeleteFile', { filename }),
   });
   if (!confirmed) {
-    hint.textContent = '已取消删除';
+    hint.textContent = t('config.js.cancelDelete');
     return;
   }
 
   const confirmedAgain = await showConfirmModal({
-    title: '删除确认（2/2）',
-    message: `二次确认：删除后不可恢复，是否继续删除 ${filename}？`,
+    title: t('config.js.confirmDelete2'),
+    message: t('config.js.confirmDeleteFile2', { filename }),
   });
   if (!confirmedAgain) {
-    hint.textContent = '已取消删除';
+    hint.textContent = t('config.js.cancelDelete');
     return;
   }
 
@@ -915,11 +921,11 @@ async function deleteCurrentConfigProfile() {
     body: JSON.stringify({ filename }),
   });
   currentConfigProfile = result.active || '';
-  await reloadActiveConfigData(`已删除 config: ${filename}；当前加载: ${currentConfigProfile || '-'}`);
+  await reloadActiveConfigData(t('config.js.deletedFile', { filename, current: currentConfigProfile || '-' }));
 }
 
 async function reloadActiveConfigData(message) {
-  setConfigStatus('正在读取配置文件及其全部设置…', 'working');
+  setConfigStatus(t('config.js.reading'), 'working');
   safeStorageRemove(CONFIG_STATE_KEY);
   queryViews = {};
   availableColumns = [];
@@ -939,7 +945,7 @@ async function reloadActiveConfigData(message) {
   await refreshMetadataFromCurrentDatabase();
   await loadPluginConfig();
   document.getElementById('configProfileHint').textContent = message;
-  setConfigStatus(`读取成功：${message}`, 'ok');
+  setConfigStatus(t('config.js.readOk', { message }), 'ok');
 }
 
 function showNameModal(defaultBaseName = 'new_config') {
@@ -950,7 +956,7 @@ function showNameModal(defaultBaseName = 'new_config') {
     const cancelBtn = document.getElementById('name-modal-cancel');
     const confirmBtn = document.getElementById('name-modal-confirm');
 
-    hint.textContent = '文件后缀固定为 .json';
+    hint.textContent = t('config.js.suffixFixed');
     input.value = defaultBaseName;
     overlay.style.display = 'flex';
     input.focus();
@@ -972,11 +978,11 @@ function showNameModal(defaultBaseName = 'new_config') {
     const onConfirm = () => {
       const raw = input.value.trim().replace(/\.json$/i, '');
       if (!raw) {
-        hint.textContent = '文件名不能为空';
+        hint.textContent = t('config.js.nameEmpty');
         return;
       }
       if (/[\\/:*?"<>|]/.test(raw)) {
-        hint.textContent = '文件名包含非法字符 \\ / : * ? " < > |';
+        hint.textContent = t('config.js.nameIllegal');
         return;
       }
       cleanup();
@@ -1012,7 +1018,7 @@ function showConfirmModal({ title, message }) {
     const cancelBtn = document.getElementById('confirm-modal-cancel');
     const confirmBtn = document.getElementById('confirm-modal-confirm');
 
-    modalTitle.textContent = title || '确认';
+    modalTitle.textContent = title || t('config.js.confirm');
     modalMessage.textContent = message || '';
     overlay.style.display = 'flex';
 
@@ -1066,7 +1072,7 @@ function clearGroupConfigEditor() {
   document.getElementById('availableColumns').innerHTML = '';
   document.getElementById('tableTimeField').innerHTML = '';
   document.getElementById('tableSortBy').innerHTML = '';
-  document.getElementById('schemaHint').textContent = '当前数据库下没有可用 group，请先检查连接设置。';
+  document.getElementById('schemaHint').textContent = t('config.js.noGroup');
   document.getElementById('schemaHint').className = 'muted warn';
   document.getElementById('columnEditorHint').textContent = '';
   renderOrderedColumns();
@@ -1129,13 +1135,13 @@ async function refreshMetadataFromCurrentDatabase() {
 function describePrune(prune) {
   const parts = [];
   if (prune?.removed_groups?.length) {
-    parts.push(`已去掉当前库不存在的分组 ${prune.removed_groups.join('、')}`);
+    parts.push(t('config.js.removedGroups', { groups: prune.removed_groups.join('、') }));
   }
   if (prune?.removed_plugin_modules?.length) {
-    parts.push(`已去掉配置页不编辑的插件模块 ${prune.removed_plugin_modules.join('、')}`);
+    parts.push(t('config.js.removedPlugins', { modules: prune.removed_plugin_modules.join('、') }));
   }
   if (prune && prune.database_reached === false) {
-    parts.push('数据库未连上，分组未按当前库清理');
+    parts.push(t('config.js.dbNotConnected'));
   }
   return parts.join('；');
 }
@@ -1170,7 +1176,7 @@ async function saveWorkingProfile(options = {}) {
     await refreshMetadataFromCurrentDatabase();
   }
   const pruneText = describePrune(result.prune);
-  const baseMessage = options.successMessage || '整份配置已写入当前文件';
+  const baseMessage = options.successMessage || t('config.js.wroteFile');
   const message = pruneText ? `${baseMessage}；${pruneText}` : baseMessage;
   const dbHint = document.getElementById('appSettingsHint');
   if (dbHint && options.refreshMetadata) dbHint.textContent = message;
@@ -1179,20 +1185,20 @@ async function saveWorkingProfile(options = {}) {
 }
 
 async function connectDatabase() {
-  document.getElementById('appSettingsHint').textContent = '正在把整份配置写入并连接数据库...';
+  document.getElementById('appSettingsHint').textContent = t('config.js.connectingDb');
   await saveWorkingProfile({
     refreshMetadata: true,
-    successMessage: '整份配置已写入，数据库已连接，分组已按当前库刷新',
+    successMessage: t('config.js.wroteConnected'),
   });
   const check = await fetchJson('/api/db/check');
   document.getElementById('appSettingsHint').textContent =
-    `数据库连接成功（${check.database || '-'}），分组已刷新`;
+    t('config.js.dbConnected', { database: check.database || '-' });
 }
 
 async function testOpcuaConnection() {
   const hint = document.getElementById('opcuaSettingsHint') || document.getElementById('appSettingsHint');
   const payload = getOpcuaPayload();
-  hint.textContent = '正在测试 OPC UA 连接...';
+  hint.textContent = t('config.js.testingOpcua');
   hint.className = 'muted';
   try {
     const result = await fetchJson('/api/config/opcua', {
@@ -1201,7 +1207,7 @@ async function testOpcuaConnection() {
       body: JSON.stringify({ ...payload, test_only: true }),
     });
     const parts = [
-      result.message || 'OPC UA 连接成功',
+      result.message || t('config.js.opcuaOk'),
       result.endpoint_url ? `endpoint=${result.endpoint_url}` : '',
       result.product_name ? `product=${result.product_name}` : '',
       result.namespace_count != null ? `namespaces=${result.namespace_count}` : '',
@@ -1235,28 +1241,28 @@ async function loadTables() {
   currentSchema = data;
   const sel = document.getElementById('editTableName');
   sel.innerHTML = '';
-  for (const t of data.tables || []) {
-    const kind = data.table_kinds?.[t] || '';
-    const label = kind === 'fixed' ? `${t}（固定表）` : t;
-    appendOption(sel, t, label);
+  for (const tableName of data.tables || []) {
+    const kind = data.table_kinds?.[tableName] || '';
+    const label = kind === 'fixed' ? t('config.js.fixedTable', { t: tableName }) : tableName;
+    appendOption(sel, tableName, label);
   }
   if (data.baseline_table && (data.tables || []).includes(data.baseline_table)) {
     sel.value = data.baseline_table;
   }
   const hint = document.getElementById('schemaHint');
-  const fixedCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'fixed').length;
-  const partitionedCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'partitioned').length;
-  const legacyCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'legacy_date').length;
+  const fixedCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'fixed').length;
+  const partitionedCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'partitioned').length;
+  const legacyCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'legacy_date').length;
   const kindSummary = [
-    fixedCount ? `固定表 ${fixedCount}` : '',
-    partitionedCount ? `年份分表 ${partitionedCount}` : '',
-    legacyCount ? `日表 ${legacyCount}` : '',
+    fixedCount ? t('config.js.kindFixed', { count: fixedCount }) : '',
+    partitionedCount ? t('config.js.kindPart', { count: partitionedCount }) : '',
+    legacyCount ? t('config.js.kindLegacy', { count: legacyCount }) : '',
   ].filter(Boolean).join('，');
   if (data.consistent) {
-    hint.textContent = `group=${group} 结构一致，共 ${data.tables.length} 张表${kindSummary ? `（${kindSummary}）` : ''}`;
+    hint.textContent = t('config.js.schemaOk', { group, count: data.tables.length, kind: kindSummary ? `（${kindSummary}）` : '' });
     hint.className = 'muted ok';
   } else {
-    hint.textContent = `group=${group} 检测到结构不一致，请选择基准表。当前基准：${data.baseline_table}${kindSummary ? `；${kindSummary}` : ''}`;
+    hint.textContent = t('config.js.schemaBad', { group, baseline: data.baseline_table, kind: kindSummary ? `；${kindSummary}` : '' });
     hint.className = 'muted warn';
   }
   if (sel.value) {
@@ -1277,7 +1283,7 @@ function renderLabelTable() {
   const table = document.getElementById('columnLabelTable');
   table.innerHTML = '';
   const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><th>字段名</th><th>English</th><th>中文</th></tr>';
+  thead.innerHTML = `<tr><th>${t('config.js.th.field')}</th><th>${t('config.js.th.en')}</th><th>${t('config.js.th.zh')}</th></tr>`;
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
   for (const name of orderedColumns) {
@@ -1377,8 +1383,8 @@ async function loadTableConfig() {
   await showQueryConditionsForGroup(group);
   document.getElementById('columnEditorHint').textContent =
     cfg.columns.length
-      ? `当前编辑: view=${viewName}, group=${group}, 基准表=${baselineTable}, columns=${orderedColumns.length}`
-      : `当前编辑: view=${viewName}, group=${group}，尚未选择列`;
+      ? t('config.js.editing', { view: viewName, group, table: baselineTable, count: orderedColumns.length })
+      : t('config.js.editingNoCols', { view: viewName, group });
   saveConfigPageState();
 }
 
@@ -1437,26 +1443,26 @@ async function deleteGroupConfig() {
   const group = document.getElementById('editGroupName').value;
   const hint = document.getElementById('columnEditorHint');
   if (!viewName || !group) {
-    hint.textContent = '请先选择 view、group';
+    hint.textContent = t('config.js.selectViewGroup');
     hint.className = 'muted warn';
     return;
   }
 
   const confirmed = await showConfirmModal({
-    title: '删除确认（1/2）',
-    message: `确认删除当前 group 配置 view=${viewName}, group=${group} 吗？`,
+    title: t('config.js.confirmDelete1'),
+    message: t('config.js.confirmDeleteGroup', { view: viewName, group }),
   });
   if (!confirmed) {
-    hint.textContent = '已取消删除';
+    hint.textContent = t('config.js.cancelDelete');
     return;
   }
 
   const confirmedAgain = await showConfirmModal({
-    title: '删除确认（2/2）',
-    message: `二次确认：删除后不可恢复，是否继续删除 view=${viewName}, group=${group}？`,
+    title: t('config.js.confirmDelete2'),
+    message: t('config.js.confirmDeleteGroup2', { view: viewName, group }),
   });
   if (!confirmedAgain) {
-    hint.textContent = '已取消删除';
+    hint.textContent = t('config.js.cancelDelete');
     return;
   }
 
@@ -1472,8 +1478,8 @@ async function deleteGroupConfig() {
   renderOrderedColumns();
   document.getElementById('columnEditorHint').textContent =
     hadGroup || hadBaseline
-      ? `已从当前配置去掉 group=${group}，点上方保存后写入文件`
-      : `当前配置里没有 group=${group}`;
+      ? t('config.js.removedGroup', { group })
+      : t('config.js.noSuchGroup', { group });
   saveConfigPageState();
 }
 
@@ -1614,13 +1620,13 @@ window.addEventListener('scroll', () => {
 window.addEventListener('resize', hideOpcuaNodePicker);
 document.getElementById('btnBrowseOpcuaNodes').addEventListener('click', () => {
   const hint = document.getElementById('opcuaNodeHint');
-  hint.textContent = '正在浏览 OPC UA 节点...';
+  hint.textContent = t('config.js.browsing');
   hint.className = 'muted';
   browseOpcuaNodes(
     document.getElementById('opcuaBrowseNodeId').value.trim(),
     document.getElementById('opcuaBrowseList'),
   ).then(() => {
-    hint.textContent = '已加载节点，点「加入点位」后可在其它 NodeId 框中下拉选择';
+    hint.textContent = t('config.js.browseLoaded');
     hint.className = 'muted ok';
   }).catch(err => setHintMessage('opcuaNodeHint', err.message || String(err)));
 });
@@ -1756,12 +1762,12 @@ function updatePluginTableListModeUi() {
   }
   if (cursorHint) {
     cursorHint.textContent = isAdvanced
-      ? 'OPC UA 模式已锁定，不可编辑'
-      : '可选；不选则按批次号反查主表';
+      ? t('config.js.opcuaModeLockedEdit')
+      : t('config.plugins.tableList.cursorHint');
   }
   const hint = document.getElementById('pluginTableListWritebackHint');
   if (hint && isAdvanced) {
-    hint.textContent = 'OPC UA 模式：批次号来自 PLC 节点，开批时间由主表反查。';
+    hint.textContent = t('config.js.opcuaModeLocked');
     hint.className = 'muted ok';
   }
 }
@@ -1872,7 +1878,7 @@ async function refreshPluginTableListColumnOptions(tableListCfg) {
   const bindGroup = document.getElementById('pluginBindGroup').value || '';
   if (!bindGroup) {
     renderPluginTableListColumnOptions([], tableListCfg || {});
-    hint.textContent = '请先选择 bind_group；批次列来自该 group 在「Group 与列」中的配置。';
+    hint.textContent = t('config.js.needBindGroupBatch');
     hint.className = 'muted warn';
     updatePluginTableListModeUi();
     return [];
@@ -1881,19 +1887,19 @@ async function refreshPluginTableListColumnOptions(tableListCfg) {
     const columns = groupColumnDefsFromProfile(viewName, bindGroup);
     renderPluginTableListColumnOptions(columns, tableListCfg || collectPluginTableListWriteback());
     if (columns.length === 0) {
-      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。`;
+      hint.textContent = t('config.js.groupNoCols', { view: viewName, group: bindGroup });
       hint.className = 'muted warn';
     } else if (isAdvanced) {
-      hint.textContent = 'OPC UA 模式：批次号来自 PLC 节点，开批时间由主表反查。';
+      hint.textContent = t('config.js.opcuaModeLocked');
       hint.className = 'muted ok';
     } else {
-      hint.textContent = `已加载 ${columns.length} 列，可配置批次列与开批时间列。`;
+      hint.textContent = t('config.js.loadedColsBatch', { count: columns.length });
       hint.className = 'muted ok';
     }
     updatePluginTableListModeUi();
     return columns;
   } catch (e) {
-    hint.textContent = `无法加载 group 列配置：${e.message || e}`;
+    hint.textContent = t('config.js.loadGroupFail', { msg: e.message || e });
     hint.className = 'muted warn';
     return [];
   }
@@ -2024,7 +2030,7 @@ function ensurePluginModuleAndPage(moduleName, pageIndex) {
 async function updatePluginGroupHint(group) {
   const hint = document.getElementById('pluginGroupHint');
   if (!group) {
-    hint.textContent = '未选择 bind_group';
+    hint.textContent = t('config.js.noBindGroup');
     hint.className = 'muted';
     return;
   }
@@ -2033,16 +2039,16 @@ async function updatePluginGroupHint(group) {
     const tableCount = Array.isArray(data.tables) ? data.tables.length : 0;
     const baseline = data.baseline_table || '-';
     const fixedTables = (data.tables || []).filter(t => data.table_kinds?.[t] === 'fixed');
-    const fixedHint = fixedTables.length > 0 ? `，含固定表 ${fixedTables.join('、')}` : '';
+    const fixedHint = fixedTables.length > 0 ? t('config.js.fixedHint', { tables: fixedTables.join('、') }) : '';
     if (data.consistent) {
-      hint.textContent = `group=${group}，表数量=${tableCount}，基准表=${baseline}，结构一致${fixedHint}`;
+      hint.textContent = t('config.js.groupInfoOk', { group, tableCount, baseline, fixed: fixedHint });
       hint.className = 'muted ok';
     } else {
-      hint.textContent = `group=${group}，表数量=${tableCount}，基准表=${baseline}，检测到结构不一致${fixedHint}`;
+      hint.textContent = t('config.js.groupInfoBad', { group, tableCount, baseline, fixed: fixedHint });
       hint.className = 'muted warn';
     }
   } catch (e) {
-    hint.textContent = `group=${group} 信息读取失败：${e.message || e}`;
+    hint.textContent = t('config.js.groupInfoFail', { group, msg: e.message || e });
     hint.className = 'muted warn';
   }
 }
@@ -2059,7 +2065,7 @@ function renderPluginOpcuaColumnTable(columns, writebackCfg) {
   table.innerHTML = '';
   const boundColumns = writebackCfg?.columns && typeof writebackCfg.columns === 'object' ? writebackCfg.columns : {};
   const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><th>回写</th><th>字段名</th><th>显示名</th><th>OPC NodeId</th></tr>';
+  thead.innerHTML = `<tr><th>${t('config.js.th.write')}</th><th>${t('config.js.th.field')}</th><th>${t('config.js.th.display')}</th><th>${t('config.js.th.nodeId')}</th></tr>`;
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
   for (const col of columns) {
@@ -2152,7 +2158,7 @@ async function loadPluginOpcuaWritebackTable(viewName, bindGroup, writebackCfg) 
   cursorEl.value = writebackCfg?.cursor || '';
 
   if (!bindGroup) {
-    hint.textContent = '请先选择 bind_group；列清单来自该 group 在「Group 与列」中的配置。';
+    hint.textContent = t('config.js.needBindGroupCols');
     hint.className = 'muted warn';
     return;
   }
@@ -2160,16 +2166,16 @@ async function loadPluginOpcuaWritebackTable(viewName, bindGroup, writebackCfg) 
   try {
     const columns = groupColumnDefsFromProfile(viewName, bindGroup);
     if (columns.length === 0) {
-      hint.textContent = `view=${viewName}, group=${bindGroup} 尚未配置列。先在「分组与列」里选好列，再点上方保存。`;
+      hint.textContent = t('config.js.groupNoColsSave', { view: viewName, group: bindGroup });
       hint.className = 'muted warn';
       return;
     }
     renderPluginOpcuaColumnTable(columns, writebackCfg);
     const boundCount = Object.keys(writebackCfg?.columns || {}).length;
-    hint.textContent = `已加载 ${columns.length} 列，当前绑定 ${boundCount} 列回写。`;
+    hint.textContent = t('config.js.loadedColsBound', { count: columns.length, bound: boundCount });
     hint.className = 'muted ok';
   } catch (e) {
-    hint.textContent = `无法加载 group 列配置：${e.message || e}`;
+    hint.textContent = t('config.js.loadGroupFail', { msg: e.message || e });
     hint.className = 'muted warn';
   }
 }
@@ -2183,7 +2189,7 @@ async function refreshPluginOpcuaWritebackTable() {
 }
 
 async function loadPluginWritebackSettingsForGroup(bindGroup) {
-  setConfigStatus(`正在读取 bind_group=${bindGroup || '-'} 的插件页设置…`, 'working');
+  setConfigStatus(t('config.js.readingPlugin', { bindGroup: bindGroup || '-' }), 'working');
   const opcuaDraft = updatePluginOpcuaWritebackDraft();
   syncPluginTableListAdvancedCache();
   const tableListDraft = pluginTableListWritebackDraft || buildTableListWritebackDefaults();
@@ -2197,8 +2203,7 @@ async function loadPluginWritebackSettingsForGroup(bindGroup) {
 
   const moduleName = document.getElementById('pluginModule').value || LOCKED_PLUGIN_MODULE;
   const pageIndex = document.getElementById('pluginPageIndex').value || '1';
-  setConfigStatus(
-    `读取成功：module=${moduleName}，page=${pageIndex}，bind_group=${bindGroup || '-'}；高级回写设置已完整载入`,
+  setConfigStatus(t('config.js.pluginReadOk', { module: moduleName, page: pageIndex, bindGroup: bindGroup || '-' }),
     'ok',
   );
 }
@@ -2208,7 +2213,7 @@ function renderPluginOpcuaFeedbackEditor() {
   const payload = buildOpcuaWritebackPreview(writeback || { cursor: document.getElementById('pluginOpcuaCursor').value.trim(), columns: {} });
   document.getElementById('pluginOpcuaFeedbackJson').value = JSON.stringify(payload, null, 2);
   document.getElementById('pluginOpcuaFeedbackHint').textContent =
-    '只读预览；保存当前页配置时以上方表单为准。';
+    t('config.js.previewReadonly');
 }
 
 async function loadPluginPageConfig() {
@@ -2240,7 +2245,7 @@ async function loadPluginPageConfig() {
 
   loadedPluginPage = pageIndex;
   document.getElementById('pluginConfigHint').textContent =
-    `当前编辑: module=${moduleName}, page=${pageIndex}`;
+    t('config.js.pluginEditing', { module: moduleName, page: pageIndex });
   saveConfigPageState();
 }
 
@@ -2270,7 +2275,7 @@ function applyPluginPageToProfile() {
   if (sqlWriteback && sqlWriteback._invalid) {
     document.getElementById('pluginPageIndex').value = pageIndex;
     activateConfigTab('plugins');
-    throw new Error('启用查询 SQL 写回时需填写 SQL NodeId');
+    throw new Error(t('config.js.sqlNeedNode'));
   }
   if (sqlWriteback) {
     pageCfg.sql_writeback = sqlWriteback;
@@ -2284,14 +2289,14 @@ function applyPluginPageToProfile() {
     if (tableListWriteback._invalid) {
       const reason =
         tableListWriteback._invalidReason === 'advanced_empty'
-          ? '高级模式请至少填写上一页、下一页，或一组批次号/触发 NodeId'
+          ? t('config.js.advNeedPagesOrBatch')
           : tableListWriteback._invalidReason === 'advanced_batch_pair'
-            ? '批次表名回写需同时填写批次号 NodeId 与触发 NodeId；仅使用翻页时两项均留空'
+            ? t('config.js.batchNeedPair')
           : tableListWriteback._invalidReason === 'advanced_batch_column'
-            ? '启用批次触发回写时需绑定批次字段；仅使用翻页时可将批次号与触发 NodeId 均留空'
+            ? t('config.js.batchNeedField')
             : tableListWriteback._invalidReason === 'advanced_buffer'
-              ? '启用批次触发回写时需填写 Buffer NodeId；仅使用翻页时可留空'
-              : '基础批次表名回写需填写批次列与 Buffer NodeId';
+              ? t('config.js.batchNeedBuffer')
+              : t('config.js.basicNeedBatchBuffer');
       document.getElementById('pluginPageIndex').value = pageIndex;
       activateConfigTab('plugins');
       throw new Error(reason);
@@ -2406,7 +2411,7 @@ async function initConfigPage() {
   enableButtonClickFeedback();
   await loadPluginConfig().catch(() => {});
   await restoreConfigPageState();
-  setConfigStatus(`已读取 ${currentConfigProfile || '配置文件'}`, 'ok');
+  setConfigStatus(t('config.js.readProfile', { profile: currentConfigProfile || t('config.js.profileLabel') }), 'ok');
 }
 
 initConfigPage().catch(catchHintError('configProfileHint'));

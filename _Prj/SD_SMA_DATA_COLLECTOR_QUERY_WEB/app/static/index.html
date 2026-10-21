@@ -4,24 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SD SMA Query Web</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/common/base.css?v=20261021_03" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261021_03" />
   </head>
   <body>
+    <nav class="page-nav" data-i18n-aria="nav.aria" aria-label="站内导航">
+      <span class="page-nav-current" data-i18n="home.title">SD SMA Query Web</span>
+      <span class="page-nav-sep" aria-hidden="true">·</span>
+      <span class="lang-switch" role="group" data-i18n-aria="common.lang.aria" aria-label="语言">
+        <button type="button" data-lang-switch="zh" data-i18n="common.lang.zh">中文</button>
+        <button type="button" data-lang-switch="en" data-i18n="common.lang.en">English</button>
+      </span>
+    </nav>
     <div class="layout home-layout">
       <section class="panel home-hero">
-        <h1>SD SMA Query Web</h1>
-        <p class="hint home-lead">数据查询与列配置分两页入口；请先进入对应功能页。</p>
+        <h1 data-i18n="home.title">SD SMA Query Web</h1>
+        <p class="hint home-lead" data-i18n="home.lead">数据查询与列配置分两页入口；请先进入对应功能页。</p>
         <div class="nav-cards">
           <a class="nav-card" href="/query">
-            <h2>查询页</h2>
-            <p>按视图与分组查询数据库，分页与时间范围筛选</p>
+            <h2 data-i18n="home.card.query.title">查询页</h2>
+            <p data-i18n="home.card.query.desc">按视图与分组查询数据库，分页与时间范围筛选</p>
           </a>
           <a class="nav-card" href="/config">
-            <h2>配置页</h2>
-            <p>编辑 Group 列顺序、显示名与插件页绑定</p>
+            <h2 data-i18n="home.card.config.title">配置页</h2>
+            <p data-i18n="home.card.config.desc">编辑 Group 列顺序、显示名与插件页绑定</p>
           </a>
         </div>
       </section>
     </div>
+    <script src="/common/zh.js?v=20261021_03"></script>
+    <script src="/common/en.js?v=20261021_03"></script>
+    <script src="/common/i18n.js?v=20261021_03"></script>
   </body>
 </html>

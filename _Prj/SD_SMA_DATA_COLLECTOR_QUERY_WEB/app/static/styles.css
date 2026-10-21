@@ -1,15 +1,13 @@
-/* 与 web_config/static/styles.css 对齐，并保留本应用表格、多选与反馈样式 */
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f5f7fa;
-  color: #1f2937;
-}
-
+/* Query Web page styles — common chrome in /common/base.css; do not duplicate page-nav/panel/row/button */
 body.config-page {
   padding-bottom: 0;
 }
+
+/* base.css covers button chrome; keep flex sizing for form rows */
+.layout button {
+  flex: 0 0 auto;
+}
+
 
 .config-status-bar {
   position: sticky;
@@ -72,32 +70,6 @@ body.config-page {
   to { opacity: 1; }
 }
 
-.page-nav {
-  padding: 10px 12px;
-  background: #fff;
-  border-bottom: 1px solid #dbe1ea;
-  font-size: 14px;
-}
-
-.page-nav a {
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.page-nav a:hover {
-  text-decoration: underline;
-}
-
-.page-nav-sep {
-  margin: 0 8px;
-  color: #94a3b8;
-}
-
-.page-nav-current {
-  color: #334155;
-  font-weight: 600;
-}
-
 .home-layout {
   max-width: 900px;
   margin: 0 auto;
@@ -155,17 +127,6 @@ body.config-page {
   line-height: 1.45;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 12px;
-  padding: 12px;
-}
-
-.layout.layout-stack {
-  grid-template-columns: 1fr;
-}
-
 .config-file-bar {
   display: flex;
   flex-wrap: wrap;
@@ -220,34 +181,11 @@ body.config-page {
   min-width: 14rem;
 }
 
-.panel {
-  background: #fff;
-  border: 1px solid #dbe1ea;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-h2 {
-  margin-top: 0;
-  font-size: 18px;
-}
-
-.hint {
-  margin: 8px 0;
-  color: #4b5563;
-}
-
 .hint code {
   font-size: 12px;
   background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 4px;
-}
-
-.row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
 }
 
 .query-page .row {
@@ -333,20 +271,6 @@ h2 {
   font-size: 13px;
 }
 
-input,
-select,
-button {
-  font-size: 13px;
-}
-
-input,
-select {
-  padding: 6px;
-  border: 1px solid #c4ccd8;
-  border-radius: 4px;
-  flex: 1;
-}
-
 .field-narrow-num,
 .field-page-num {
   flex: 0 0 auto;
@@ -362,39 +286,10 @@ input[type='radio'] {
   padding: 0;
 }
 
-button {
-  padding: 6px 10px;
-  border: 1px solid #c4ccd8;
-  border-radius: 4px;
-  background: #f8fafc;
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-button:hover {
-  background: #eef2f7;
-}
-
-button.is-clicked {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-
 button.is-selected {
   background: #2563eb;
   border-color: #1d4ed8;
   color: #ffffff;
-}
-
-.danger-btn {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #fff;
-}
-
-.danger-btn:hover {
-  background: #b91c1c;
 }
 
 .danger-btn.is-clicked {
@@ -644,11 +539,6 @@ input.opcua-node-input {
   word-break: break-all;
 }
 
-.muted {
-  color: #6b7280;
-  font-size: 12px;
-}
-
 .warn {
   color: #b45309;
 }
@@ -735,4 +625,22 @@ input.opcua-node-input {
     padding: 10px 8px;
     font-size: 14px;
   }
+}
+
+/* Language switcher in page-nav */
+.page-nav .lang-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.page-nav .lang-switch button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.page-nav .lang-switch button.is-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 600;
 }
