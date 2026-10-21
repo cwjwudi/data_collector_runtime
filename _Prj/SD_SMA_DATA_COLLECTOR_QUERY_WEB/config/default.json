@@ -19,7 +19,8 @@
     "endpoint_url": "",
     "username": "",
     "heartbeat_node": "",
-    "poll_interval_ms": 500
+    "poll_interval_ms": 500,
+    "nodes": []
   },
   "query_view": {
     "default_page_size": 50,

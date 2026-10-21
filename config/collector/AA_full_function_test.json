@@ -603,7 +603,7 @@
       "batch_insert_size": 5,
       "is_parallel": false,
       "trigger_interval_seconds": 1,
-      "partition_interval_years": 1,
+      "partition_interval_years": 0,
       "trigger_mode": "poll"
     },
     {
@@ -652,9 +652,6 @@
           "unique": false,
           "index_type": "btree"
         }
-      ],
-      "dict_fields": [
-        "BatchCode"
       ]
     },
     {
