@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>配置页 — SD SMA Query Web</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20261020_04" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261021_02" />
   </head>
   <body class="config-page">
     <nav class="page-nav" aria-label="站内导航">
@@ -111,6 +111,22 @@
           </div>
         </div>
 
+        <div class="settings-subsection settings-subsection-opcua-nodes">
+          <h3 class="subsection-title">OPC UA 点位</h3>
+          <p class="hint subsection-hint">先在这里备好点位。下面的心跳、插件页 NodeId 可以下拉选择这些点，也可以直接输入地址。点位和连接一起由上方「保存」写入。</p>
+          <div id="opcuaNodeList"></div>
+          <div class="row">
+            <button type="button" id="btnAddOpcuaNode">添加点位</button>
+          </div>
+          <div class="row">
+            <label for="opcuaBrowseNodeId">从节点浏览</label>
+            <input id="opcuaBrowseNodeId" type="text" class="field-wide" placeholder="node_id（空为根节点）" value="ns=6;i=1000" />
+            <button type="button" id="btnBrowseOpcuaNodes">浏览</button>
+          </div>
+          <ul id="opcuaBrowseList" class="opcua-browse-list"></ul>
+          <div id="opcuaNodeHint" class="muted"></div>
+        </div>
+
         <div class="settings-subsection settings-subsection-opcua-monitor">
           <h3 class="subsection-title">监控与心跳（全局）</h3>
           <p class="hint subsection-hint">作用于全局 OPC 轮询与心跳写入；心跳仅支持 BOOL / 整型，写 1</p>
@@ -132,7 +148,7 @@
             <input
               id="appOpcuaHeartbeatNode"
               type="text"
-              class="field-wide"
+              class="field-wide opcua-node-input"
               placeholder="ns=6;s=::DataRev:bHeartBeat（可选）"
             />
           </div>
@@ -248,7 +264,7 @@
           </p>
           <div class="row">
             <label for="pluginOpcuaCursor">Cursor NodeId</label>
-            <input id="pluginOpcuaCursor" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:diCursor" />
+            <input id="pluginOpcuaCursor" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:diCursor" />
             <span class="muted inline-hint">翻页/查询后写 -1；点击行写 0–49</span>
           </div>
           <table id="pluginOpcuaColumnTable"></table>
@@ -269,7 +285,7 @@
             <input
               id="pluginSqlWritebackNode"
               type="text"
-              class="field-wide"
+              class="field-wide opcua-node-input"
               placeholder="ns=6;s=::DataRev:sQuerySql"
             />
           </div>
@@ -324,7 +340,7 @@
             <input
               id="pluginTableListBufferNode"
               type="text"
-              class="field-wide"
+              class="field-wide opcua-node-input"
               placeholder="ns=6;s=::DataRev:strListName"
             />
             <span class="muted inline-hint">高级模式仅翻页时可留空</span>
@@ -338,23 +354,23 @@
             </p>
             <div class="row">
               <label for="pluginTableListQueryNode">查询 NodeId</label>
-              <input id="pluginTableListQueryNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bExecuteRead" />
+              <input id="pluginTableListQueryNode" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:bExecuteRead" />
             </div>
             <div class="row">
               <label for="pluginTableListPrevPageNode">上一页 NodeId</label>
-              <input id="pluginTableListPrevPageNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bPrevPage" />
+              <input id="pluginTableListPrevPageNode" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:bPrevPage" />
             </div>
             <div class="row">
               <label for="pluginTableListNextPageNode">下一页 NodeId</label>
-              <input id="pluginTableListNextPageNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bNextPage" />
+              <input id="pluginTableListNextPageNode" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:bNextPage" />
             </div>
             <div class="row">
               <label for="pluginTableListBatchNoNode">批次号 NodeId</label>
-              <input id="pluginTableListBatchNoNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:strBatchNo" />
+              <input id="pluginTableListBatchNoNode" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:strBatchNo" />
             </div>
             <div class="row">
               <label for="pluginTableListTriggerNode">触发 NodeId</label>
-              <input id="pluginTableListTriggerNode" type="text" class="field-wide" placeholder="ns=6;s=::DataRev:bTrigger" />
+              <input id="pluginTableListTriggerNode" type="text" class="field-wide opcua-node-input" placeholder="ns=6;s=::DataRev:bTrigger" />
             </div>
           </div>
           <div id="pluginTableListWritebackHint" class="muted"></div>
@@ -392,6 +408,7 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20261021_03"></script>
+    <div id="opcuaNodePicker" class="opcua-node-picker" hidden></div>
+    <script src="/static/config.js?v=20261021_06"></script>
   </body>
 </html>

@@ -148,3 +148,10 @@ class OpcUaSettingsRequest(BaseModel):
     poll_interval_ms: int = 500
     test_only: bool = False
 
+
+class OpcUaBrowseRequest(BaseModel):
+    endpoint_url: str = ""
+    username: str = ""
+    password: str = ""
+    node_id: str = ""
+

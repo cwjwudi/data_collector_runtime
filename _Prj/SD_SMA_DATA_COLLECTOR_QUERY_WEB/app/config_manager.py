@@ -134,6 +134,7 @@ class UnifiedConfigStore:
             "username": "",
             "heartbeat_node": "",
             "poll_interval_ms": 500,
+            "nodes": [],
         }
 
     @staticmethod
@@ -144,6 +145,33 @@ class UnifiedConfigStore:
             value = 500
         return max(50, min(value, 5000))
 
+    @staticmethod
+    def _normalize_opcua_nodes(raw: Any) -> list[dict[str, str]]:
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError("opcua.nodes must be a list")
+        nodes: list[dict[str, str]] = []
+        seen_ids: set[str] = set()
+        seen_names: set[str] = set()
+        for index, item in enumerate(raw):
+            if not isinstance(item, dict):
+                raise ValueError(f"opcua.nodes[{index}] must be an object")
+            name = str(item.get("name") or "").strip()
+            node_id = str(item.get("node_id") or "").strip()
+            if not name and not node_id:
+                continue
+            if not name or not node_id:
+                raise ValueError(f"opcua.nodes[{index}] 需要名称和 NodeId")
+            if node_id in seen_ids:
+                raise ValueError(f"OPC UA 点位 NodeId 重复: {node_id}")
+            if name in seen_names:
+                raise ValueError(f"OPC UA 点位名称重复: {name}")
+            seen_ids.add(node_id)
+            seen_names.add(name)
+            nodes.append({"name": name, "node_id": node_id})
+        return nodes
+
     @classmethod
     def _normalize_opcua_settings(cls, raw: Any) -> dict[str, Any]:
         data = raw if isinstance(raw, dict) else {}
@@ -152,6 +180,7 @@ class UnifiedConfigStore:
             "username": str(data.get("username", "") or ""),
             "heartbeat_node": str(data.get("heartbeat_node", "") or "").strip(),
             "poll_interval_ms": cls._clamp_poll_interval_ms(data.get("poll_interval_ms", 500)),
+            "nodes": cls._normalize_opcua_nodes(data.get("nodes")),
         }
         if data.get("password_enc"):
             normalized["password_enc"] = str(data["password_enc"])
@@ -604,6 +633,9 @@ class UnifiedConfigStore:
     def save_opcua_settings(self, data: dict[str, Any]) -> dict[str, Any]:
         config = self.get_active_config()
         existing = config.get("opcua", {})
+        if isinstance(existing, dict) and "nodes" not in data:
+            data = dict(data)
+            data["nodes"] = existing.get("nodes") or []
         stored = prepare_password_mapping(
             self.config_dir,
             data,

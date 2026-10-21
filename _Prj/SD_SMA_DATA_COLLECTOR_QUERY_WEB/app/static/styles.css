@@ -579,6 +579,71 @@ th {
   text-align: center;
 }
 
+.opcua-browse-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.opcua-browse-list li {
+  margin: 4px 0;
+}
+
+.opcua-browse-list .node-button {
+  margin-left: 8px;
+}
+
+input.opcua-node-input {
+  background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%), linear-gradient(135deg, #6b7280 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 22px;
+}
+
+.opcua-node-picker {
+  position: fixed;
+  z-index: 80;
+  max-height: 220px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.opcua-node-picker button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  text-align: left;
+  font-weight: 400;
+}
+
+.opcua-node-picker button:hover {
+  background: #f3f4f6;
+}
+
+.opcua-node-picker .opcua-node-name {
+  flex: 0 1 auto;
+  color: #111827;
+}
+
+.opcua-node-picker .opcua-node-id {
+  flex: 1 1 auto;
+  color: #6b7280;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  text-align: right;
+  word-break: break-all;
+}
+
 .muted {
   color: #6b7280;
   font-size: 12px;

@@ -29,6 +29,7 @@ from .models import (
     QueryGroupConfigUpdateRequest,
     PluginCursorRequest,
     PluginQueryRequest,
+    OpcUaBrowseRequest,
     OpcUaSettingsRequest,
     QueryTableConfigUpdateRequest,
     QueryFilter,
@@ -2013,6 +2014,27 @@ async def _run_opcua_connection_check(
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=str(result.get("message", "OPC UA 连接失败")))
     return result
+
+
+@app.post("/api/config/opcua/browse")
+async def browse_opcua_nodes(payload: OpcUaBrowseRequest) -> dict[str, Any]:
+    endpoint = normalize_opcua_endpoint_url(payload.endpoint_url)
+    username = payload.username
+    password = payload.password
+    saved = config_store.get_opcua_settings()
+    if not endpoint:
+        endpoint = normalize_opcua_endpoint_url(str(saved.get("endpoint_url", "") or ""))
+    if not username:
+        username = str(saved.get("username", "") or "")
+    if not password:
+        password = str(saved.get("password", "") or "")
+    try:
+        items = await opcua_client.browse_children(endpoint, payload.node_id, username, password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"浏览 OPC UA 节点失败: {exc}") from exc
+    return {"items": items}
 
 
 @app.post("/api/config/opcua")

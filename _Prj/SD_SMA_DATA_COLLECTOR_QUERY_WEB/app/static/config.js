@@ -16,6 +16,199 @@ let loadedGroup = '';
 let loadedConditionGroup = '';
 let loadedPluginPage = '1';
 let conditionsDirty = false;
+let opcuaNodes = [];
+
+function syncOpcuaNodesFromDom() {
+  const host = document.getElementById('opcuaNodeList');
+  if (!host) return opcuaNodes;
+  const rows = [];
+  for (const wrap of host.querySelectorAll('[data-node-index]')) {
+    rows.push({
+      name: wrap.querySelector('[data-field="name"]').value.trim(),
+      node_id: wrap.querySelector('[data-field="node_id"]').value.trim(),
+    });
+  }
+  opcuaNodes = rows;
+  return opcuaNodes;
+}
+
+const OPCUA_NODE_INPUT = 'input.opcua-node-input';
+
+function hideOpcuaNodePicker() {
+  const picker = document.getElementById('opcuaNodePicker');
+  if (picker) picker.hidden = true;
+}
+
+function showOpcuaNodePicker(input, filterText) {
+  const picker = document.getElementById('opcuaNodePicker');
+  if (!picker || !input) return;
+  const query = String(filterText || '').trim().toLowerCase();
+  const rows = opcuaNodes.filter(row => {
+    if (!row.node_id) return false;
+    if (!query) return true;
+    return row.name.toLowerCase().includes(query) || row.node_id.toLowerCase().includes(query);
+  });
+  picker.innerHTML = '';
+  if (!rows.length) {
+    picker.hidden = true;
+    return;
+  }
+  for (const row of rows) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const name = document.createElement('span');
+    name.className = 'opcua-node-name';
+    name.textContent = row.name || row.node_id;
+    const nodeId = document.createElement('span');
+    nodeId.className = 'opcua-node-id';
+    nodeId.textContent = row.node_id;
+    button.append(name, nodeId);
+    button.addEventListener('mousedown', event => {
+      event.preventDefault();
+      input.value = row.node_id;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      hideOpcuaNodePicker();
+    });
+    picker.appendChild(button);
+  }
+  picker.hidden = false;
+  const rect = input.getBoundingClientRect();
+  const width = Math.max(rect.width, 320);
+  let left = rect.left;
+  if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - width);
+  picker.style.width = `${width}px`;
+  picker.style.left = `${left}px`;
+  const height = picker.offsetHeight;
+  const below = window.innerHeight - rect.bottom;
+  const top = below >= height + 4 || below >= rect.top
+    ? rect.bottom + 2
+    : Math.max(8, rect.top - height - 2);
+  picker.style.top = `${top}px`;
+}
+
+function renderOpcuaNodeList() {
+  const host = document.getElementById('opcuaNodeList');
+  if (!host) return;
+  host.innerHTML = '';
+  opcuaNodes.forEach((row, index) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'row';
+    wrap.dataset.nodeIndex = String(index);
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = '名称';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.dataset.field = 'name';
+    nameInput.value = row.name || '';
+    nameInput.placeholder = '例如心跳';
+    const nodeLabel = document.createElement('label');
+    nodeLabel.textContent = 'NodeId';
+    const nodeInput = document.createElement('input');
+    nodeInput.type = 'text';
+    nodeInput.className = 'field-wide';
+    nodeInput.dataset.field = 'node_id';
+    nodeInput.value = row.node_id || '';
+    nodeInput.placeholder = 'ns=6;s=::DataRev:bHeartBeat';
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.textContent = '删除';
+    removeButton.addEventListener('click', () => {
+      syncOpcuaNodesFromDom();
+      opcuaNodes.splice(index, 1);
+      renderOpcuaNodeList();
+    });
+    wrap.append(nameLabel, nameInput, nodeLabel, nodeInput, removeButton);
+    host.appendChild(wrap);
+  });
+  hideOpcuaNodePicker();
+}
+
+function addOpcuaNode(name, nodeId) {
+  syncOpcuaNodesFromDom();
+  const nextName = String(name || '').trim();
+  const nextId = String(nodeId || '').trim();
+  if (nextId && opcuaNodes.some(row => row.node_id === nextId)) {
+    throw new Error(`点位已存在: ${nextId}`);
+  }
+  if (nextName && opcuaNodes.some(row => row.name === nextName)) {
+    throw new Error(`点位名称已存在: ${nextName}`);
+  }
+  opcuaNodes.push({ name: nextName, node_id: nextId });
+  renderOpcuaNodeList();
+}
+
+function renderOpcuaBrowseNodes(items, container) {
+  container.innerHTML = '';
+  for (const item of items) {
+    const li = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = `${item.display_name || item.node_id} | ${item.node_class || ''} | ${item.node_id}`;
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'node-button';
+    addButton.textContent = '加入点位';
+    addButton.addEventListener('click', () => {
+      try {
+        addOpcuaNode(item.display_name || item.node_id, item.node_id);
+        addButton.disabled = true;
+        addButton.textContent = '已加入';
+        setHintMessage('opcuaNodeHint', `已加入 ${item.display_name || item.node_id}`, 'ok');
+      } catch (err) {
+        setHintMessage('opcuaNodeHint', err.message || String(err));
+      }
+    });
+    li.append(label, addButton);
+    if (item.has_children) {
+      const children = document.createElement('ul');
+      children.className = 'opcua-browse-list';
+      children.hidden = true;
+      const expandButton = document.createElement('button');
+      expandButton.type = 'button';
+      expandButton.className = 'node-button';
+      expandButton.textContent = '展开';
+      expandButton.addEventListener('click', () => {
+        if (!children.hidden) {
+          children.hidden = true;
+          expandButton.textContent = '展开';
+          return;
+        }
+        const load = children.dataset.loaded
+          ? Promise.resolve()
+          : browseOpcuaNodes(item.node_id, children).then(() => {
+            children.dataset.loaded = '1';
+          });
+        load.then(() => {
+          children.hidden = false;
+          expandButton.textContent = '收起';
+        }).catch(err => setHintMessage('opcuaNodeHint', err.message || String(err)));
+      });
+      li.append(expandButton, children);
+    }
+    container.appendChild(li);
+  }
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.textContent = '没有子节点';
+    container.appendChild(li);
+  }
+}
+
+async function browseOpcuaNodes(nodeId, container) {
+  const payload = getOpcuaPayload();
+  const data = await fetchJson('/api/config/opcua/browse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint_url: payload.endpoint_url,
+      username: payload.username,
+      password: payload.password,
+      node_id: nodeId || '',
+    }),
+  });
+  renderOpcuaBrowseNodes(Array.isArray(data.items) ? data.items : [], container);
+}
+
 let preservedBatchField = '';
 let queryConditionRows = [];
 let conditionSourceTables = [];
@@ -149,6 +342,7 @@ function getOpcuaPayload() {
     clear_password: document.getElementById('appOpcuaClearPassword').checked,
     heartbeat_node: document.getElementById('appOpcuaHeartbeatNode').value.trim(),
     poll_interval_ms: clampPollIntervalMs(document.getElementById('appOpcuaPollIntervalMs').value),
+    nodes: syncOpcuaNodesFromDom(),
   };
 }
 
@@ -191,6 +385,11 @@ function fillOpcuaForm(data) {
   document.getElementById('appOpcuaPollIntervalMs').value = clampPollIntervalMs(
     settings.poll_interval_ms ?? 500,
   );
+  opcuaNodes = (Array.isArray(settings.nodes) ? settings.nodes : []).map(item => ({
+    name: item.name || '',
+    node_id: item.node_id || '',
+  }));
+  renderOpcuaNodeList();
 }
 
 
@@ -1365,6 +1564,66 @@ document.getElementById('btnConnectDatabase').addEventListener('click', () => {
 document.getElementById('btnTestOpcuaConnection').addEventListener('click', () => {
   testOpcuaConnection().catch(catchHintError('opcuaSettingsHint'));
 });
+document.getElementById('btnAddOpcuaNode').addEventListener('click', () => {
+  addOpcuaNode('', '');
+});
+document.getElementById('opcuaNodeList').addEventListener('input', () => {
+  syncOpcuaNodesFromDom();
+});
+document.addEventListener('focusin', event => {
+  if (!event.target.matches(OPCUA_NODE_INPUT)) return;
+  event.target.dataset.opcuaPickerFilter = '';
+  showOpcuaNodePicker(event.target, '');
+});
+document.addEventListener('click', event => {
+  if (!event.target.matches(OPCUA_NODE_INPUT)) return;
+  event.target.dataset.opcuaPickerFilter = '';
+  showOpcuaNodePicker(event.target, '');
+});
+document.addEventListener('input', event => {
+  if (!event.target.matches(OPCUA_NODE_INPUT)) return;
+  event.target.dataset.opcuaPickerFilter = event.target.value;
+  showOpcuaNodePicker(event.target, event.target.value);
+});
+document.addEventListener('focusout', event => {
+  if (event.target.matches(OPCUA_NODE_INPUT)) hideOpcuaNodePickerSoon();
+});
+let opcuaPickerHideTimer = 0;
+
+function hideOpcuaNodePickerSoon() {
+  clearTimeout(opcuaPickerHideTimer);
+  opcuaPickerHideTimer = setTimeout(() => {
+    const active = document.activeElement;
+    if (active && active.matches && active.matches(OPCUA_NODE_INPUT)) return;
+    hideOpcuaNodePicker();
+  }, 150);
+}
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') hideOpcuaNodePicker();
+});
+window.addEventListener('scroll', () => {
+  const picker = document.getElementById('opcuaNodePicker');
+  const active = document.activeElement;
+  if (!picker || picker.hidden) return;
+  if (active && active.matches && active.matches(OPCUA_NODE_INPUT)) {
+    showOpcuaNodePicker(active, active.dataset.opcuaPickerFilter || '');
+    return;
+  }
+  hideOpcuaNodePicker();
+}, true);
+window.addEventListener('resize', hideOpcuaNodePicker);
+document.getElementById('btnBrowseOpcuaNodes').addEventListener('click', () => {
+  const hint = document.getElementById('opcuaNodeHint');
+  hint.textContent = '正在浏览 OPC UA 节点...';
+  hint.className = 'muted';
+  browseOpcuaNodes(
+    document.getElementById('opcuaBrowseNodeId').value.trim(),
+    document.getElementById('opcuaBrowseList'),
+  ).then(() => {
+    hint.textContent = '已加载节点，点「加入点位」后可在其它 NodeId 框中下拉选择';
+    hint.className = 'muted ok';
+  }).catch(err => setHintMessage('opcuaNodeHint', err.message || String(err)));
+});
 document.getElementById('appDbPassword').addEventListener('input', event => {
   if (event.target.value) document.getElementById('appDbClearPassword').checked = false;
 });
@@ -1814,7 +2073,7 @@ function renderPluginOpcuaColumnTable(columns, writebackCfg) {
       `<td><input type="checkbox" class="opcua-col-enabled"${enabled ? ' checked' : ''} /></td>` +
       `<td>${name}</td>` +
       `<td>${labelZh}</td>` +
-      `<td><input type="text" class="opcua-col-nodeid field-wide" value="${escapeHtmlAttr(nodeId)}" placeholder="ns=6;s=::DataRev:..." /></td>`;
+      `<td><input type="text" class="opcua-col-nodeid opcua-node-input field-wide" value="${escapeHtmlAttr(nodeId)}" placeholder="ns=6;s=::DataRev:..." /></td>`;
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);

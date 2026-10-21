@@ -468,6 +468,47 @@ async def check_connection(
         await _safe_disconnect(client)
 
 
+async def browse_children(
+    endpoint_url: str,
+    node_id: str = "",
+    username: str = "",
+    password: str = "",
+) -> list[dict[str, Any]]:
+    """Browse one level. Connects and disconnects each call; the config page only expands on demand."""
+    endpoint = normalize_opcua_endpoint_url(endpoint_url)
+    if not endpoint:
+        raise ValueError("Endpoint URL 无效或为空，请先填写 IP 与端口")
+    client = Client(url=endpoint, timeout=CONNECT_TIMEOUT_SEC)
+    if username:
+        client.set_user(username)
+        client.set_password(password or "")
+    try:
+        await client.connect()
+        node = client.get_root_node() if not str(node_id or "").strip() else client.get_node(str(node_id).strip())
+        children = await node.get_children()
+        rows: list[dict[str, Any]] = []
+        for child in children:
+            try:
+                display_name = (await child.read_display_name()).Text
+            except Exception:
+                display_name = str(child)
+            try:
+                node_class = (await child.read_node_class()).name
+            except Exception:
+                node_class = "Unknown"
+            rows.append(
+                {
+                    "node_id": child.nodeid.to_string(),
+                    "display_name": display_name or child.nodeid.to_string(),
+                    "node_class": node_class,
+                    "has_children": node_class not in {"Variable", "VariableType"},
+                }
+            )
+        return rows
+    finally:
+        await _safe_disconnect(client)
+
+
 async def read_scalar(
     endpoint_url: str,
     node_id: str,

@@ -19,8 +19,22 @@
   "opcua": {
     "endpoint_url": "opc.tcp://127.0.0.1:4840/",
     "username": "",
-    "heartbeat_node": "",
-    "poll_interval_ms": 500
+    "heartbeat_node": "ns=6;s=::DataSQLAla:strSQLQuery",
+    "poll_interval_ms": 500,
+    "nodes": [
+      {
+        "name": "SQL语句接收",
+        "node_id": "ns=6;s=::DataSQLAla:strSQLQuery"
+      },
+      {
+        "name": "gDataSQLHeartBeat",
+        "node_id": "ns=6;s=::AsGlobalPV:gDataSQLHeartBeat"
+      },
+      {
+        "name": "测试1",
+        "node_id": "ns=6;s=::ParallelTe:bExecuteRead"
+      }
+    ]
   },
   "query_view": {
     "default_page_size": 10,
