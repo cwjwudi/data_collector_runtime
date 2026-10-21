@@ -1,3 +1,4 @@
+const t = (key, params) => window.SdI18n.t(key, params);
 const monitorConfigSelect = document.getElementById("monitor-config-select");
 const monitorStatusEl = document.getElementById("monitor-status");
 const monitorLogEl = document.getElementById("monitor-log");
@@ -40,9 +41,9 @@ function updatePauseButtonLabel() {
   }
   if (logPaused) {
     const suffix = pausedBufferedCount > 0 ? ` (${pausedBufferedCount})` : "";
-    btn.textContent = `继续日志${suffix}`;
+    btn.textContent = `${t('collector.dash.resumeLog')}${suffix}`;
   } else {
-    btn.textContent = "暂停日志";
+    btn.textContent = t('collector.dash.pauseLog');
   }
 }
 
@@ -53,7 +54,7 @@ async function api(path, options = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || `请求失败: ${response.status}`);
+    throw new Error(data.detail || t('collector.dash.requestFailed', { status: response.status }));
   }
   return data;
 }
@@ -66,7 +67,7 @@ function syncMonitorConfigSelect(files) {
     monitorConfigSelect.innerHTML = "";
     const opt = document.createElement("option");
     opt.value = "";
-    opt.textContent = "(无配置文件)";
+    opt.textContent = t('collector.dash.noConfig');
     monitorConfigSelect.appendChild(opt);
     return;
   }

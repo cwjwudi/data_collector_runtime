@@ -4,46 +4,50 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>采集监视 — SD SMA</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/common/base.css?v=20261021_02" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261021_02" />
   </head>
   <body>
-    <nav class="page-nav" aria-label="站内导航">
-      <span class="page-nav-current">采集监视</span>
+    <nav class="page-nav" data-i18n-aria="nav.aria" aria-label="站内导航">
+      <span class="page-nav-current" data-i18n="collector.nav.dashboard">采集监视</span>
       <span class="page-nav-sep" aria-hidden="true">·</span>
-      <a href="/config">配置与 OPC UA</a>
+      <a href="/config" data-i18n="collector.nav.config">配置与 OPC UA</a>
     </nav>
     <div class="layout">
       <section class="panel panel-span">
-        <h2>采集监视</h2>
-        <p class="hint">
+        <h2 data-i18n="collector.dash.title">采集监视</h2>
+        <p class="hint" data-i18n="collector.dash.hint">
           仅在此处点击「启动采集」后才会开始 data_collector。关闭本窗口即结束 Web 服务与托管的采集任务。
         </p>
         <div class="row row-monitor">
-          <span class="inline-label">配置文件</span>
+          <span class="inline-label" data-i18n="collector.dash.configFile">配置文件</span>
           <select id="monitor-config-select"></select>
-          <button type="button" id="btn-collector-start">启动采集</button>
-          <button type="button" id="btn-collector-stop" class="danger-btn">停止采集</button>
+          <button type="button" id="btn-collector-start" data-i18n="collector.dash.start">启动采集</button>
+          <button type="button" id="btn-collector-stop" class="danger-btn" data-i18n="collector.dash.stop">停止采集</button>
         </div>
         <div class="startup-settings">
           <label class="startup-toggle">
             <input id="startup-auto-enabled" type="checkbox" />
-            <span>启动 Web 后自动启动采集</span>
+            <span data-i18n="collector.dash.autoStart">启动 Web 后自动启动采集</span>
           </label>
           <label class="startup-delay">
-            <span>延迟秒数</span>
+            <span data-i18n="collector.dash.delay">延迟秒数</span>
             <input id="startup-delay-seconds" type="number" min="0" max="300" value="3" />
           </label>
-          <button type="button" id="btn-save-startup-settings">保存启动设置</button>
+          <button type="button" id="btn-save-startup-settings" data-i18n="collector.dash.saveStartup">保存启动设置</button>
           <span id="startup-settings-hint" class="muted"></span>
         </div>
-        <div id="monitor-status" class="monitor-status">加载状态…</div>
-        <h3 class="subheading">运行日志（与文件/控制台同源）</h3>
+        <div id="monitor-status" class="monitor-status" data-i18n="collector.dash.loading">加载状态…</div>
+        <h3 class="subheading" data-i18n="collector.dash.logs">运行日志（与文件/控制台同源）</h3>
         <div class="row">
-          <button type="button" id="btn-log-pause">暂停日志</button>
+          <button type="button" id="btn-log-pause" data-i18n="collector.dash.pauseLog">暂停日志</button>
         </div>
         <pre id="monitor-log" class="monitor-log"></pre>
       </section>
     </div>
-    <script src="/static/dashboard.js?v=20260528_1"></script>
+    <script src="/common/zh.js?v=20261021_02"></script>
+    <script src="/common/en.js?v=20261021_02"></script>
+    <script src="/common/i18n.js?v=20261021_02"></script>
+    <script src="/static/dashboard.js?v=20261021_02"></script>
   </body>
 </html>
