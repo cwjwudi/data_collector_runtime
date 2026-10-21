@@ -320,5 +320,8 @@ window.SD_SMA_I18N_EN = {
   "config.js.deletedFile": "Deleted config: {filename}; now loaded: {current}",
   "config.js.dbConnected": "Database connected ({database}); groups refreshed",
   "config.js.groupNoColsSave": "view={view}, group={group} has no columns. Configure under Groups & columns, then Save.",
-  "config.js.removedGroups": "Removed groups not in current DB: {groups}"
+  "config.js.removedGroups": "Removed groups not in current DB: {groups}",
+  "common.lang.aria": "Language",
+  "common.lang.zh": "中文",
+  "common.lang.en": "English"
 };

@@ -14,7 +14,7 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 REPO_ROOT = WEB_DIR.parents[3]
 QUERY_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR_QUERY_WEB" / "app" / "static"
 COLL_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR" / "web_config" / "static"
-CACHE_VERSION = "20261021_02"
+CACHE_VERSION = "20261021_03"
 
 # Pages already on /common + i18n (expand as migration continues)
 MIGRATED_HTML = [

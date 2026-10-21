@@ -1,4 +1,9 @@
-const t = (key, params) => window.SdI18n.t(key, params);
+const t = (key, params) => {
+  if (!window.SdI18n || typeof window.SdI18n.t !== 'function') {
+    throw new Error('SdI18n is not loaded; check /common/i18n.js script order');
+  }
+  return window.SdI18n.t(key, params);
+};
 let queryViews = {};
 let availableColumns = [];
 let orderedColumns = [];
@@ -1236,18 +1241,18 @@ async function loadTables() {
   currentSchema = data;
   const sel = document.getElementById('editTableName');
   sel.innerHTML = '';
-  for (const t of data.tables || []) {
-    const kind = data.table_kinds?.[t] || '';
-    const label = kind === 'fixed' ? t('config.js.fixedTable', { t }) : t;
-    appendOption(sel, t, label);
+  for (const tableName of data.tables || []) {
+    const kind = data.table_kinds?.[tableName] || '';
+    const label = kind === 'fixed' ? t('config.js.fixedTable', { t: tableName }) : tableName;
+    appendOption(sel, tableName, label);
   }
   if (data.baseline_table && (data.tables || []).includes(data.baseline_table)) {
     sel.value = data.baseline_table;
   }
   const hint = document.getElementById('schemaHint');
-  const fixedCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'fixed').length;
-  const partitionedCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'partitioned').length;
-  const legacyCount = (data.tables || []).filter(t => data.table_kinds?.[t] === 'legacy_date').length;
+  const fixedCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'fixed').length;
+  const partitionedCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'partitioned').length;
+  const legacyCount = (data.tables || []).filter(name => data.table_kinds?.[name] === 'legacy_date').length;
   const kindSummary = [
     fixedCount ? t('config.js.kindFixed', { count: fixedCount }) : '',
     partitionedCount ? t('config.js.kindPart', { count: partitionedCount }) : '',

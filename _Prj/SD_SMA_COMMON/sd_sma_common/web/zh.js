@@ -320,5 +320,8 @@ window.SD_SMA_I18N_ZH = {
   "config.js.deletedFile": "已删除 config: {filename}；当前加载: {current}",
   "config.js.dbConnected": "数据库连接成功（{database}），分组已刷新",
   "config.js.groupNoColsSave": "view={view}, group={group} 尚未配置列。先在「分组与列」里选好列，再点上方保存。",
-  "config.js.removedGroups": "已去掉当前库不存在的分组 {groups}"
+  "config.js.removedGroups": "已去掉当前库不存在的分组 {groups}",
+  "common.lang.aria": "语言",
+  "common.lang.zh": "中文",
+  "common.lang.en": "English"
 };

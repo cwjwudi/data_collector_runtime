@@ -626,3 +626,21 @@ input.opcua-node-input {
     font-size: 14px;
   }
 }
+
+/* Language switcher in page-nav */
+.page-nav .lang-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.page-nav .lang-switch button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.page-nav .lang-switch button.is-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 600;
+}

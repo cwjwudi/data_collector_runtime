@@ -88,6 +88,7 @@
       global.localStorage.setItem(STORAGE_KEY, lang);
     } catch (e) { /* 同 detectLang */ }
     apply();
+    syncLangButtons();
     return true;
   }
 
@@ -95,6 +96,36 @@
   // 手动注册字典的口子(测试或动态语言包用)
   function register(lang, dict) {
     dicts[lang] = dict || {};
+  }
+
+
+  function syncLangButtons() {
+    var buttons = global.document.querySelectorAll('[data-lang-switch]');
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var on = btn.getAttribute('data-lang-switch') === current;
+      if (on) btn.classList.add('is-active');
+      else btn.classList.remove('is-active');
+    }
+    if (global.document.documentElement) {
+      global.document.documentElement.lang = current === 'en' ? 'en' : 'zh-CN';
+    }
+  }
+
+  function bindLangSwitch() {
+    var root = global.document;
+    if (!root || root.__sdSmaLangSwitchBound) return;
+    root.__sdSmaLangSwitchBound = true;
+    root.addEventListener('click', function (ev) {
+      var target = ev.target;
+      if (!target || !target.closest) return;
+      var btn = target.closest('[data-lang-switch]');
+      if (!btn) return;
+      var lang = btn.getAttribute('data-lang-switch');
+      if (setLang(lang)) {
+        syncLangButtons();
+      }
+    });
   }
 
   global.SdI18n = {
@@ -108,8 +139,10 @@
 
   // DOM 就绪后自动替换静态文案(zh.js 若在前面已加载即生效)
   if (global.document.readyState === 'loading') {
-    global.document.addEventListener('DOMContentLoaded', function () { apply(); });
+    global.document.addEventListener('DOMContentLoaded', function () { apply(); bindLangSwitch(); syncLangButtons(); });
   } else {
     apply();
+    bindLangSwitch();
+    syncLangButtons();
   }
 })(window);
