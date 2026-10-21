@@ -36,6 +36,7 @@ from .models import (
 )
 from . import opcua_client
 from .opcua_writeback import OpcUaWritebackConfig, write_after_query_async, write_cursor_only_async
+from .sql_writeback import SqlWritebackConfig, write_executed_sql
 from .table_list_writeback import (
     TableListWritebackConfig,
     resolve_table_names_for_batch_no,
@@ -446,7 +447,29 @@ def _resolve_plugin_binding(
         "target": str(page_cfg.get("target", module_cfg.get("target", ""))),
         "opcua_writeback": opcua_writeback_raw,
         "table_list_writeback": table_list_writeback_raw,
+        "sql_writeback": page_cfg.get("sql_writeback"),
     }
+
+
+async def _write_plugin_sql(binding: dict[str, Any], sql: str) -> str | None:
+    """插件页查询后写回该页自己的 STRING。失败只返回告警。"""
+    target = SqlWritebackConfig.from_page(binding.get("sql_writeback"))
+    if target is None or not str(sql or "").strip():
+        return None
+    try:
+        opcua = _get_opcua_connection()
+        return await write_executed_sql(
+            enabled=True,
+            endpoint_url=str(opcua.get("endpoint_url") or ""),
+            node_id=target.node_id,
+            sql=sql,
+            max_bytes=target.max_len,
+            username=str(opcua.get("username") or ""),
+            password=str(opcua.get("password") or ""),
+        )
+    except Exception as exc:
+        logger.warning("SQL writeback failed plugin=%s: %s", binding.get("plugin_key"), exc)
+        return f"SQL 写回失败: {exc}"
 
 
 def _get_opcua_connection() -> dict[str, Any]:
@@ -783,6 +806,7 @@ def _plugin_runtime_snapshot(
             for c in columns
         ],
         warnings=list(warnings),
+        executed_sql="",
     )
 
 
@@ -908,6 +932,7 @@ def _execute_plugin_query(
         warnings=warnings,
         has_more=getattr(query_result, "has_more", False),
     )
+    snapshot.executed_sql = query_result.executed_sql
     if not snapshot_all:
         _sync_plugin_runtime(snapshot)
 
@@ -1028,6 +1053,7 @@ async def _activate_plugin_snapshot_once(
         page_runtime = _runtime_from_data_snapshot(data, 1)
         existing = _plugin_opcua_monitor.get_runtime(plugin_key) if _plugin_opcua_monitor else None
         page_runtime.revision = (existing.revision if existing else 0) + 1
+        page_runtime.executed_sql = full_runtime.executed_sql
 
         # Replace only after the complete database read succeeds.
         _plugin_data_snapshots[plugin_key] = data
@@ -1561,9 +1587,12 @@ async def query_plugin(plugin_key: str, payload: PluginQueryRequest, request: Re
         binding = _resolve_plugin_binding(plugin_key)
         table_list_config = _get_table_list_writeback_config(binding)
         if table_list_config is not None and table_list_config.is_advanced_mode:
-            response, _runtime = await _activate_plugin_snapshot(binding, table=payload.table)
+            response, runtime = await _activate_plugin_snapshot(binding, table=payload.table)
+            writeback_warning = await _write_plugin_sql(binding, runtime.executed_sql)
+            if writeback_warning:
+                response.warnings.append(writeback_warning)
             return response
-        response, _snapshot = _execute_plugin_query(
+        response, snapshot = _execute_plugin_query(
             binding,
             page=payload.page,
             page_size=payload.page_size,
@@ -1586,6 +1615,9 @@ async def query_plugin(plugin_key: str, payload: PluginQueryRequest, request: Re
             cursor=cursor,
             row=response.rows[cursor] if 0 <= cursor < len(response.rows) else None,
         )
+        writeback_warning = await _write_plugin_sql(binding, snapshot.executed_sql)
+        if writeback_warning:
+            response.warnings.append(writeback_warning)
         return response
     except (OperationalError, SQLAlchemyError) as exc:
         _raise_db_error(exc)

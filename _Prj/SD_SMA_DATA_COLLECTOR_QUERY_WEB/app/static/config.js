@@ -151,6 +151,31 @@ function getOpcuaPayload() {
   };
 }
 
+function clampSqlWritebackMaxLen(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 80;
+  return Math.max(1, Math.min(4096, Math.round(n)));
+}
+
+function loadPluginSqlWritebackForm(cfg) {
+  const data = cfg && typeof cfg === 'object' ? cfg : {};
+  document.getElementById('pluginSqlWritebackEnabled').checked = data.enabled === true;
+  document.getElementById('pluginSqlWritebackNode').value = data.node || '';
+  document.getElementById('pluginSqlWritebackMaxLen').value = clampSqlWritebackMaxLen(data.max_len ?? 80);
+}
+
+function collectPluginSqlWriteback() {
+  const enabled = document.getElementById('pluginSqlWritebackEnabled').checked;
+  if (!enabled) return null;
+  const node = document.getElementById('pluginSqlWritebackNode').value.trim();
+  if (!node) return { _invalid: true };
+  return {
+    enabled: true,
+    node,
+    max_len: clampSqlWritebackMaxLen(document.getElementById('pluginSqlWritebackMaxLen').value),
+  };
+}
+
 function fillOpcuaForm(data) {
   const settings = data || {};
   const endpoint = parseOpcuaEndpoint(settings.endpoint_url || '');
@@ -1856,6 +1881,7 @@ async function loadPluginPageConfig() {
   renderPluginOpcuaFeedbackEditor();
 
   const tableListCfg = pageCfg.table_list_writeback || buildTableListWritebackDefaults();
+  loadPluginSqlWritebackForm(pageCfg.sql_writeback);
   loadPluginTableListWritebackForm(tableListCfg);
   await refreshPluginTableListColumnOptions(tableListCfg);
 
@@ -1885,6 +1911,18 @@ function applyPluginPageToProfile() {
     pageCfg.opcua_writeback = writeback;
   } else {
     delete pageCfg.opcua_writeback;
+  }
+
+  const sqlWriteback = collectPluginSqlWriteback();
+  if (sqlWriteback && sqlWriteback._invalid) {
+    document.getElementById('pluginPageIndex').value = pageIndex;
+    activateConfigTab('plugins');
+    throw new Error('启用查询 SQL 写回时需填写 SQL NodeId');
+  }
+  if (sqlWriteback) {
+    pageCfg.sql_writeback = sqlWriteback;
+  } else {
+    delete pageCfg.sql_writeback;
   }
 
   syncPluginTableListAdvancedCache();
@@ -1930,6 +1968,9 @@ document.getElementById('pluginViewName').addEventListener('change', () => {
   saveConfigPageState();
 });
 document.getElementById('pluginPageSize').addEventListener('change', saveConfigPageState);
+document.getElementById('pluginSqlWritebackEnabled').addEventListener('change', saveConfigPageState);
+document.getElementById('pluginSqlWritebackNode').addEventListener('input', saveConfigPageState);
+document.getElementById('pluginSqlWritebackMaxLen').addEventListener('change', saveConfigPageState);
 document.getElementById('pluginTableListEnabled').addEventListener('change', () => {
   renderPluginTableListWritebackEditor();
   saveConfigPageState();

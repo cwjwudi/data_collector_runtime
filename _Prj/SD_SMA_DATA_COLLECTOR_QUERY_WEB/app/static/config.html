@@ -254,6 +254,38 @@
           <table id="pluginOpcuaColumnTable"></table>
           <div id="pluginOpcuaWritebackHint" class="muted"></div>
         </div>
+        <div id="pluginSqlWriteback" class="opcua-writeback-panel">
+          <h3 class="subsection-title">查询 SQL 写回</h3>
+          <p class="hint">
+            每个插件页各自一个 STRING。在该插件页点击查询后，把本次实际执行的 SQL 写到这里的 NodeId。
+            写入失败只告警，不影响查询结果。超长时清空节点，不下发截断语句。
+          </p>
+          <div class="row">
+            <label for="pluginSqlWritebackEnabled">启用</label>
+            <input id="pluginSqlWritebackEnabled" type="checkbox" />
+          </div>
+          <div class="row">
+            <label for="pluginSqlWritebackNode">SQL NodeId</label>
+            <input
+              id="pluginSqlWritebackNode"
+              type="text"
+              class="field-wide"
+              placeholder="ns=6;s=::DataRev:sQuerySql"
+            />
+          </div>
+          <div class="row">
+            <label for="pluginSqlWritebackMaxLen">最大字节数</label>
+            <input
+              id="pluginSqlWritebackMaxLen"
+              class="field-narrow-num"
+              type="number"
+              min="1"
+              max="4096"
+              value="80"
+            />
+            <span class="muted inline-hint">默认 80，对应 STRING 的 81 字节含结束符</span>
+          </div>
+        </div>
         <details id="pluginOpcuaAdvanced" class="advanced-panel">
           <summary>高级 · opcua_writeback JSON 预览</summary>
           <p class="hint">
@@ -360,6 +392,6 @@
         </div>
       </div>
     </div>
-    <script src="/static/config.js?v=20261020_05"></script>
+    <script src="/static/config.js?v=20261021_01"></script>
   </body>
 </html>

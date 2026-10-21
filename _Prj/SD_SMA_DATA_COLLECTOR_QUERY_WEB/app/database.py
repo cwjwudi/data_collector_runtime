@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from .models import HistoryQueryRequest
+from .sql_writeback import render_bound_sql
 from .table_list_writeback import pick_start_time_column
 from .table_partition import (
     default_baseline_table,
@@ -34,6 +35,7 @@ class HistoryQueryResult:
     missing_columns: list[str]
     has_more: bool = False
     next_cursor: dict[str, Any] | None = None
+    executed_sql: str = ""
 
     def __iter__(self):
         # 保持旧调用方的四元组解包兼容。
@@ -47,6 +49,175 @@ def _safe_ident(name: str) -> str:
     if not _IDENT_RE.match(name):
         raise ValueError(f"Invalid identifier: {name}")
     return f"`{name}`"
+
+
+@dataclass
+class CompiledHistoryQuery:
+    """data_sql 是网页分页真正执行的语句。executed_sql 是写回 PLC 的同一条查询，不含 LIMIT/OFFSET。"""
+
+    selected: list[str]
+    missing_columns: list[str]
+    count_sql: str
+    data_sql: str
+    count_params: dict[str, Any]
+    data_params: dict[str, Any]
+    executed_sql: str
+    page_size: int
+    cursor_supported: bool
+
+
+def compile_history_query(
+    req: HistoryQueryRequest,
+    available_columns: list[str],
+    *,
+    dialect: str,
+    page_size_cap: int | None = 500,
+) -> CompiledHistoryQuery:
+    """把已校验的查询请求编成与 query_history 相同的 SQL。
+
+    分表路由在调用前完成：req.table 已是物理表名（含 _yYYYY_spanN）。
+    MySQL 与 SQLite 都走反引号标识符和 LIMIT/OFFSET；差别只在字符串字面量转义。
+    """
+    table_ident = _safe_ident(req.table)
+    column_set = set(available_columns)
+    missing_columns: list[str] = []
+
+    if req.columns:
+        selected = [col for col in req.columns if col in column_set]
+        missing_columns = [col for col in req.columns if col not in column_set]
+    else:
+        selected = list(available_columns)
+
+    if req.time_field not in column_set:
+        raise ValueError(f"time_field not found in table: {req.time_field}")
+    if req.sort_by not in column_set:
+        raise ValueError(f"sort_by not found in table: {req.sort_by}")
+    if not selected:
+        raise ValueError("No valid columns selected")
+
+    safe_cols = ", ".join(_safe_ident(c) for c in selected)
+    time_conditions: list[str] = []
+    filter_conditions: list[str] = []
+    params: dict[str, Any] = {}
+
+    if req.start_time:
+        time_conditions.append(f"{_safe_ident(req.time_field)} >= :start_time")
+        params["start_time"] = req.start_time
+    if req.end_time:
+        time_conditions.append(f"{_safe_ident(req.time_field)} <= :end_time")
+        params["end_time"] = req.end_time
+
+    batch_condition = ""
+    batch_code = str(req.batch_code or "").strip()
+    if batch_code:
+        if not req.batch_field or req.batch_field not in column_set:
+            raise ValueError(f"batch_field not found in table: {req.batch_field}")
+        batch_condition = f"{_safe_ident(req.batch_field)} = :batch_code"
+        params["batch_code"] = batch_code
+
+    for idx, f in enumerate(req.filters):
+        if f.field not in column_set:
+            continue
+
+        field_ident = _safe_ident(f.field)
+        key = f"f_{idx}"
+
+        if f.op == "eq":
+            filter_conditions.append(f"{field_ident} = :{key}")
+            params[key] = f.value
+        elif f.op == "ne":
+            filter_conditions.append(f"{field_ident} != :{key}")
+            params[key] = f.value
+        elif f.op == "gt":
+            filter_conditions.append(f"{field_ident} > :{key}")
+            params[key] = f.value
+        elif f.op == "gte":
+            filter_conditions.append(f"{field_ident} >= :{key}")
+            params[key] = f.value
+        elif f.op == "lt":
+            filter_conditions.append(f"{field_ident} < :{key}")
+            params[key] = f.value
+        elif f.op == "lte":
+            filter_conditions.append(f"{field_ident} <= :{key}")
+            params[key] = f.value
+        elif f.op == "like":
+            filter_conditions.append(f"{field_ident} LIKE :{key}")
+            params[key] = str(f.value)
+        elif f.op == "in":
+            values = f.value if isinstance(f.value, list) else [f.value]
+            placeholders = []
+            for i, value in enumerate(values):
+                in_key = f"{key}_{i}"
+                placeholders.append(f":{in_key}")
+                params[in_key] = value
+            if placeholders:
+                filter_conditions.append(f"{field_ident} IN ({', '.join(placeholders)})")
+
+    primary_conditions: list[str] = []
+    time_group = f"({' AND '.join(time_conditions)})" if time_conditions else ""
+    if batch_condition and time_group:
+        joiner = " OR " if req.combine_mode == "or" else " AND "
+        primary_conditions.append(f"({batch_condition}{joiner}{time_group})")
+    elif batch_condition:
+        primary_conditions.append(batch_condition)
+    elif time_group:
+        primary_conditions.append(time_group)
+
+    base_conditions = primary_conditions + filter_conditions
+    base_where_clause = ""
+    if base_conditions:
+        base_where_clause = " WHERE " + " AND ".join(base_conditions)
+
+    direction = req.sort_dir.upper()
+    order_columns = [f"{_safe_ident(req.sort_by)} {direction}"]
+    cursor_supported = req.pagination_mode == "cursor" and "id" in column_set and req.sort_by != "id"
+    if cursor_supported:
+        order_columns.append(f"`id` {direction}")
+    order_clause = " ORDER BY " + ", ".join(order_columns)
+    page = max(req.page, 1)
+    requested_page_size = max(req.page_size, 1)
+    page_size = requested_page_size if page_size_cap is None else min(requested_page_size, page_size_cap)
+    offset = (page - 1) * page_size
+
+    where_clause = base_where_clause
+    if cursor_supported and req.cursor is not None:
+        comparator = ">" if req.sort_dir == "asc" else "<"
+        cursor_condition = (
+            f"({_safe_ident(req.sort_by)} {comparator} :cursor_sort_value OR "
+            f"({_safe_ident(req.sort_by)} = :cursor_sort_value AND `id` {comparator} :cursor_id))"
+        )
+        where_clause += (" AND " if where_clause else " WHERE ") + cursor_condition
+        params["cursor_sort_value"] = req.cursor.sort_value
+        params["cursor_id"] = req.cursor.id
+
+    count_sql = f"SELECT COUNT(*) AS cnt FROM {table_ident}{base_where_clause}"
+    select_clause = safe_cols
+    if cursor_supported:
+        select_clause += f", {_safe_ident(req.sort_by)} AS `__cursor_sort`, `id` AS `__cursor_id`"
+    data_sql = f"SELECT {select_clause} FROM {table_ident}{where_clause}{order_clause} LIMIT :limit_value"
+    if req.pagination_mode == "offset":
+        data_sql += " OFFSET :offset_value"
+
+    data_params = dict(params)
+    data_params["limit_value"] = page_size + 1 if req.pagination_mode == "cursor" else page_size
+    if req.pagination_mode == "offset":
+        data_params["offset_value"] = offset
+
+    # 写回报表的语句只要用户列和筛选条件。游标翻页的 __cursor_sort / id 只留在网页查询里。
+    report_order = f" ORDER BY {_safe_ident(req.sort_by)} {direction}"
+    report_sql = f"SELECT {safe_cols} FROM {table_ident}{base_where_clause}{report_order}"
+
+    return CompiledHistoryQuery(
+        selected=selected,
+        missing_columns=missing_columns,
+        count_sql=count_sql,
+        data_sql=data_sql,
+        count_params=params,
+        data_params=data_params,
+        executed_sql=render_bound_sql(report_sql, params, dialect),
+        page_size=page_size,
+        cursor_supported=cursor_supported,
+    )
 
 
 class QueryDatabase:
@@ -221,140 +392,28 @@ class QueryDatabase:
         *,
         page_size_cap: int | None = 500,
     ) -> HistoryQueryResult:
-        table_ident = _safe_ident(req.table)
-        available_columns = self.list_columns(req.table)
-        column_set = set(available_columns)
-        missing_columns: list[str] = []
-
-        if req.columns:
-            selected = [col for col in req.columns if col in column_set]
-            missing_columns = [col for col in req.columns if col not in column_set]
-        else:
-            selected = available_columns
-
-        if req.time_field not in column_set:
-            raise ValueError(f"time_field not found in table: {req.time_field}")
-        if req.sort_by not in column_set:
-            raise ValueError(f"sort_by not found in table: {req.sort_by}")
-        if not selected:
-            raise ValueError("No valid columns selected")
-
-        safe_cols = ", ".join(_safe_ident(c) for c in selected)
-        time_conditions: list[str] = []
-        filter_conditions: list[str] = []
-        params: dict[str, Any] = {}
-
-        if req.start_time:
-            time_conditions.append(f"{_safe_ident(req.time_field)} >= :start_time")
-            params["start_time"] = req.start_time
-        if req.end_time:
-            time_conditions.append(f"{_safe_ident(req.time_field)} <= :end_time")
-            params["end_time"] = req.end_time
-
-        batch_condition = ""
-        batch_code = str(req.batch_code or "").strip()
-        if batch_code:
-            if not req.batch_field or req.batch_field not in column_set:
-                raise ValueError(f"batch_field not found in table: {req.batch_field}")
-            batch_condition = f"{_safe_ident(req.batch_field)} = :batch_code"
-            params["batch_code"] = batch_code
-
-        for idx, f in enumerate(req.filters):
-            if f.field not in column_set:
-                continue
-
-            field_ident = _safe_ident(f.field)
-            key = f"f_{idx}"
-
-            if f.op == "eq":
-                filter_conditions.append(f"{field_ident} = :{key}")
-                params[key] = f.value
-            elif f.op == "ne":
-                filter_conditions.append(f"{field_ident} != :{key}")
-                params[key] = f.value
-            elif f.op == "gt":
-                filter_conditions.append(f"{field_ident} > :{key}")
-                params[key] = f.value
-            elif f.op == "gte":
-                filter_conditions.append(f"{field_ident} >= :{key}")
-                params[key] = f.value
-            elif f.op == "lt":
-                filter_conditions.append(f"{field_ident} < :{key}")
-                params[key] = f.value
-            elif f.op == "lte":
-                filter_conditions.append(f"{field_ident} <= :{key}")
-                params[key] = f.value
-            elif f.op == "like":
-                filter_conditions.append(f"{field_ident} LIKE :{key}")
-                params[key] = str(f.value)
-            elif f.op == "in":
-                values = f.value if isinstance(f.value, list) else [f.value]
-                placeholders = []
-                for i, value in enumerate(values):
-                    in_key = f"{key}_{i}"
-                    placeholders.append(f":{in_key}")
-                    params[in_key] = value
-                if placeholders:
-                    filter_conditions.append(f"{field_ident} IN ({', '.join(placeholders)})")
-
-        primary_conditions: list[str] = []
-        time_group = f"({' AND '.join(time_conditions)})" if time_conditions else ""
-        if batch_condition and time_group:
-            joiner = " OR " if req.combine_mode == "or" else " AND "
-            primary_conditions.append(f"({batch_condition}{joiner}{time_group})")
-        elif batch_condition:
-            primary_conditions.append(batch_condition)
-        elif time_group:
-            primary_conditions.append(time_group)
-
-        base_conditions = primary_conditions + filter_conditions
-        base_where_clause = ""
-        if base_conditions:
-            base_where_clause = " WHERE " + " AND ".join(base_conditions)
-
-        direction = req.sort_dir.upper()
-        order_columns = [f"{_safe_ident(req.sort_by)} {direction}"]
-        cursor_supported = req.pagination_mode == "cursor" and "id" in column_set and req.sort_by != "id"
-        if cursor_supported:
-            order_columns.append(f"`id` {direction}")
-        order_clause = " ORDER BY " + ", ".join(order_columns)
-        page = max(req.page, 1)
-        requested_page_size = max(req.page_size, 1)
-        page_size = requested_page_size if page_size_cap is None else min(requested_page_size, page_size_cap)
-        offset = (page - 1) * page_size
-
-        where_clause = base_where_clause
-        if cursor_supported and req.cursor is not None:
-            comparator = ">" if req.sort_dir == "asc" else "<"
-            cursor_condition = (
-                f"({_safe_ident(req.sort_by)} {comparator} :cursor_sort_value OR "
-                f"({_safe_ident(req.sort_by)} = :cursor_sort_value AND `id` {comparator} :cursor_id))"
-            )
-            where_clause += (" AND " if where_clause else " WHERE ") + cursor_condition
-            params["cursor_sort_value"] = req.cursor.sort_value
-            params["cursor_id"] = req.cursor.id
-
-        count_sql = f"SELECT COUNT(*) AS cnt FROM {table_ident}{base_where_clause}"
-        select_clause = safe_cols
-        if cursor_supported:
-            select_clause += f", {_safe_ident(req.sort_by)} AS `__cursor_sort`, `id` AS `__cursor_id`"
-        data_sql = f"SELECT {select_clause} FROM {table_ident}{where_clause}{order_clause} LIMIT :limit_value"
-        if req.pagination_mode == "offset":
-            data_sql += " OFFSET :offset_value"
-
-        params_with_page = dict(params)
-        params_with_page["limit_value"] = page_size + 1 if req.pagination_mode == "cursor" else page_size
-        if req.pagination_mode == "offset":
-            params_with_page["offset_value"] = offset
+        compiled = compile_history_query(
+            req,
+            self.list_columns(req.table),
+            dialect=self.db_type,
+            page_size_cap=page_size_cap,
+        )
+        selected = compiled.selected
+        missing_columns = compiled.missing_columns
+        page_size = compiled.page_size
 
         with self.engine.connect() as conn:
-            total = int(conn.execute(text(count_sql), params).scalar() or 0) if req.include_total else None
-            fetched_rows = conn.execute(text(data_sql), params_with_page).mappings().all()
+            total = (
+                int(conn.execute(text(compiled.count_sql), compiled.count_params).scalar() or 0)
+                if req.include_total
+                else None
+            )
+            fetched_rows = conn.execute(text(compiled.data_sql), compiled.data_params).mappings().all()
 
         has_more = req.pagination_mode == "cursor" and len(fetched_rows) > page_size
         rows = fetched_rows[:page_size]
         next_cursor: dict[str, Any] | None = None
-        if cursor_supported and has_more and rows:
+        if compiled.cursor_supported and has_more and rows:
             last_row = dict(rows[-1])
             sort_value = last_row.get("__cursor_sort")
             if isinstance(sort_value, datetime):
@@ -380,4 +439,5 @@ class QueryDatabase:
             missing_columns=missing_columns,
             has_more=has_more,
             next_cursor=next_cursor,
+            executed_sql=compiled.executed_sql,
         )

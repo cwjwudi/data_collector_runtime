@@ -66,6 +66,7 @@ class PluginRuntimeSnapshot:
     revision: int = 0
     last_trigger_batch: str = ""
     last_writeback_ok: bool | None = None
+    executed_sql: str = ""
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
