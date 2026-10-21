@@ -27,13 +27,18 @@ const FIXED_INDEX_COLUMN_OPTIONS = [
   { value: "is_backfill", label: "is_backfill（固定补采标记）" },
   { value: "created_at", label: "created_at（固定创建时间）" },
 ];
-const PARTITION_INTERVAL_YEAR_OPTIONS = [
-  { value: "0", label: "不分表" },
-  ...Array.from({ length: 10 }, (_, i) => {
-    const years = i + 1;
-    return { value: String(years), label: String(years) };
-  }),
-];
+// ponytail: 临时锁死分表间隔。值为 0 时不可改；已有 1..10 只保留当前值并允许改成不分表。
+// 恢复可选年份时，把 1..10 加回 partitionIntervalYearOptions，并去掉下方 disabled 判断。
+function partitionIntervalYearOptions(currentYears) {
+  const current = String(currentYears);
+  if (current === "0") {
+    return [{ value: "0", label: "不分表" }];
+  }
+  return [
+    { value: "0", label: "不分表" },
+    { value: current, label: current },
+  ];
+}
 const TRIGGER_SOURCE_OPTIONS = [
   { value: "subscription", label: "订阅（推荐）" },
   ...Array.from({ length: 10 }, (_, i) => {
@@ -1221,16 +1226,24 @@ function renderGroups() {
     );
     card.appendChild(createRow([createHeaderCell("读后复位"), createHeaderCell("分表间隔年份"), createHeaderCell("批量写入"), createHeaderCell("并行触发"), createHeaderCell("强制对齐节拍"), createHeaderCell("最大补采节拍数")]));
 
+    const partitionYears = currentConfig.groups[idx].partition_interval_years;
     const partitionYearsInput = createSelect(
-      PARTITION_INTERVAL_YEAR_OPTIONS,
-      String(currentConfig.groups[idx].partition_interval_years),
+      partitionIntervalYearOptions(partitionYears),
+      String(partitionYears),
       (v) => {
-        currentConfig.groups[idx].partition_interval_years = normalizePartitionIntervalYears(v, {
+        const next = normalizePartitionIntervalYears(v, {
           forceNoPartition: batchUpsertEnabled,
         });
+        if (next !== 0 && next !== partitionYears) {
+          return;
+        }
+        currentConfig.groups[idx].partition_interval_years = next;
+        if (next === 0) {
+          renderGroups();
+        }
       }
     );
-    partitionYearsInput.disabled = batchUpsertEnabled;
+    partitionYearsInput.disabled = batchUpsertEnabled || partitionYears === 0;
 
     const batchInsertInput = createInput(
       currentConfig.groups[idx].batch_insert_size || 100,
@@ -1326,7 +1339,7 @@ function renderGroups() {
       trigger_mode: "poll",
       trigger_interval_seconds: 1,
       reset_trigger_after_read: true,
-      partition_interval_years: 1,
+      partition_interval_years: 0,
       recreate_interval_days: 1,
       batch_insert_size: 100,
       is_parallel: false,
