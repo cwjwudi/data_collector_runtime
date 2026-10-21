@@ -2,7 +2,8 @@
  * SD SMA 极简 i18n 引擎 (i18n.js)
  *
  * 用法(页面按顺序引入):
- *   <script src="/common/zh.js"></>          <!-- 语言字典,单语言项目只需 zh -->
+ *   <script src="/common/zh.js"></>          <!-- 中文词典 -->
+ *   <script src="/common/en.js"></>          <!-- 英文词典(多语言时) -->
  *   <script src="/common/i18n.js"></>
  *   <script src="/static/xxx.js"></>         <!-- 业务代码里用 SdI18n.t('key') -->
  *
@@ -12,14 +13,13 @@
  *   <div data-i18n-aria="a.b"></div>                -> aria-label 属性
  * 字典缺 key 时保留 HTML 原文兜底,不会清空。
  *
- * 当前单语言(中文):字典在 zh.js,业务代码一律走 key 不写死文案。
- * 后续加英文:新增 en.js(同结构字典)+ 在 LANGS 注册 + setLang('en'),
- * 业务 HTML/JS 零改动。
+ * 多语言:字典在 zh.js / en.js,业务代码一律走 key 不写死文案。
+ * 再加语言 = 新增 <lang>.js + 在 LANGS 注册 + 页面引入,业务 HTML/JS 零改动。
  * ============================================================ */
 (function (global) {
   'use strict';
 
-  var LANGS = ['zh']; // 可用语言列表;加英文时改为 ['zh', 'en']
+  var LANGS = ['zh', 'en']; // 可用语言列表
   var DICT_WINDOW_KEY = 'SD_SMA_I18N_'; // 各语言字典挂 window 上的前缀
   var STORAGE_KEY = 'sd_sma_lang';
 

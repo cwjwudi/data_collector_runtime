@@ -1,5 +1,5 @@
 /* ============================================================
- * SD SMA 中文语言字典 (zh.js) — 当前唯一语言包
+ * SD SMA 中文语言字典 (zh.js) — 与 en.js 键对齐
  * key 惯例: 页面.区块.元素;跨页复用的放 nav.* / common.*
  * 业务代码不写死中文,一律 SdI18n.t('key') 或 data-i18n="key"
  * ============================================================ */
@@ -58,5 +58,45 @@ window.SD_SMA_I18N_ZH = {
   "query.js.pageInfoEnd": "当前第 {page} 页，每页 {size} 条，已到末页",
   "query.js.pageInfoTotal": "总条数 {total}，共 {pages} 页，当前第 {page} 页",
   "query.js.timePartial": "开始时间和结束时间需要同时填写，或同时留空",
-  "query.js.timeOrder": "开始时间不能大于结束时间"
+  "query.js.timeOrder": "开始时间不能大于结束时间",
+
+  /* 主题 / 多语言示范页 */
+  "demo.nav.current": "主题 / 多语言示范",
+  "demo.title": "SD SMA 主题与语言示范",
+  "demo.intro": "本页使用公共 /common/base.css 的 --sd-* 变量与 SdI18n（中/英）。仅作前端预览，尚未迁移全部服务。",
+  "demo.lang.label": "语言",
+  "demo.lang.zh": "中文",
+  "demo.lang.en": "English",
+  "demo.panel.theme.title": "主题色板",
+  "demo.panel.theme.hint": "色块绑定 --sd-* CSS 变量。改 base.css 的 :root 即可影响全部服务。",
+  "demo.token.bg": "背景",
+  "demo.token.panel": "面板",
+  "demo.token.text": "正文",
+  "demo.token.link": "链接",
+  "demo.token.danger": "危险",
+  "demo.token.border": "边框",
+  "demo.panel.form.title": "表单与按钮",
+  "demo.panel.form.name": "名称",
+  "demo.panel.form.namePlaceholder": "请输入名称",
+  "demo.panel.form.role": "角色",
+  "demo.panel.form.roleA": "操作员",
+  "demo.panel.form.roleB": "管理员",
+  "demo.panel.form.submit": "主按钮",
+  "demo.panel.form.reset": "次按钮",
+  "demo.panel.form.danger": "危险操作",
+  "demo.panel.table.title": "样例表格",
+  "demo.panel.table.col.name": "名称",
+  "demo.panel.table.col.value": "数值",
+  "demo.panel.table.col.note": "说明",
+  "demo.panel.table.row1.name": "心跳",
+  "demo.panel.table.row1.value": "正常",
+  "demo.panel.table.row1.note": "表头使用公共 th 样式",
+  "demo.panel.table.row2.name": "批次",
+  "demo.panel.table.row2.value": "BAT-001",
+  "demo.panel.table.row2.note": "仅示范数据",
+  "demo.js.greeting": "你好，{name}！当前语言为 {lang}。",
+  "demo.js.switched": "已切换到 {lang}",
+  "demo.status.ready": "示范就绪 — 公共主题 + 多语言"
+
 };
+
