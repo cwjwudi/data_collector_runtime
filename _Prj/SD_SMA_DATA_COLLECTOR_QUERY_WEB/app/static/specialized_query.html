@@ -143,6 +143,83 @@
     #tableSelector {
       min-width: 220px;
     }
+    .query-head {
+      display: grid;
+      grid-template-columns: auto minmax(168px, 220px) minmax(0, 1fr) 76px;
+      grid-template-areas:
+        "start-label start-value presets export"
+        "end-label end-value fuzzy export";
+      gap: 6px 8px;
+      align-items: center;
+    }
+    .query-head .time-label,
+    .query-head .time-display {
+      height: 32px;
+      box-sizing: border-box;
+    }
+    .query-head .time-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 0 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .query-head .time-label-start { grid-area: start-label; }
+    .query-head .time-label-end { grid-area: end-label; }
+    .query-head .time-display {
+      width: 100%;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+    .query-head .time-display.is-empty {
+      color: #9ca3af;
+    }
+    .query-head #startTimeDisplay { grid-area: start-value; }
+    .query-head #endTimeDisplay { grid-area: end-value; }
+    .preset-row {
+      grid-area: presets;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .preset-row button {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .filter-row {
+      grid-area: fuzzy;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .filter-row label {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .filter-row select {
+      flex: 1 1 0;
+      min-width: 0;
+      width: auto;
+    }
+    .filter-row button {
+      flex: 0 0 auto;
+    }
+    .export-slot {
+      grid-area: export;
+      align-self: stretch;
+    }
+    .touch-time-anchor {
+      display: none;
+    }
     @media (pointer: coarse), (max-width: 900px) {
       .root {
         padding: 8px;
@@ -186,6 +263,17 @@
       .pager button {
         min-width: 96px;
       }
+      .query-head .preset-row button,
+      .query-head .time-display,
+      .query-head .filter-row button,
+      .query-head .filter-row select {
+        min-width: 0;
+        flex: 1 1 0;
+      }
+      .query-head .filter-row button,
+      .query-head .filter-row label {
+        flex: 0 0 auto;
+      }
       .pager button {
         flex: 1 1 120px;
       }
@@ -201,35 +289,58 @@
         font-size: 13px;
       }
     }
+    @media (max-width: 900px) {
+      .query-head {
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+          "start-label start-value"
+          "presets presets"
+          "end-label end-value"
+          "fuzzy fuzzy";
+      }
+      .export-slot {
+        display: none;
+      }
+      .query-head .preset-row button {
+        flex: 1 1 auto;
+        padding: 8px 6px;
+        font-size: 14px;
+      }
+    }
   </style>
   <link rel="stylesheet" href="/static/touch_time_range.css?v=20260727_02" />
 </head>
 <body>
   <div id="app" class="root">
     <div class="toolbar">
-      <div class="toolbar-row">
-        <label for="queryCondition">附加条件</label>
-        <select id="queryCondition"><option value="">不附加</option></select>
-        <label for="queryConditionValue">条件值</label>
-        <select id="queryConditionValue" disabled><option value="">请选择</option></select>
-        <button id="btnGo">查询</button>
-      </div>
-      <div id="pluginTimePanel" class="toolbar-row">
-        <span>时间范围</span>
-        <input id="startDate" class="touch-time-value-input" type="hidden" />
-        <input id="endDate" class="touch-time-value-input" type="hidden" />
-        <span id="pluginTimeSummary" class="meta touch-time-inline-summary is-empty" aria-live="polite">尚未设置时间范围</span>
-        <button type="button" id="btnRange15Min">最近15分钟</button>
-        <button type="button" id="btnRange1H">最近1小时</button>
-        <button type="button" id="btnRange8H">最近8小时</button>
-        <button type="button" id="btnRangeToday">今天</button>
-        <button type="button" id="btnRangeYesterday">昨天</button>
-        <button type="button" id="btnRange1W">最近1周</button>
-        <button type="button" id="btnRange1M">最近1月</button>
-        <button type="button" id="btnPreciseTime">精确时间</button>
-      </div>
-      <div class="toolbar-row">
-        <label>表</label><select id="tableSelector"></select>
+      <div id="pluginTimePanel" class="query-head">
+        <span class="time-label time-label-start">开始时间</span>
+        <button type="button" id="startTimeDisplay" class="time-display is-empty">未设置</button>
+        <div class="preset-row">
+          <button type="button" id="btnRange15Min">最近15分钟</button>
+          <button type="button" id="btnRange1H">最近1小时</button>
+          <button type="button" id="btnRange8H">最近8小时</button>
+          <button type="button" id="btnRangeToday">今天</button>
+          <button type="button" id="btnRangeYesterday">昨天</button>
+          <button type="button" id="btnRange1W">最近1周</button>
+        </div>
+        <span class="time-label time-label-end">结束时间</span>
+        <button type="button" id="endTimeDisplay" class="time-display is-empty">未设置</button>
+        <div class="filter-row">
+          <label for="queryCondition">筛选</label>
+          <select id="queryCondition"><option value="">不附加</option></select>
+          <label for="queryConditionValue">内容</label>
+          <select id="queryConditionValue" disabled><option value="">请选择</option></select>
+          <button type="button" id="btnGo">查询</button>
+        </div>
+        <span class="export-slot" aria-hidden="true"></span>
+        <div class="touch-time-anchor">
+          <input id="startDate" class="touch-time-value-input" type="hidden" />
+          <input id="endDate" class="touch-time-value-input" type="hidden" />
+          <span id="pluginTimeSummary" class="meta touch-time-inline-summary is-empty" aria-live="polite">尚未设置时间范围</span>
+          <button type="button" id="btnPreciseTime">精确时间</button>
+          <select id="tableSelector" hidden></select>
+        </div>
       </div>
     </div>
     <div class="tableWrap">
@@ -245,6 +356,6 @@
     </div>
   </div>
   <script src="/static/touch_time_range.js?v=20260727_02"></script>
-  <script src="/static/specialized_query.js?v=20261020_02"></script>
+  <script src="/static/specialized_query.js?v=20261021_01"></script>
 </body>
 </html>

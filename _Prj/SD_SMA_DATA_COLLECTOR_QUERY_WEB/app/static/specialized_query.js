@@ -41,7 +41,6 @@
     btnRangeToday: "today",
     btnRangeYesterday: "yesterday",
     btnRange1W: "last1w",
-    btnRange1M: "last1m",
   };
   const quickButtons = Object.keys(quickPresets);
 
@@ -89,12 +88,29 @@
     return quickButtons.find((id) => document.getElementById(id)?.classList.contains("active")) || "";
   }
 
+  function formatClock(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return "";
+    return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6] || "00"}`;
+  }
+
+  function syncTimeDisplays() {
+    for (const [inputId, displayId] of [["startDate", "startTimeDisplay"], ["endDate", "endTimeDisplay"]]) {
+      const text = formatClock(document.getElementById(inputId).value);
+      const display = document.getElementById(displayId);
+      display.textContent = text || "未设置";
+      display.classList.toggle("is-empty", !text);
+    }
+  }
+
   function updateConditionControls() {
     const locked = advancedOpcuaMode;
     document.getElementById("queryCondition").disabled = locked;
     document.getElementById("queryConditionValue").disabled = locked || !document.getElementById("queryCondition").value;
     timeRangePicker?.setDisabled(locked);
-    for (const id of quickButtons) document.getElementById(id).disabled = locked;
+    for (const id of ["startTimeDisplay", "endTimeDisplay", ...quickButtons]) {
+      document.getElementById(id).disabled = locked;
+    }
   }
 
   async function loadConditionValues(preferredValue) {
@@ -462,6 +478,7 @@
     } else {
       setQuickActive(saved.quickActive || "");
     }
+    syncTimeDisplays();
     await loadQueryConditions(saved?.conditionName, saved?.conditionValue);
     updateConditionControls();
 
@@ -494,9 +511,16 @@
     for (const [id, preset] of Object.entries(quickPresets)) {
       document.getElementById(id).addEventListener("click", () => applyQuickRange(preset, id));
     }
+    for (const id of ["startTimeDisplay", "endTimeDisplay"]) {
+      document.getElementById(id).addEventListener("click", () => {
+        if (document.getElementById(id).disabled) return;
+        document.getElementById("btnPreciseTime").click();
+      });
+    }
     for (const id of ["startDate", "endDate"]) {
       document.getElementById(id).addEventListener("input", () => {
         setQuickActive("");
+        syncTimeDisplays();
         savePluginState();
       });
     }
