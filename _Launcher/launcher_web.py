@@ -31,6 +31,7 @@ def create_management_app(
     network: Any | None = None,
 ) -> FastAPI:
     app = FastAPI(title="SD SMA Launcher", version="1.0")
+    app.mount("/common", StaticFiles(directory=str(Path(__file__).resolve().parent.parent / "_Prj" / "SD_SMA_COMMON" / "sd_sma_common" / "web")), name="common")
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.middleware("http")

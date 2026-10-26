@@ -3,7 +3,8 @@ const $=id=>document.getElementById(id);
 
 async function api(url,options={}){
   const response=await fetch(url,{credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
-  let data={}; try{data=await response.json();}catch{data={detail:await response.text()};}
+  const text=await response.text();
+  let data={}; try{data=text?JSON.parse(text):{};}catch{data={detail:text};}
   if(!response.ok){const error=new Error(data.detail||`请求失败 (${response.status})`);error.status=response.status;throw error;}
   return data;
 }
@@ -66,7 +67,7 @@ function renderCredentials(){
 function openCredential(row={}){$("credentialId").value=row.id||"";$("credentialName").value=row.name||"";$("credentialHost").value=row.host||"127.0.0.1";$("credentialPort").value=row.port||3306;$("credentialUsername").value=row.username||"root";$("credentialDatabase").value=row.database||"";$("credentialPassword").value="";$("credentialPassword").required=!row.id;$("credentialError").textContent="";$("credentialDialog").showModal();}
 $("newCredential").onclick=async()=>{if(await ensureAdmin())openCredential();};
 $("credentialCancel").onclick=()=>$("credentialDialog").close("cancel");
-$("credentialForm").addEventListener("submit",async event=>{event.preventDefault();if(event.submitter&&event.submitter.id!=="credentialSave"){$("credentialDialog").close("cancel");return;}const body={id:$("credentialId").value||undefined,name:$("credentialName").value,engine:"mysql",host:$("credentialHost").value,port:Number($("credentialPort").value),username:$("credentialUsername").value,database:$("credentialDatabase").value,password:$("credentialPassword").value};try{await api("/api/launcher/credentials",{method:"POST",body:JSON.stringify(body)});$("credentialDialog").close();toast("凭据已加密保存");await loadCredentials();}catch(error){$("credentialError").textContent=error.message;}});
+$("credentialForm").addEventListener("submit",async event=>{event.preventDefault();if(event.submitter&&event.submitter.id!=="credentialSave"){$("credentialDialog").close("cancel");return;}const body={id:$("credentialId").value||undefined,name:$("credentialName").value,engine:"mysql",host:$("credentialHost").value,port:Number($("credentialPort").value),username:$("credentialUsername").value,database:$("credentialDatabase").value,password:$("credentialPassword").value};try{await api("/api/launcher/credentials",{method:"POST",body:JSON.stringify(body)});$("credentialDialog").close();toast(SdI18n.t('launcher.credentials.saved'));await loadCredentials();}catch(error){$("credentialError").textContent=error.message;}});
 async function saveAssignment(service,credential_id){try{await api(`/api/launcher/credentials/assignments/${service}`,{method:"PUT",body:JSON.stringify({credential_id})});toast("分配已保存，运行中的服务正在重启");await loadCredentials();}catch(error){toast(error.message);}}
 async function testCredential(id){try{const result=await api(`/api/launcher/credentials/${id}/test`,{method:"POST"});toast(result.message);}catch(error){toast(error.message);}}
 async function deleteCredential(row){if(!await confirmAction("删除凭据",`删除“${row.name}”并取消所有服务分配？`))return;try{await api(`/api/launcher/credentials/${row.id}`,{method:"DELETE"});toast("凭据已删除");await loadCredentials();}catch(error){toast(error.message);}}

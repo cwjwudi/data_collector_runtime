@@ -4,6 +4,9 @@
  * 业务代码不写死中文,一律 SdI18n.t('key') 或 data-i18n="key"
  * ============================================================ */
 window.SD_SMA_I18N_ZH = {
+  "common.password.label": "密码",
+  "launcher.credentials.saved": "凭据已保存",
+  "launcher.credentials.storageHint": "密码保存在本机配置中，页面不会回显密码。",
   /* 页内导航(跨页复用) */
   "nav.aria": "站内导航",
   "nav.current.query": "查询页",

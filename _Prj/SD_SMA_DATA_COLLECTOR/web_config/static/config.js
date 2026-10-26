@@ -1370,7 +1370,7 @@ function renderDatabase() {
       createInput(db.port || 3306, (v) => (db.port = Number(v) || 3306), "number"),
     ])
   );
-  appendHeaders(panel, ["用户名", "密码（加密保存）", "数据组(data_groups)"]);
+  appendHeaders(panel, ["用户名", SdI18n.t('common.password.label'), "数据组(data_groups)"]);
   const passwordCell = document.createElement("div");
   passwordCell.className = "password-field";
   const passwordInput = createInput("", (v) => {

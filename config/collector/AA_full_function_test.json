@@ -790,7 +790,7 @@
       "Data_Batch",
       "Data_BatchInfo"
     ],
-    "password_enc": "gAAAAABq1wFev2CBsMrNbZOF_s8QQMONjs2ULZK9y3k6FE7UV2lxlfpxy8ajRiVl9xqYIBMr85ZGuk6fG-IpRMO9WC9mL-n9cw=="
+    "password": ""
   },
   "logging": {
     "level": "INFO",

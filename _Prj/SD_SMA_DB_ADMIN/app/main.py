@@ -21,7 +21,6 @@ from typing import Any, Callable
 from urllib.parse import urlsplit
 
 import pymysql
-from cryptography.fernet import Fernet, InvalidToken
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -68,7 +67,6 @@ def _resolve_config_dir() -> Path:
 
 CONFIG_DIR = _resolve_config_dir()
 CONFIG_FILE = CONFIG_DIR / "default.json"
-SECRET_KEY_FILE = CONFIG_DIR / ".sd_sma_db_admin_fernet.key"
 SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
 
@@ -171,32 +169,6 @@ def load_config() -> dict[str, Any]:
 def save_config(cfg: dict[str, Any]) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     _atomic_json(CONFIG_FILE, cfg)
-
-
-def _secret_key() -> bytes:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    if SECRET_KEY_FILE.exists():
-        return SECRET_KEY_FILE.read_bytes().strip()
-    key = Fernet.generate_key()
-    SECRET_KEY_FILE.write_bytes(key)
-    try:
-        SECRET_KEY_FILE.chmod(0o600)
-    except OSError:
-        pass
-    return key
-
-
-def _encrypt_password(value: str) -> str:
-    return Fernet(_secret_key()).encrypt(value.encode("utf-8")).decode("ascii")
-
-
-def _decrypt_password(value: str) -> str:
-    if not value:
-        return ""
-    try:
-        return Fernet(_secret_key()).decrypt(value.encode("ascii")).decode("utf-8")
-    except (InvalidToken, ValueError) as exc:
-        raise ValueError("数据库密码密文无法在本机解密，请在 Launcher 中重新设置凭据") from exc
 
 
 def _config_path(value: str | None, default: Path) -> Path:
@@ -417,7 +389,7 @@ def default_connection() -> dict[str, Any]:
             base[key] = int(os.environ[env_name]) if key == "port" else os.environ[env_name]
     base["password"] = ""
     base["password_configured"] = bool(
-        os.getenv("SD_SMA_DB_PASSWORD") or conn.get("password_enc") or conn.get("password")
+        os.getenv("SD_SMA_DB_PASSWORD") or conn.get("password")
     )
     base["password_managed"] = bool(os.getenv("SD_SMA_DB_CREDENTIAL_MANAGED"))
     return base
@@ -431,13 +403,11 @@ def persist_default_connection(conn: DbConnection) -> dict[str, Any]:
     for key in ("engine", "host", "port", "username", "database"):
         if key in payload:
             current[key] = payload[key]
-    current.pop("password", None)
+    current.pop("password_enc", None)
     if os.getenv("SD_SMA_DB_CREDENTIAL_MANAGED"):
-        current.pop("password_enc", None)
-    elif conn.password:
-        current["password_enc"] = _encrypt_password(conn.password)
-    elif legacy_password and not current.get("password_enc"):
-        current["password_enc"] = _encrypt_password(legacy_password)
+        current.pop("password", None)
+    else:
+        current["password"] = conn.password or legacy_password
     cfg["default_connection"] = current
     save_config(cfg)
     return default_connection()
@@ -451,9 +421,6 @@ def connection_password(conn: DbConnection) -> str:
         return conn.password
     cfg = load_config()
     current = cfg.get("default_connection") if isinstance(cfg.get("default_connection"), dict) else {}
-    if current.get("password_enc"):
-        return _decrypt_password(str(current["password_enc"]))
-    # One-time compatibility for legacy files; the next save migrates it.
     return str(current.get("password") or "")
 
 

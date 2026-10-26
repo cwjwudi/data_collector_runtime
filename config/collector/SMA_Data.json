@@ -411,7 +411,7 @@
     "data_groups": [
       "Data_Product"
     ],
-    "password_enc": "gAAAAABq1wDu-X3LY6iA6SygozK22f3LG94IhAAmaan8-OquNL47xaNfBfMv0Qo5RdEelfLuPsCX_hUTeTYUa50yPceTa49V3w=="
+    "password": ""
   },
   "logging": {
     "level": "DEBUG",

@@ -60,7 +60,7 @@
     <section id="credentialsPage" class="page">
       <div class="panel">
         <div class="panel-title"><h2>数据库凭据档案</h2><button id="newCredential" class="primary">新增档案</button></div>
-        <p class="hint">密码由本机 Windows DPAPI 加密，页面不会回显密码。</p>
+        <p class="hint" data-i18n="launcher.credentials.storageHint"></p>
         <div id="credentialList" class="credential-list"></div>
         <h3>服务分配</h3>
         <div id="assignmentList" class="assignment-list"></div>
@@ -116,6 +116,8 @@
   </dialog>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js"></script>
+  <script src="/common/zh.js?v=20261026_01"></script>
+  <script src="/common/i18n.js?v=20261026_01"></script>
+  <script src="/static/app.js?v=20261026_02"></script>
 </body>
 </html>

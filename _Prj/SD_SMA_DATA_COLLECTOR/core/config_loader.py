@@ -13,7 +13,12 @@ from .config_models import (
     TriggerMode, TriggerType, Communication, Connection, LoggingConfig, InsertFeedbackConfig,
     BatchUpsertConfig, IndexConfig, PersistentQueueConfig, FIXED_INDEX_COLUMNS
 )
-from .secret_store import migrate_password_mapping, resolve_password
+import sys
+COMMON_ROOT = Path(__file__).resolve().parents[2] / "SD_SMA_COMMON"
+if str(COMMON_ROOT) not in sys.path:
+    sys.path.insert(0, str(COMMON_ROOT))
+
+from sd_sma_common.password_store import migrate_password_mapping, resolve_password
 
 
 class ConfigLoader:
@@ -222,7 +227,7 @@ class ConfigLoader:
             host=os.environ.get('SD_SMA_DB_HOST') or db_data.get('host', '127.0.0.1'),
             port=int(os.environ.get('SD_SMA_DB_PORT') or db_data.get('port', 3306)),
             username=os.environ.get('SD_SMA_DB_USERNAME') or db_data.get('username', ''),
-            # 环境变量优先；持久化配置只接受 password_enc。
+            # 环境变量优先；配置保存普通密码。
             password=(
                 resolve_password(config_dir, db_data, 'SD_SMA_DB_PASSWORD')
                 if config_dir is not None

@@ -7,7 +7,12 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from .secret_store import (
+import sys
+COMMON_ROOT = Path(__file__).resolve().parents[2] / "SD_SMA_COMMON"
+if str(COMMON_ROOT) not in sys.path:
+    sys.path.insert(0, str(COMMON_ROOT))
+
+from sd_sma_common.password_store import (
     migrate_password_mapping,
     password_is_configured,
     prepare_password_mapping,
@@ -182,8 +187,8 @@ class UnifiedConfigStore:
             "poll_interval_ms": cls._clamp_poll_interval_ms(data.get("poll_interval_ms", 500)),
             "nodes": cls._normalize_opcua_nodes(data.get("nodes")),
         }
-        if data.get("password_enc"):
-            normalized["password_enc"] = str(data["password_enc"])
+        if "password" in data:
+            normalized["password"] = str(data.get("password") or "")
         return normalized
 
     @classmethod
@@ -623,6 +628,7 @@ class UnifiedConfigStore:
         config = self.get_active_config()
         stored = self._normalize_opcua_settings(config.get("opcua"))
         public = dict(stored)
+        public.pop("password", None)
         public.pop("password_enc", None)
         public["password_configured"] = password_is_configured(
             config.get("opcua"),
@@ -664,13 +670,14 @@ class UnifiedConfigStore:
         )
         settings["database"] = database
         opcua = self._normalize_opcua_settings(public.get("opcua"))
+        opcua.pop("password", None)
         opcua.pop("password_enc", None)
         opcua["password_configured"] = password_is_configured(config.get("opcua"), "SD_SMA_OPCUA_PASSWORD")
         public["opcua"] = opcua
         return public
 
     def replace_active_profile(self, submitted: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-        """用提交的整份配置替换当前文件。密码与已保存密文合并；库能连上时去掉不存在的分组。"""
+        """用提交的整份配置替换当前文件。密码与已保存密码合并；库能连上时去掉不存在的分组。"""
         if not isinstance(submitted, dict):
             raise ValueError("配置必须为 JSON 对象")
         query_view = submitted.get("query_view")

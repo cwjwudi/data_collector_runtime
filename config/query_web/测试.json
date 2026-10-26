@@ -8,7 +8,7 @@
       "host": "127.0.0.1",
       "port": 3306,
       "username": "root",
-      "password_enc": "gAAAAABq1valDKDjZlioYgIRE4vLTfN6d0G6eDt4GyUP90IixEvg5xIC5ezV7bh_WgX2Jx1hsZpwIgKnW4V--eXLyRUDlQqotw=="
+      "password": ""
     },
     "query_limits": {
       "requests_per_minute": 180,

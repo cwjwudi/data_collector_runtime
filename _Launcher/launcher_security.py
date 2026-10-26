@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import ctypes
 import hashlib
 import hmac
 import json
@@ -9,13 +8,11 @@ import os
 import secrets
 import threading
 import time
-from ctypes import wintypes
 from pathlib import Path
 from typing import Any, Mapping
 
 
 PBKDF2_ITERATIONS = 310_000
-DPAPI_LOCAL_MACHINE = 0x4
 
 
 def _atomic_json(path: Path, data: Mapping[str, Any]) -> None:
@@ -23,72 +20,6 @@ def _atomic_json(path: Path, data: Mapping[str, Any]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary.replace(path)
-
-
-class _DataBlob(ctypes.Structure):
-    _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
-
-
-def _blob_from_bytes(value: bytes) -> tuple[_DataBlob, Any]:
-    buffer = ctypes.create_string_buffer(value)
-    return _DataBlob(len(value), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_byte))), buffer
-
-
-def _dpapi_protect(value: bytes) -> bytes:
-    if os.name != "nt":
-        raise RuntimeError("Windows DPAPI is unavailable")
-    source, source_buffer = _blob_from_bytes(value)
-    target = _DataBlob()
-    crypt32 = ctypes.windll.crypt32
-    kernel32 = ctypes.windll.kernel32
-    if not crypt32.CryptProtectData(
-        ctypes.byref(source), "SD SMA Launcher", None, None, None, DPAPI_LOCAL_MACHINE, ctypes.byref(target)
-    ):
-        raise ctypes.WinError()
-    try:
-        return ctypes.string_at(target.pbData, target.cbData)
-    finally:
-        kernel32.LocalFree(target.pbData)
-        del source_buffer
-
-
-def _dpapi_unprotect(value: bytes) -> bytes:
-    if os.name != "nt":
-        raise RuntimeError("Windows DPAPI is unavailable")
-    source, source_buffer = _blob_from_bytes(value)
-    target = _DataBlob()
-    crypt32 = ctypes.windll.crypt32
-    kernel32 = ctypes.windll.kernel32
-    if not crypt32.CryptUnprotectData(
-        ctypes.byref(source), None, None, None, None, 0, ctypes.byref(target)
-    ):
-        raise ctypes.WinError()
-    try:
-        return ctypes.string_at(target.pbData, target.cbData)
-    finally:
-        kernel32.LocalFree(target.pbData)
-        del source_buffer
-
-
-def protect_secret(value: str) -> str:
-    raw = value.encode("utf-8")
-    if os.name == "nt":
-        return "dpapi:" + base64.urlsafe_b64encode(_dpapi_protect(raw)).decode("ascii")
-    # Source-only fallback keeps tests and non-Windows development usable. Installed Windows builds never use it.
-    key = hashlib.sha256((str(Path.home()) + "\0SD_SMA_LAUNCHER_DEV").encode("utf-8")).digest()
-    masked = bytes(byte ^ key[index % len(key)] for index, byte in enumerate(raw))
-    return "dev:" + base64.urlsafe_b64encode(masked).decode("ascii")
-
-
-def unprotect_secret(value: str) -> str:
-    prefix, encoded = str(value).split(":", 1)
-    raw = base64.urlsafe_b64decode(encoded.encode("ascii"))
-    if prefix == "dpapi":
-        return _dpapi_unprotect(raw).decode("utf-8")
-    if prefix == "dev" and os.name != "nt":
-        key = hashlib.sha256((str(Path.home()) + "\0SD_SMA_LAUNCHER_DEV").encode("utf-8")).digest()
-        return bytes(byte ^ key[index % len(key)] for index, byte in enumerate(raw)).decode("utf-8")
-    raise ValueError("Credential was not encrypted for this machine")
 
 
 class LauncherSecurityStore:
@@ -209,8 +140,8 @@ class LauncherSecurityStore:
         with self._lock:
             rows = []
             for raw in self._data.get("credentials", []):
-                row = {key: value for key, value in raw.items() if key != "password_protected"}
-                row["password_configured"] = bool(raw.get("password_protected"))
+                row = {key: value for key, value in raw.items() if key not in {"password_protected", "password"}}
+                row["password_configured"] = bool(raw.get("password"))
                 rows.append(row)
             return {"credentials": rows, "assignments": dict(self._data.get("assignments", {}))}
 
@@ -233,9 +164,10 @@ class LauncherSecurityStore:
             }
             password = str(payload.get("password") or "")
             if password:
-                result["password_protected"] = protect_secret(password)
-            elif not result.get("password_protected"):
+                result["password"] = password
+            elif not result.get("password"):
                 raise ValueError("新凭据必须输入密码")
+            result.pop("password_protected", None)
             rows = [row for row in rows if str(row.get("id")) != credential_id]
             rows.append(result)
             self._data["credentials"] = rows
@@ -274,8 +206,8 @@ class LauncherSecurityStore:
             )
         if row is None:
             return None
-        protected = str(row.pop("password_protected", ""))
-        row["password"] = unprotect_secret(protected) if protected else ""
+        row.pop("password_protected", None)
+        row["password"] = str(row.get("password") or "")
         return row
 
     def credential_by_id(self, credential_id: str) -> dict[str, Any] | None:
@@ -286,8 +218,8 @@ class LauncherSecurityStore:
             )
         if row is None:
             return None
-        protected = str(row.pop("password_protected", ""))
-        row["password"] = unprotect_secret(protected) if protected else ""
+        row.pop("password_protected", None)
+        row["password"] = str(row.get("password") or "")
         return row
 
     def services_for_credential(self, credential_id: str) -> list[str]:

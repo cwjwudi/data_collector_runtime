@@ -9,7 +9,12 @@ from typing import Any
 
 from core.config_loader import ConfigLoader
 from core.config_models import FIXED_INDEX_COLUMNS
-from core.secret_store import (
+import sys
+COMMON_ROOT = Path(__file__).resolve().parents[2] / "SD_SMA_COMMON"
+if str(COMMON_ROOT) not in sys.path:
+    sys.path.insert(0, str(COMMON_ROOT))
+
+from sd_sma_common.password_store import (
     migrate_password_mapping,
     password_is_configured,
     prepare_password_mapping,
