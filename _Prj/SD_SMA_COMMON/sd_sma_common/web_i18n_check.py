@@ -35,11 +35,11 @@ def check_engine() -> None:
     base = (WEB_DIR / "base.css").read_text(encoding="utf-8")
     for sel in (".page-nav", ".layout", ".panel", ".row", "button", ".muted", ".hint", ":root"):
         assert sel in base, f"base.css 缺少公共选择器 {sel}"
-    # 示范页确实引用了公共底座且版本号统一,防缓存旧脚本
+    # 示范页引用公共底座；业务脚本独立递增缓存版本。
     html = (QUERY_STATIC / "query.html").read_text(encoding="utf-8")
     assert f"/common/base.css?v={CACHE_VERSION}" in html, "query.html 未引用 base.css"
     assert f"/common/i18n.js?v={CACHE_VERSION}" in html, "query.html 未引用 i18n.js"
-    assert f"/static/query.js?v={CACHE_VERSION}" in html, "query.js 版本号未更新"
+    assert "/static/query.js?v=20261026_01" in html, "query.js 版本号未更新"
 
 
 def collect_used_keys() -> set:

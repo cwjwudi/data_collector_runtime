@@ -23,6 +23,10 @@ const quickRangePresets = {
 };
 const quickRangeButtonIds = Object.keys(quickRangePresets);
 
+function showQueryError(message) {
+  document.getElementById('queryWarnings').textContent = message;
+}
+
 function safeStorageGet(key) {
   try {
     return window.localStorage.getItem(key);
@@ -310,8 +314,8 @@ function getCurrentQueryContext() {
   const viewName = document.getElementById('viewName').value;
   const group = document.getElementById('group').value;
   const table = document.getElementById('tableName').value;
-  if (!viewName) return alert(t('query.js.selectView'));
-  if (!group) return alert(t('query.js.selectGroup'));
+  if (!viewName) return showQueryError(t('query.js.selectView'));
+  if (!group) return showQueryError(t('query.js.selectGroup'));
   return { viewName, group, table };
 }
 
@@ -354,9 +358,9 @@ async function runQueryAtPage(page) {
 
   const start = document.getElementById('startTime').value;
   const end = document.getElementById('endTime').value;
-  if (Boolean(start) !== Boolean(end)) return alert(t('query.js.timePartial'));
+  if (Boolean(start) !== Boolean(end)) return showQueryError(t('query.js.timePartial'));
   if (start && end && new Date(start).getTime() > new Date(end).getTime()) {
-    return alert(t('query.js.timeOrder'));
+    return showQueryError(t('query.js.timeOrder'));
   }
   if (start && end) {
     payload.start_time = start;
@@ -540,18 +544,18 @@ async function restoreQueryPageState() {
 }
 
 document.getElementById('btnRefreshGroups').addEventListener('click', () => {
-  loadViews().catch(err => alert(err.message));
+  loadViews().catch(err => showQueryError(err.message));
 });
 document.getElementById('btnRunQuery').addEventListener('click', () => {
-  runQuery().catch(err => alert(err.message));
+  runQuery().catch(err => showQueryError(err.message));
 });
 document.getElementById('btnPrevPage').addEventListener('click', () => {
   if (!lastQueryContext) return;
-  runLastQueryAtPage(Math.max(1, currentPage - 1)).catch(err => alert(err.message));
+  runLastQueryAtPage(Math.max(1, currentPage - 1)).catch(err => showQueryError(err.message));
 });
 document.getElementById('btnNextPage').addEventListener('click', () => {
   if (!lastQueryContext) return;
-  runLastQueryAtPage(Math.min(totalPages, currentPage + 1)).catch(err => alert(err.message));
+  runLastQueryAtPage(Math.min(totalPages, currentPage + 1)).catch(err => showQueryError(err.message));
 });
 document.getElementById('group').addEventListener('change', () => {
   Promise.all([loadGroupSchemaHint(), loadTablesForCurrentGroup()])
@@ -559,7 +563,7 @@ document.getElementById('group').addEventListener('change', () => {
     .then(() => {
       saveQueryPageState();
     })
-    .catch(err => alert(err.message));
+    .catch(err => showQueryError(err.message));
 });
 document.getElementById('tableName').addEventListener('change', saveQueryPageState);
 document.getElementById('viewName').addEventListener('change', () => {
@@ -569,14 +573,14 @@ document.getElementById('viewName').addEventListener('change', () => {
       updateViewSummary();
       saveQueryPageState();
     })
-    .catch(err => alert(err.message));
+    .catch(err => showQueryError(err.message));
 });
 document.getElementById('startTime').addEventListener('input', clearQuickRangeActive);
 document.getElementById('endTime').addEventListener('input', clearQuickRangeActive);
 document.getElementById('startTime').addEventListener('change', saveQueryPageState);
 document.getElementById('endTime').addEventListener('change', saveQueryPageState);
 document.getElementById('queryCondition').addEventListener('change', () => {
-  loadConditionValues().then(saveQueryPageState).catch(err => alert(err.message));
+  loadConditionValues().then(saveQueryPageState).catch(err => showQueryError(err.message));
 });
 document.getElementById('queryConditionValue').addEventListener('change', saveQueryPageState);
 document.getElementById('labelLang').addEventListener('change', saveQueryPageState);
@@ -608,4 +612,4 @@ async function initQueryPage() {
   await restoreQueryPageState();
 }
 
-initQueryPage().catch(err => alert(err.message));
+initQueryPage().catch(err => showQueryError(err.message));
