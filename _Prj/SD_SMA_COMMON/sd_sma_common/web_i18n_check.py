@@ -8,6 +8,7 @@
 4. 字典无死 key(每个 key 至少被一处引用,防堆积)
 """
 
+import ast
 import json
 import re
 import sys
@@ -42,6 +43,36 @@ def check_engine() -> None:
     assert "/static/query.js?v=20261026_01" in html, "query.js 版本号未更新"
 
 
+def check_collector_assets() -> None:
+    """执行真实挂载语句，避免导入采集器触发运行时配置或连接 PLC。"""
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.testclient import TestClient
+
+    root = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR" / "web_config"
+    tree = ast.parse((root / "main.py").read_text(encoding="utf-8"))
+    mounts = [node for node in tree.body if isinstance(node, ast.Expr)
+              and isinstance(node.value, ast.Call)
+              and ast.unparse(node.value.func) == "app.mount"
+              and node.value.args and isinstance(node.value.args[0], ast.Constant)
+              and node.value.args[0].value == "/common"]
+    assert len(mounts) == 1, "采集服务必须挂载 /common"
+    app = FastAPI()
+    exec(compile(ast.Module(body=mounts, type_ignores=[]), str(root / "main.py"), "exec"),
+         {"app": app, "StaticFiles": StaticFiles, "COMMON_ROOT": WEB_DIR.parent.parent})
+    html = (root / "static" / "config.html").read_text(encoding="utf-8")
+    scripts = re.findall(r'<script src="([^"]+)"', html)
+    assert scripts.index(next(s for s in scripts if s.startswith("/common/zh.js?"))) < scripts.index(
+        next(s for s in scripts if s.startswith("/common/i18n.js?"))) < scripts.index(
+        next(s for s in scripts if s.startswith("/static/config.js?"))), "语言脚本须先于配置脚本加载"
+    with TestClient(app) as client:
+        for src in scripts:
+            if src.startswith("/common/"):
+                response = client.get(src)
+                assert response.status_code == 200, f"{src}: {response.status_code}"
+                assert "javascript" in response.headers["content-type"], src
+
+
 def collect_used_keys() -> set:
     used = set()
     for html in [*QUERY_STATIC.glob("*.html"), * (REPO_ROOT / "_Launcher/static").glob("*.html")]:
@@ -55,6 +86,7 @@ def collect_used_keys() -> set:
 
 def main() -> int:
     check_engine()
+    check_collector_assets()
     zh = load_dict()
     assert isinstance(zh, dict) and len(zh) >= 40, f"zh.js 字典异常小: {len(zh)} 条"
 
