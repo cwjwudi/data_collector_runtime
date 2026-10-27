@@ -1,5 +1,7 @@
 @echo off
 setlocal
+rem Let Windows PowerShell use its own modules when called from PowerShell 7.
+set "PSModulePath="
 chcp 65001 >nul 2>&1
 title SD SMA Package Builder
 set "SCRIPT_DIR=%~dp0"

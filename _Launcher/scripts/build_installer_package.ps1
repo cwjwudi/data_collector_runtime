@@ -90,16 +90,23 @@ function Resolve-BuildPython {
 
 function Ensure-Nuitka {
     param([Parameter(Mandatory = $true)][string]$PythonExe)
-    & $PythonExe -c "import nuitka, psutil" 2>$null
+    # Missing build tools are expected here; keep stderr out of PowerShell's error stream.
+    & $PythonExe -c @"
+import sys
+try:
+    import nuitka, psutil, zstandard
+except ImportError:
+    sys.exit(1)
+"@
     if ($LASTEXITCODE -eq 0) {
         return
     }
     if ($SkipToolInstall) {
-        throw "Nuitka or psutil is missing in $PythonExe and -SkipToolInstall was supplied."
+        throw "Nuitka, psutil or zstandard is missing in $PythonExe and -SkipToolInstall was supplied."
     }
     $uv = Get-Command uv -ErrorAction SilentlyContinue
     if (-not $uv) {
-        throw "Nuitka/psutil is missing and uv was not found. Install them with: uv pip install --python `"$PythonExe`" nuitka zstandard psutil"
+        throw "Nuitka/psutil/zstandard is missing and uv was not found. Install them with: uv pip install --python `"$PythonExe`" nuitka zstandard psutil"
     }
     Write-Host "[tool] installing Nuitka and launcher build dependencies"
     & $uv.Source pip install --python $PythonExe nuitka zstandard psutil `

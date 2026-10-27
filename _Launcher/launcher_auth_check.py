@@ -29,6 +29,17 @@ with TemporaryDirectory() as temp:
     client.post("/api/launcher/auth/lock")
     assert not client.get("/api/launcher/auth/session").json()["unlocked"]
 
+# Compiled modules extract elsewhere; web assets must follow the installed static directory.
+with TemporaryDirectory() as temp:
+    package = Path(temp)
+    static = package / "_Launcher/static"
+    common = package / "_Prj/SD_SMA_COMMON/sd_sma_common/web"
+    static.mkdir(parents=True)
+    common.mkdir(parents=True)
+    (common / "base.css").write_text("/* relocated package */", encoding="utf-8")
+    client = TestClient(create_management_app(None, None, None, static))
+    assert client.get("/common/base.css").text == "/* relocated package */"
+
 # Execute the actual helper against native, single-use Fetch Response bodies.
 source = (ROOT / "_Launcher/static/app.js").read_text(encoding="utf-8")
 helper = source[source.index("async function api("):source.index("function toast(")]
