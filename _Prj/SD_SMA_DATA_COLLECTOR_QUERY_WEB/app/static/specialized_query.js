@@ -1,4 +1,6 @@
 (function () {
+  let queryBusy = false;
+  let queryStarted = 0;
   let currentPage = 1;
   let totalPages = 1;
   let totalRecords = null;
@@ -208,33 +210,20 @@
     }
   }
 
-  function updatePagerMeta(binding, warnings) {
+  function updatePagerMeta(warnings) {
     const totalKnown = totalRecords !== null && Number.isFinite(totalRecords);
-    const infoParts = [
-      `plugin=${binding.plugin_key}`,
-      `group=${binding.resolved_group || "-"}`,
-      `table=${document.getElementById("tableSelector").value || binding.resolved_table || "-"}`,
-      `current=${currentPage}`,
-      `has_more=${hasMore}`,
-    ];
-    if (totalKnown) {
-      infoParts.push(`total=${totalRecords}`, `pages=${totalPages}`);
+    if (!queryBusy && warnings?.length) {
+      document.getElementById("meta").textContent = warnings.join(" | ");
     }
-    if (!advancedOpcuaMode) {
-      const condition = currentQueryConditions.find((item) => item.name === document.getElementById("queryCondition").value);
-      if (condition) infoParts.push(`condition=${condition.name}:${condition.source_table}.${condition.source_field}`);
-    }
-    if (Array.isArray(warnings) && warnings.length) infoParts.push(`warnings=${warnings.join(" | ")}`);
-    document.getElementById("meta").textContent = infoParts.join(" ; ");
     document.getElementById("pageNumber").value = String(currentPage);
     document.getElementById("totalPageCount").textContent = totalKnown ? String(totalPages) : "—";
     document.getElementById("recordSummary").textContent = totalKnown
       ? `共 ${totalRecords} 条`
       : "总数统计中";
-    document.getElementById("btnPrevPage").disabled = currentPage <= 1;
-    document.getElementById("btnNextPage").disabled = advancedOpcuaMode
+    document.getElementById("btnPrevPage").disabled = queryBusy || currentPage <= 1;
+    document.getElementById("btnNextPage").disabled = queryBusy || (advancedOpcuaMode
       ? currentPage >= totalPages
-      : !hasMore;
+      : !hasMore);
   }
 
   function renderTable(columns, displayColumns, rows) {
@@ -303,7 +292,13 @@
         ? Math.max(1, Math.ceil(totalRecords / pageSize))
         : currentPage + (hasMore ? 1 : 0);
     }
-    updatePagerMeta(currentBinding, data.warnings || []);
+    updatePagerMeta(data.warnings || []);
+    const count = (data.rows || []).length;
+    const params = { count, seconds: ((performance.now() - queryStarted) / 1000).toFixed(1) };
+    document.getElementById("meta").textContent = count
+      ? SdI18n.t('specialized.query.complete', params)
+      : SdI18n.t('specialized.query.empty', params);
+    if (data.warnings?.length) document.getElementById("meta").textContent += ` · ${data.warnings.join(" | ")}`;
     savePluginState();
   }
 
@@ -348,50 +343,79 @@
     return payload;
   }
 
+  async function executeQuery(action) {
+    if (queryBusy) return;
+    queryBusy = true;
+    queryStarted = performance.now();
+    const button = document.getElementById("btnGo");
+    const status = document.getElementById("meta");
+    button.disabled = true;
+    button.textContent = SdI18n.t('specialized.query.busyButton');
+    document.getElementById("resultTable").setAttribute("aria-busy", "true");
+    status.textContent = SdI18n.t('specialized.query.running');
+    updatePagerMeta();
+    try {
+      await action();
+    } catch (error) {
+      status.textContent = SdI18n.t('specialized.query.failed', { reason: error.message });
+    } finally {
+      queryBusy = false;
+      button.disabled = false;
+      button.textContent = SdI18n.t('specialized.query.button');
+      document.getElementById("resultTable").setAttribute("aria-busy", "false");
+      updatePagerMeta();
+    }
+  }
+
   async function runFreshQuery(page = 1) {
-    lastQueryContext = buildQueryContext();
-    const targetPage = advancedOpcuaMode ? Math.max(1, page) : 1;
-    const data = await fetchJson(`/api/plugins/query/${encodeURIComponent(activePluginKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildPayload(lastQueryContext, targetPage, null, true)),
+    return executeQuery(async () => {
+      const context = buildQueryContext();
+      const targetPage = advancedOpcuaMode ? Math.max(1, page) : 1;
+      const data = await fetchJson(`/api/plugins/query/${encodeURIComponent(activePluginKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload(context, targetPage, null, true)),
+      });
+      lastQueryContext = context;
+      if (!advancedOpcuaMode) totalRecords = null;
+      applyQueryResult(data, targetPage, null, []);
     });
-    if (!advancedOpcuaMode) totalRecords = null;
-    applyQueryResult(data, targetPage, null, []);
   }
 
   async function runAdjacentPage(direction) {
     if (!lastQueryContext && !advancedOpcuaMode) return;
-    if (advancedOpcuaMode) {
-      const targetPage = Math.min(Math.max(currentPage + direction, 1), totalPages);
-      const data = await fetchJson(`/api/plugins/snapshot-page/${encodeURIComponent(activePluginKey)}`, {
+    if (direction < 0 && currentPage <= 1) return;
+    if (direction > 0 && (advancedOpcuaMode ? currentPage >= totalPages : !hasMore || !nextPageCursor)) return;
+    return executeQuery(async () => {
+      if (advancedOpcuaMode) {
+        const targetPage = Math.min(Math.max(currentPage + direction, 1), totalPages);
+        const data = await fetchJson(`/api/plugins/snapshot-page/${encodeURIComponent(activePluginKey)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ page: targetPage }),
+        });
+        applyQueryResult(data, targetPage, null, []);
+        return;
+      }
+
+      let requestedCursor = currentPageCursor;
+      const proposedStack = [...pageCursorStack];
+      let targetPage = currentPage;
+      if (direction > 0) {
+        proposedStack.push(currentPageCursor);
+        requestedCursor = nextPageCursor;
+        targetPage += 1;
+      } else {
+        requestedCursor = proposedStack.length ? proposedStack.pop() : null;
+        targetPage -= 1;
+      }
+      const data = await fetchJson(`/api/plugins/query/${encodeURIComponent(activePluginKey)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: targetPage }),
+        body: JSON.stringify({ ...buildPayload(lastQueryContext, targetPage, requestedCursor), write_sql: false }),
       });
-      applyQueryResult(data, targetPage, null, []);
-      return;
-    }
-
-    let requestedCursor = currentPageCursor;
-    const proposedStack = [...pageCursorStack];
-    let targetPage = currentPage;
-    if (direction > 0) {
-      if (!hasMore || !nextPageCursor) return;
-      proposedStack.push(currentPageCursor);
-      requestedCursor = nextPageCursor;
-      targetPage += 1;
-    } else {
-      if (currentPage <= 1) return;
-      requestedCursor = proposedStack.length ? proposedStack.pop() : null;
-      targetPage -= 1;
-    }
-    const data = await fetchJson(`/api/plugins/query/${encodeURIComponent(activePluginKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...buildPayload(lastQueryContext, targetPage, requestedCursor), write_sql: false }),
+      applyQueryResult(data, targetPage, requestedCursor, proposedStack);
     });
-    applyQueryResult(data, targetPage, requestedCursor, proposedStack);
   }
 
   function applyRuntimeState(state) {
@@ -405,7 +429,7 @@
     if (advancedOpcuaMode && state.has_snapshot === false) {
       warnings.push("尚未建立查询快照，请先点击查询");
     }
-    updatePagerMeta(currentBinding, warnings);
+    updatePagerMeta(warnings);
     savePluginState();
   }
 

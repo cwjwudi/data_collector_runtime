@@ -87,16 +87,25 @@
             "page_size": 50,
             "query_conditions": [
               {
+                "method": "eq",
                 "name": "报警状态",
                 "source_table": "dict_alarmstate",
                 "source_field": "value",
                 "bind_field": "AlarmState"
               },
               {
+                "method": "eq",
                 "name": "批次号",
                 "source_table": "data_batch",
                 "source_field": "BatchCode",
                 "bind_field": "BatchCode"
+              },
+              {
+                "method": "contains",
+                "name": "报警内容",
+                "source_table": "",
+                "source_field": "",
+                "bind_field": "AlarmText"
               }
             ]
           },

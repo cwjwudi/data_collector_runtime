@@ -98,5 +98,11 @@ window.SD_SMA_I18N_ZH = {
   "query.time.summary": "{start} → {end} · {duration}",
   "query.time.unknownPreset": "未知时间范围：{preset}",
   "query.time.invalidPrefix": "时间选择器 ID 前缀无效",
-  "query.time.missingElements": "时间选择器缺少必要页面元素"
+  "query.time.missingElements": "时间选择器缺少必要页面元素",
+  "specialized.query.button": "查询",
+  "specialized.query.busyButton": "查询中…",
+  "specialized.query.running": "正在查询，请稍候…",
+  "specialized.query.complete": "查询完成，本页 {count} 条，耗时 {seconds} 秒",
+  "specialized.query.empty": "查询完成，当前条件下没有数据，耗时 {seconds} 秒",
+  "specialized.query.failed": "查询失败：{reason}"
 };

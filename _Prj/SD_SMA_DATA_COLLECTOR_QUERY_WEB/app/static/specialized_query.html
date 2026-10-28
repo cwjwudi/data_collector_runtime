@@ -214,7 +214,24 @@
       width: auto;
     }
     .filter-row button {
-      flex: 0 0 auto;
+      flex: 0 0 calc((100% - 30px) / 6);
+    }
+    #btnGo {
+      background: var(--sd-color-link);
+      border-color: var(--sd-color-link);
+      color: var(--sd-color-panel-bg);
+    }
+    #btnGo:disabled {
+      background: var(--sd-color-th-bg);
+      border-color: var(--sd-color-border-input);
+      color: var(--sd-color-muted);
+      cursor: wait;
+      transform: none;
+    }
+    #meta {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      flex: 1 1 220px;
     }
     .export-slot {
       grid-area: export;
@@ -273,9 +290,11 @@
         min-width: 0;
         flex: 1 1 0;
       }
-      .query-head .filter-row button,
       .query-head .filter-row label {
         flex: 0 0 auto;
+      }
+      .query-head .filter-row #btnGo {
+        flex: 0 0 calc((100% - 30px) / 6);
       }
       .pager button {
         flex: 1 1 120px;
@@ -305,7 +324,7 @@
         display: none;
       }
       .query-head .preset-row button {
-        flex: 1 1 auto;
+        flex: 1 1 0;
         padding: 8px 6px;
         font-size: 14px;
       }
@@ -334,7 +353,7 @@
           <select id="queryCondition"><option value="">不附加</option></select>
           <label for="queryConditionValue">内容</label>
           <select id="queryConditionValue" disabled><option value="">请选择</option></select>
-          <button type="button" id="btnGo">查询</button>
+          <button type="button" id="btnGo" data-i18n="specialized.query.button">查询</button>
         </div>
         <span class="export-slot" aria-hidden="true"></span>
         <div class="touch-time-anchor">
@@ -355,12 +374,12 @@
       <span class="pageText">第</span><input id="pageNumber" class="pageInput" type="number" min="1" value="1" readonly />
       <span class="pageText">/ <strong id="totalPageCount" class="pageTotal">—</strong> 页</span>
       <span id="recordSummary" class="pageText recordSummary" aria-live="polite">总数统计中</span>
-      <div id="meta" class="meta"></div>
+      <div id="meta" class="meta" role="status" aria-live="polite"></div>
     </div>
   </div>
-  <script src="/common/zh.js?v=20261028_02"></script>
+  <script src="/common/zh.js?v=20261028_03"></script>
   <script src="/common/i18n.js?v=20261020_03"></script>
   <script src="/static/touch_time_range.js?v=20261028_01"></script>
-  <script src="/static/specialized_query.js?v=20261028_02"></script>
+  <script src="/static/specialized_query.js?v=20261028_03"></script>
 </body>
 </html>
