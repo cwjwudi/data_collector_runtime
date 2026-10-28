@@ -10,6 +10,7 @@
 - 自动生成的文件不要手改，改源头后重新生成。
 - 测试测真实实现，不要把业务逻辑抄一份进测试。尽量少用 mock。
 - 按仓库现有的流程走，不要引入仓库没在用的工具或流程。
+- Python 命令优先使用仓库根目录的 `.venv\Scripts\python.exe`，显式指定解释器路径，不依赖终端是否激活虚拟环境，也不要直接使用 PATH 中的 `python` / `py`。运行脚本、自检和安装依赖均遵守此规则；PowerShell 示例：`& .\.venv\Scripts\python.exe selfcheck.py`、`& .\.venv\Scripts\python.exe -m pip install ...`。本文中的 `python ...` 示例均指项目虚拟环境解释器。启动项目仍走 `start.bat`；虚拟环境缺失或不可用时先说明问题，不自动回退到系统 Python。
 
 ## 项目是什么
 
