@@ -1,7 +1,7 @@
 param(
     [string]$OutputDir = "",
     [string]$Python = "",
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.0.1",
     [string]$PipIndexUrl = "https://pypi.tuna.tsinghua.edu.cn/simple",
     [string]$PipTrustedHost = "pypi.tuna.tsinghua.edu.cn",
     [string]$HttpProxy = "",

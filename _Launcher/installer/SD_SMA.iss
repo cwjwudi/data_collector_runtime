@@ -5,7 +5,7 @@
   #error OutputDir must be supplied by build_installer_package.ps1
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 
 #define AppName "SD SMA Runtime"

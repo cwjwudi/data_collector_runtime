@@ -9,6 +9,14 @@
 
 另包含共享包 `SD_SMA_COMMON` 和 DB Admin 的完整数据库客户端工具源目录。
 
+## 当前版本：v1.0.1（2026-10-28）
+
+- 优化触屏时间输入。
+- 更新模糊查询功能及查询反馈。
+- 修复启用 SQL 写回后，OPC UA Server 断线导致查询阻塞的问题。
+
+安装包：`SD_SMA_Setup_1.0.1.exe`，构建后位于 `_Build/SD_SMA_Installer_Package/`。
+
 ## 运行
 
 开发机首次运行可直接执行：
