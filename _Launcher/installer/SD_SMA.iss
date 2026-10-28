@@ -37,15 +37,19 @@ SetupLogging=yes
 Source: "{#SourceRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{cmd}"; Parameters: "/c start """" ""http://127.0.0.1:8090/"""
-Name: "{autodesktop}\{#AppName}"; Filename: "{cmd}"; Parameters: "/c start """" ""http://127.0.0.1:8090/"""; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{cmd}"; Parameters: "/c start """" ""http://127.0.0.1:8090/"""; Tasks: servicemode
+Name: "{autodesktop}\{#AppName}"; Filename: "{cmd}"; Parameters: "/c start """" ""http://127.0.0.1:8090/"""; Tasks: desktopicon and servicemode
+Name: "{group}\{#AppName}"; Filename: "{app}\start.bat"; WorkingDir: "{app}"; Tasks: manualmode
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\start.bat"; WorkingDir: "{app}"; Tasks: desktopicon and manualmode
 
 [Tasks]
+Name: "servicemode"; Description: "注册为 Windows 服务（开机自动运行）"; GroupDescription: "运行方式："; Flags: exclusive
+Name: "manualmode"; Description: "手动启动（通过快捷方式启动，需管理员权限）"; GroupDescription: "运行方式："; Flags: exclusive unchecked
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式："
 
 [Run]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy Bypass -File ""{app}\_Service\Initialize-SD_SMA.ps1"""; Flags: runhidden waituntilterminated
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy Bypass -File ""{app}\_Service\Install-SD_SMA-Service.ps1"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy Bypass -File ""{app}\_Service\Install-SD_SMA-Service.ps1"""; Flags: runhidden waituntilterminated; Tasks: servicemode
 
 [UninstallRun]
 Filename: "{app}\_Service\SD_SMA_Service.exe"; Parameters: "stop"; WorkingDir: "{app}\_Service"; Flags: runhidden waituntilterminated; RunOnceId: "StopService"
@@ -75,6 +79,19 @@ begin
     Result := '无法执行端口预检查。'
   else if ResultCode = 42 then
     Result := '端口 8090-8094 仍被旧 Launcher 或其他程序占用。请先停止旧版本后重试。';
+
+  if (Result = '') and FileExists(ServiceExe) and WizardIsTaskSelected('manualmode') then begin
+    if not Exec(ServiceExe, 'uninstall', ExpandConstant('{app}\_Service'), SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      Result := '无法移除旧 Windows 服务。'
+    else if ResultCode <> 0 then begin
+      // WinSW also returns nonzero when no service is installed.
+      Command := '-NoLogo -NoProfile -Command "if (Get-Service -Name SD_SMA -ErrorAction SilentlyContinue) {exit 1}"';
+      if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Command, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        Result := '无法检查旧 Windows 服务。'
+      else if ResultCode <> 0 then
+        Result := '旧 Windows 服务仍存在，无法切换为手动启动。';
+    end;
+  end;
 end;
 
 function InitializeUninstall(): Boolean;

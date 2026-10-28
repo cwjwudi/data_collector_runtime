@@ -320,6 +320,7 @@ Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\tools\WinSW-LICENSE.tx
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\SD_SMA_Service.xml") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Initialize-SD_SMA.ps1") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Install-SD_SMA-Service.ps1") -Destination $PackageService -Force
+Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Start-SD_SMA.ps1") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Reset-SD_SMA-LauncherPin.ps1") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Configure-SD_SMA-Firewall.ps1") -Destination $PackageService -Force
 
@@ -335,13 +336,13 @@ $stagedConfig.auto_install_missing = $false
 @"
 @echo off
 cd /d "%~dp0"
-"%~dp0SD_SMA_Launcher.exe" %*
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\_Service\Start-SD_SMA.ps1" %*
 "@ | Set-Content -LiteralPath (Join-Path $PackageLauncher "start.bat") -Encoding ASCII
 
 @"
 @echo off
 cd /d "%~dp0_Launcher"
-"%~dp0_Launcher\SD_SMA_Launcher.exe" %*
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0_Service\Start-SD_SMA.ps1" %*
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot "start.bat") -Encoding ASCII
 
 if (-not $SkipSmokeTest) {
