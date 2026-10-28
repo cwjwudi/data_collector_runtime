@@ -4,11 +4,11 @@
   "app_settings": {
     "database": {
       "type": "mysql",
-      "name": "sma_data_collector_fulltest_20260729",
+      "name": "sma_data_collector_fulltest",
       "host": "127.0.0.1",
       "port": 3306,
       "username": "root",
-      "password": ""
+      "password": "123456"
     },
     "query_limits": {
       "requests_per_minute": 180,
@@ -34,7 +34,8 @@
         "name": "测试1",
         "node_id": "ns=6;s=::ParallelTe:bExecuteRead"
       }
-    ]
+    ],
+    "password": ""
   },
   "query_view": {
     "default_page_size": 10,
@@ -72,6 +73,11 @@
                 "name": "AlarmText",
                 "label_en": "AlarmText",
                 "label_zh": "AlarmText"
+              },
+              {
+                "name": "BatchCode",
+                "label_en": "BatchCode",
+                "label_zh": "BatchCode"
               }
             ],
             "time_field": "collection_time",

@@ -677,7 +677,17 @@
       "is_parallel": true,
       "trigger_interval_seconds": 1,
       "partition_interval_years": 0,
-      "trigger_mode": "subscription"
+      "trigger_mode": "subscription",
+      "indexes": [
+        {
+          "name": "",
+          "columns": [
+            "BatchCode"
+          ],
+          "unique": false,
+          "index_type": "btree"
+        }
+      ]
     },
     {
       "name": "Data_Audit",
@@ -778,10 +788,11 @@
   ],
   "database": {
     "type": "mysql",
-    "name": "sma_data_collector_fulltest_20260729",
+    "name": "sma_data_collector_fulltest",
     "host": "127.0.0.1",
     "port": 3306,
     "username": "root",
+    "password": "123456",
     "auto_create": true,
     "data_groups": [
       "Data_Product",
@@ -789,8 +800,7 @@
       "Data_Audit",
       "Data_Batch",
       "Data_BatchInfo"
-    ],
-    "password": ""
+    ]
   },
   "logging": {
     "level": "INFO",
