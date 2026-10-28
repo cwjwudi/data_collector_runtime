@@ -552,6 +552,7 @@ function readConditionRowsFromDom() {
   const rows = [];
   for (const wrap of host.querySelectorAll('[data-condition-index]')) {
     rows.push({
+      method: wrap.querySelector('[data-field="method"]').value,
       name: wrap.querySelector('[data-field="name"]').value.trim(),
       source_table: wrap.querySelector('[data-field="source_table"]').value || '',
       source_field: wrap.querySelector('[data-field="source_field"]').value || '',
@@ -610,6 +611,14 @@ function renderQueryConditionEditor() {
     nameInput.value = row.name || '';
     nameInput.placeholder = '例如批次号';
 
+    const methodLabel = document.createElement('label');
+    methodLabel.textContent = SdI18n.t('query.condition.method');
+    const methodSelect = document.createElement('select');
+    methodSelect.dataset.field = 'method';
+    appendOption(methodSelect, 'eq', SdI18n.t('query.condition.exact'));
+    appendOption(methodSelect, 'contains', SdI18n.t('query.condition.contains'));
+    methodSelect.value = row.method || 'eq';
+
     const tableLabel = document.createElement('label');
     tableLabel.textContent = '来源表';
     const tableSelect = document.createElement('select');
@@ -647,7 +656,14 @@ function renderQueryConditionEditor() {
       loadConditionSourceFields(tableSelect.value, fieldSelect, '').catch(catchHintError('queryConditionHint'));
     });
 
-    wrap.append(nameLabel, nameInput, tableLabel, tableSelect, fieldLabel, fieldSelect, bindLabel, bindSelect, removeButton);
+    const updateMethod = () => {
+      const contains = methodSelect.value === "contains";
+      tableSelect.disabled = fieldSelect.disabled = contains;
+      if (contains) { tableSelect.value = ""; fieldSelect.value = ""; }
+    };
+    methodSelect.addEventListener("change", updateMethod);
+    updateMethod();
+    wrap.append(nameLabel, nameInput, methodLabel, methodSelect, tableLabel, tableSelect, fieldLabel, fieldSelect, bindLabel, bindSelect, removeButton);
     host.appendChild(wrap);
     loadConditionSourceFields(row.source_table || '', fieldSelect, row.source_field || '')
       .catch(catchHintError('queryConditionHint'));
@@ -656,6 +672,7 @@ function renderQueryConditionEditor() {
 
 function cloneConditionRows(rows) {
   return (Array.isArray(rows) ? rows : []).map(item => ({
+    method: item.method || 'eq',
     name: item.name || '',
     source_table: item.source_table || '',
     source_field: item.source_field || '',
@@ -745,7 +762,7 @@ function applyConditionsToProfile() {
   const viewName = document.getElementById('editViewName').value || LOCKED_GROUP_VIEW;
   const conditions = readConditionRowsFromDom();
   for (const [index, row] of conditions.entries()) {
-    if (!row.name || !row.source_table || !row.source_field || !row.bind_field) {
+    if (!row.name || !row.bind_field || (row.method !== "contains" && (!row.source_table || !row.source_field))) {
       activateConfigTab('groups');
       throw new Error(`分组 ${loadedConditionGroup} 的第 ${index + 1} 条查询条件需要名称、来源表、来源字段和绑定列`);
     }

@@ -957,7 +957,7 @@ class ConfigManager:
 
     @staticmethod
     def normalize_query_conditions(raw: Any) -> list[dict[str, str]]:
-        """校验并规整查询条件。每条必须有名称、来源表、来源字段、结果表绑定列。"""
+        """校验查询条件；包含文字查询不使用来源表及来源字段。"""
         if not isinstance(raw, list):
             raise ValueError("query_conditions must be a list")
         normalized: list[dict[str, str]] = []
@@ -969,7 +969,12 @@ class ConfigManager:
             source_table = str(item.get("source_table") or "").strip()
             source_field = str(item.get("source_field") or "").strip()
             bind_field = str(item.get("bind_field") or "").strip()
-            if not name or not source_table or not source_field or not bind_field:
+            method = item.get("method", "eq")
+            if method not in ("eq", "contains"):
+                raise ValueError("不支持的查询方法")
+            if method == "contains":
+                source_table = source_field = ""
+            if not name or not bind_field or (method == "eq" and (not source_table or not source_field)):
                 raise ValueError(
                     f"query_conditions[{index}] 需要名称、来源表、来源字段和绑定列"
                 )
@@ -978,6 +983,7 @@ class ConfigManager:
             seen.add(name)
             normalized.append(
                 {
+                    **({"method": method} if method == "contains" else {}),
                     "name": name,
                     "source_table": source_table,
                     "source_field": source_field,

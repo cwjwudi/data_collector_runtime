@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class QueryFilter(BaseModel):
     field: str
-    op: Literal["eq", "ne", "gt", "gte", "lt", "lte", "like", "in"] = "eq"
+    op: Literal["eq", "ne", "gt", "gte", "lt", "lte", "like", "contains", "in"] = "eq"
     value: Any
 
 
@@ -97,9 +97,10 @@ class QueryBatchSourceUpdateRequest(BaseModel):
 
 class QueryConditionConfig(BaseModel):
     name: str
-    source_table: str
-    source_field: str
+    source_table: str = ""
+    source_field: str = ""
     bind_field: str
+    method: Literal["eq", "contains"] = "eq"
 
 
 class QueryConditionsUpdateRequest(BaseModel):

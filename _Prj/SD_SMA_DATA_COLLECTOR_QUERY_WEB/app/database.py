@@ -140,6 +140,10 @@ def compile_history_query(
         elif f.op == "lte":
             filter_conditions.append(f"{field_ident} <= :{key}")
             params[key] = f.value
+        elif f.op == "contains":
+            filter_conditions.append(f"{field_ident} LIKE :{key} ESCAPE '!'")
+            value = str(f.value).replace("!", "!!").replace("%", "!%").replace("_", "!_")
+            params[key] = f"%{value}%"
         elif f.op == "like":
             filter_conditions.append(f"{field_ident} LIKE :{key}")
             params[key] = str(f.value)

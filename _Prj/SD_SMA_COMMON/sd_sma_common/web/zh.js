@@ -4,6 +4,11 @@
  * 业务代码不写死中文,一律 SdI18n.t('key') 或 data-i18n="key"
  * ============================================================ */
 window.SD_SMA_I18N_ZH = {
+  "query.condition.configHint": "精确查询使用来源表和来源字段；模糊查询只需名称和绑定列，客户直接输入包含的文字。条件按当前 Group 保存。",
+  "query.condition.method": "查询方法",
+  "query.condition.exact": "精确查询",
+  "query.condition.contains": "模糊查询",
+  "query.condition.keyword": "请输入包含的文字",
   "common.password.label": "密码",
   "launcher.credentials.saved": "凭据已保存",
   "launcher.credentials.storageHint": "密码保存在本机配置中，页面不会回显密码。",

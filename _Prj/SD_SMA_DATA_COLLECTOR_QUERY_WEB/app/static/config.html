@@ -208,7 +208,7 @@
         <table id="columnLabelTable"></table>
         <div class="settings-subsection">
           <h3 class="subsection-title">查询条件（当前 Group）</h3>
-          <p class="hint subsection-hint">每条条件包含显示名称、来源表、来源字段和结果表绑定列。切换上方 Group 时只显示该分组自己保存过的条件；没配置过的分组列表为空。</p>
+          <p class="hint subsection-hint" data-i18n="query.condition.configHint">精确查询使用来源表和来源字段；模糊查询只需名称和绑定列，客户直接输入包含的文字。条件按当前 Group 保存。</p>
           <div id="queryConditionList"></div>
           <div class="row">
             <button type="button" id="btnAddQueryCondition">添加条件</button>
@@ -409,6 +409,8 @@
       </div>
     </div>
     <div id="opcuaNodePicker" class="opcua-node-picker" hidden></div>
-    <script src="/static/config.js?v=20261021_06"></script>
+    <script src="/common/zh.js?v=20261028_02"></script>
+    <script src="/common/i18n.js?v=20261020_03"></script>
+    <script src="/static/config.js?v=20261028_03"></script>
   </body>
 </html>

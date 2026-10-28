@@ -360,7 +360,7 @@ def _condition_filter(
     bind_field = match["bind_field"]
     if bind_field not in available_columns:
         raise ValueError(f"查询条件「{name}」的绑定列不存在于当前表: {bind_field}")
-    return QueryFilter(field=bind_field, op="eq", value=value)
+    return QueryFilter(field=bind_field, op=match.get("method", "eq"), value=value)
 
 
 def _load_plugin_config() -> dict[str, Any]:
@@ -1387,6 +1387,8 @@ def _condition_value_payload(view_name: str, name: str, group: str | None) -> di
     )
     if match is None:
         raise HTTPException(status_code=400, detail=f"未配置查询条件: {name}")
+    if match.get("method") == "contains":
+        return {"items": [], "source": match}
     source = {"table": match["source_table"], "field": match["source_field"]}
     # dict_ 字典表由 data_collector 自动维护：表或字段尚未创建时返回空列表
     pending = source["table"].startswith(DICT_TABLE_PREFIX) and not _dict_source_ready(source)
@@ -1839,6 +1841,8 @@ def save_query_conditions(payload: QueryConditionsUpdateRequest) -> dict[str, An
     try:
         conditions = [item.model_dump() for item in payload.conditions]
         for item in conditions:
+            if item["method"] == "contains":
+                continue
             source_table = item["source_table"]
             source_field = item["source_field"]
             if source_table.startswith(DICT_TABLE_PREFIX):

@@ -3,6 +3,9 @@
 运行: python opcua_nodes_check.py
 """
 
+from pathlib import Path
+import subprocess
+
 from app.config_manager import UnifiedConfigStore
 
 
@@ -36,6 +39,30 @@ def main() -> None:
     else:
         raise AssertionError("重复 NodeId 应拒绝")
 
+    script = Path(__file__).parent / "app/static/config.js"
+    check = r'''
+const fs = require('fs'), vm = require('vm'), assert = require('assert/strict');
+const source = fs.readFileSync(process.argv[1], 'utf8');
+const nodes = [{name: '心跳', node_id: 'ns=6;s=::HeartBeat'}];
+const conditions = [{name: '报警', method: 'contains', source_table: '', source_field: '', bind_field: 'AlarmText'}];
+const row = data => ({querySelector(selector) {
+  const key = selector.match(/data-field="([^"]+)"/)[1];
+  return key in data ? {value: data[key]} : null;
+}});
+const context = vm.createContext({document: {getElementById(id) {
+  return {querySelectorAll: () => (id === 'opcuaNodeList' ? nodes : conditions).map(row)};
+}}});
+for (const [name, end] of [['syncOpcuaNodesFromDom', 'const OPCUA_NODE_INPUT'], ['readConditionRowsFromDom', 'function fillConditionSelect']]) {
+ const start = source.indexOf('function ' + name + '(');
+ vm.runInContext(source.slice(start, source.indexOf(end, start)), context);
+}
+vm.runInContext('let opcuaNodes = []; let queryConditionRows = [];', context);
+assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('syncOpcuaNodesFromDom()', context))), nodes);
+assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('readConditionRowsFromDom()', context))), conditions);
+nodes.length = 0;
+assert.equal(vm.runInContext('syncOpcuaNodesFromDom().length', context), 0);
+'''
+    subprocess.run(["node", "-e", check, str(script)], check=True)
     print("opcua_nodes_check: all assertions passed")
 
 

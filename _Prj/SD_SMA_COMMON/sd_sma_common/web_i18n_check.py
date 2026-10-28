@@ -40,7 +40,7 @@ def check_engine() -> None:
     html = (QUERY_STATIC / "query.html").read_text(encoding="utf-8")
     assert f"/common/base.css?v={CACHE_VERSION}" in html, "query.html 未引用 base.css"
     assert f"/common/i18n.js?v={CACHE_VERSION}" in html, "query.html 未引用 i18n.js"
-    assert "/static/query.js?v=20261026_01" in html, "query.js 版本号未更新"
+    assert "/static/query.js?v=20261028_02" in html, "query.js 版本号未更新"
 
 
 def check_collector_assets() -> None:

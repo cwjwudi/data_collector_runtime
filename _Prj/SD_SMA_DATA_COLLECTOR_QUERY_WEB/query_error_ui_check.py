@@ -18,12 +18,13 @@ function element(id) {
     addEventListener(type, handler) { this[type] = handler; },
     appendChild() {}, classList: { contains() { return false; }, remove() {}, add() {} },
     setAttribute() {},
+    replaceWith(next) { elements.set(id, next); },
   });
   return elements.get(id);
 }
 let requests = 0;
 const context = vm.createContext({
-  document: { getElementById: element, querySelectorAll: () => [], createElement: () => ({ appendChild() {} }) },
+  document: { addEventListener() {}, getElementById: element, querySelectorAll: () => [], createElement: () => ({ appendChild() {}, setAttribute() {}, options: [] }) },
   window: {
     SdI18n: { t: key => key }, localStorage: { getItem: () => null, setItem() {} },
     TouchTimeRange: { attach: () => ({ applyPreset() {} }) },

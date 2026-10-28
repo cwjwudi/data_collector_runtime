@@ -57,8 +57,22 @@ function selectedCondition() {
 }
 
 async function loadConditionValues(preferredValue) {
-  const valueSelect = document.getElementById('queryConditionValue');
   const condition = selectedCondition();
+  const oldControl = document.getElementById("queryConditionValue");
+  const contains = condition?.method === "contains";
+  const valueSelect = document.createElement(contains ? "input" : "select");
+  valueSelect.id = oldControl.id;
+  valueSelect.className = oldControl.className;
+  valueSelect.disabled = !condition;
+  oldControl.replaceWith(valueSelect);
+  if (contains) {
+    document.getElementById("queryWarnings").textContent = "";
+    valueSelect.type = "text";
+    valueSelect.placeholder = SdI18n.t('query.condition.keyword');
+    valueSelect.setAttribute("aria-label", SdI18n.t('query.condition.keyword'));
+    valueSelect.value = preferredValue || "";
+    return;
+  }
   valueSelect.innerHTML = '';
   appendSelectOption(valueSelect, '', t('query.condition.valuePlaceholder'));
   valueSelect.disabled = !condition;
@@ -582,7 +596,7 @@ document.getElementById('endTime').addEventListener('change', saveQueryPageState
 document.getElementById('queryCondition').addEventListener('change', () => {
   loadConditionValues().then(saveQueryPageState).catch(err => showQueryError(err.message));
 });
-document.getElementById('queryConditionValue').addEventListener('change', saveQueryPageState);
+document.addEventListener("change", event => { if (event.target.id === "queryConditionValue") saveQueryPageState(); });
 document.getElementById('labelLang').addEventListener('change', saveQueryPageState);
 document.getElementById('pageSize').addEventListener('change', () => {
   pageSizeOverridden = true;

@@ -114,8 +114,22 @@
   }
 
   async function loadConditionValues(preferredValue) {
-    const valueSelect = document.getElementById("queryConditionValue");
     const name = document.getElementById("queryCondition").value || "";
+    const condition = currentQueryConditions.find(item => item.name === name);
+    const oldControl = document.getElementById("queryConditionValue");
+    const contains = condition?.method === "contains";
+    const valueSelect = document.createElement(contains ? "input" : "select");
+    valueSelect.id = oldControl.id;
+    valueSelect.className = oldControl.className;
+    valueSelect.disabled = advancedOpcuaMode || !condition;
+    oldControl.replaceWith(valueSelect);
+    if (contains) {
+      valueSelect.type = "text";
+      valueSelect.placeholder = SdI18n.t('query.condition.keyword');
+      valueSelect.setAttribute("aria-label", SdI18n.t('query.condition.keyword'));
+      valueSelect.value = preferredValue || "";
+      return;
+    }
     valueSelect.innerHTML = '<option value="">请选择</option>';
     valueSelect.disabled = advancedOpcuaMode || !name;
     if (!name || advancedOpcuaMode) return;
@@ -507,7 +521,7 @@
           document.getElementById("meta").textContent = error.message;
         });
     });
-    document.getElementById("queryConditionValue").addEventListener("change", savePluginState);
+    document.addEventListener("change", event => { if (event.target.id === "queryConditionValue") savePluginState(); });
     for (const [id, preset] of Object.entries(quickPresets)) {
       document.getElementById(id).addEventListener("click", () => applyQuickRange(preset, id));
     }
