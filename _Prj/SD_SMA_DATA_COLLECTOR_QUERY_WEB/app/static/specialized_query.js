@@ -375,7 +375,7 @@
     const data = await fetchJson(`/api/plugins/query/${encodeURIComponent(activePluginKey)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildPayload(lastQueryContext, targetPage, requestedCursor)),
+      body: JSON.stringify({ ...buildPayload(lastQueryContext, targetPage, requestedCursor), write_sql: false }),
     });
     applyQueryResult(data, targetPage, requestedCursor, proposedStack);
   }

@@ -120,6 +120,7 @@ class QueryGroupConfigUpdateRequest(BaseModel):
 
 
 class PluginQueryRequest(BaseModel):
+    write_sql: bool = True  # 新查询写回全量 SQL；翻页请求关闭，分页不改变 SQL。
     start_time: datetime | None = None
     end_time: datetime | None = None
     query_mode: Literal["time", "batch"] = "time"

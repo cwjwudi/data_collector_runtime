@@ -13,6 +13,7 @@ from app.models import HistoryCursor, HistoryQueryRequest, QueryFilter
 from app.sql_writeback import (
     PLC_STRING_PAYLOAD_BYTES,
     SqlWritebackConfig,
+    SqlWritebackQueue,
     prepare_sql_payload,
     quote_literal,
     render_bound_sql,
@@ -217,11 +218,51 @@ def check_fake_plc_writeback() -> None:
     assert exploded and "plc down" in exploded
 
 
+async def check_background_queue() -> None:
+    started = asyncio.Event()
+    release = asyncio.Event()
+    finished = asyncio.Event()
+    writes = []
+
+    async def write(binding, sql):
+        writes.append(sql)
+        if sql == "first":
+            started.set()
+            await release.wait()  # 模拟离线连接长时间等待。
+            raise RuntimeError("PLC offline")
+        finished.set()
+        return "write failed"
+
+    queue = SqlWritebackQueue(write)
+    binding = {"plugin_key": "test_1", "sql_writeback": {"enabled": True, "node": NODE}}
+    queue.submit(binding, "first")
+    await asyncio.wait_for(started.wait(), 1)
+    # submit 已返回，PLC 写回仍卡在 release；新查询不会等待旧写回。
+    queue.submit(binding, "obsolete")
+    queue.submit(binding, "latest")
+    assert writes == ["first"]
+    release.set()
+    await asyncio.wait_for(finished.wait(), 1)
+    assert writes == ["first", "latest"]
+    await queue.close()
+
+    started.clear()
+    release.clear()
+    queue.submit(binding, "first")
+    await asyncio.wait_for(started.wait(), 1)
+    queue.submit(binding, "discard on shutdown")
+    await asyncio.wait_for(queue.close(), 1)
+    assert writes == ["first", "latest", "first"]
+    queue.submit({"plugin_key": "disabled"}, "skip")
+    assert not queue._pending
+
+
 def main() -> None:
     check_literal_escaping()
     check_render_matches_executed_sql()
     check_length_policy()
     check_fake_plc_writeback()
+    asyncio.run(check_background_queue())
     print("sql_writeback_check: ok")
 
 

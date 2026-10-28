@@ -1,6 +1,7 @@
 """把已执行的查询 SQL 写回 PLC OPC UA 节点。写入失败只告警。"""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass
@@ -18,6 +19,43 @@ PLC_STRING_MAX_CONFIG = 4096
 _PARAM_RE = re.compile(r"(?<!:):([A-Za-z_][A-Za-z0-9_]*)")
 
 SqlWriter = Callable[..., Awaitable[bool]]
+
+
+class SqlWritebackQueue:
+    """串行后台写回；同一插件等待期间只保留最新查询，避免旧 SQL 最后覆盖新 SQL。"""
+
+    def __init__(self, write: Callable[..., Awaitable[str | None]]):
+        self._write = write
+        self._pending: dict[str, tuple[dict[str, Any], str]] = {}
+        self._task: asyncio.Task | None = None
+
+    def submit(self, binding: dict[str, Any], sql: str) -> None:
+        if SqlWritebackConfig.from_page(binding.get("sql_writeback")) is None or not sql.strip():
+            return
+        self._pending[binding["plugin_key"]] = (binding, sql)
+        if self._task is None or self._task.done():
+            self._task = asyncio.create_task(self._run())
+
+    async def _run(self) -> None:
+        while self._pending:
+            key = next(iter(self._pending))
+            binding, sql = self._pending.pop(key)
+            try:
+                warning = await self._write(binding, sql)
+                if warning:
+                    logger.warning("SQL background writeback plugin=%s: %s", key, warning)
+            except Exception:
+                logger.exception("SQL background writeback failed plugin=%s", key)
+
+    async def close(self) -> None:
+        self._pending.clear()
+        if self._task is not None:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
 
 
 def clamp_sql_max_len(raw: Any) -> int:

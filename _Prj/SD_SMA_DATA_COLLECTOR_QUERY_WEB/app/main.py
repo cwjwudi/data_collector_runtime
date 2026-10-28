@@ -37,7 +37,7 @@ from .models import (
 )
 from . import opcua_client
 from .opcua_writeback import OpcUaWritebackConfig, write_after_query_async, write_cursor_only_async
-from .sql_writeback import SqlWritebackConfig, write_executed_sql
+from .sql_writeback import SqlWritebackConfig, SqlWritebackQueue, write_executed_sql
 from .table_list_writeback import (
     TableListWritebackConfig,
     resolve_table_names_for_batch_no,
@@ -226,6 +226,7 @@ async def _app_lifespan(_app: FastAPI):
             pass
     _plugin_opcua_monitor = None
     _plugin_opcua_monitor_task = None
+    await _sql_writeback_queue.close()
     await opcua_client.close_pool()
 
 
@@ -471,6 +472,9 @@ async def _write_plugin_sql(binding: dict[str, Any], sql: str) -> str | None:
     except Exception as exc:
         logger.warning("SQL writeback failed plugin=%s: %s", binding.get("plugin_key"), exc)
         return f"SQL 写回失败: {exc}"
+
+
+_sql_writeback_queue = SqlWritebackQueue(_write_plugin_sql)
 
 
 def _get_opcua_connection() -> dict[str, Any]:
@@ -1589,9 +1593,8 @@ async def query_plugin(plugin_key: str, payload: PluginQueryRequest, request: Re
         table_list_config = _get_table_list_writeback_config(binding)
         if table_list_config is not None and table_list_config.is_advanced_mode:
             response, runtime = await _activate_plugin_snapshot(binding, table=payload.table)
-            writeback_warning = await _write_plugin_sql(binding, runtime.executed_sql)
-            if writeback_warning:
-                response.warnings.append(writeback_warning)
+            if payload.write_sql:
+                _sql_writeback_queue.submit(binding, runtime.executed_sql)
             return response
         response, snapshot = _execute_plugin_query(
             binding,
@@ -1616,9 +1619,8 @@ async def query_plugin(plugin_key: str, payload: PluginQueryRequest, request: Re
             cursor=cursor,
             row=response.rows[cursor] if 0 <= cursor < len(response.rows) else None,
         )
-        writeback_warning = await _write_plugin_sql(binding, snapshot.executed_sql)
-        if writeback_warning:
-            response.warnings.append(writeback_warning)
+        if payload.write_sql:
+            _sql_writeback_queue.submit(binding, snapshot.executed_sql)
         return response
     except (OperationalError, SQLAlchemyError) as exc:
         _raise_db_error(exc)
