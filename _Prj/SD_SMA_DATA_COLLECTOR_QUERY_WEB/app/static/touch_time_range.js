@@ -83,22 +83,18 @@
     overlay.className = "touch-time-overlay";
     overlay.hidden = true;
     overlay.innerHTML =
-      `<section class="touch-time-dialog" role="dialog" aria-modal="true" aria-labelledby="${prefix}-title">` +
-        `<div class="touch-time-dialog-header"><h3 id="${prefix}-title">${t('query.time.title')}</h3>` +
-          `<button type="button" class="touch-time-close" aria-label="${t('query.time.close')}">×</button></div>` +
+      `<section class="touch-time-dialog" role="dialog" aria-modal="true" aria-label="${t('query.time.title')}">` +
         `<div class="touch-time-endpoints">` +
           ["start", "end"].map(side => `<button type="button" data-side="${side}" aria-pressed="false">` +
             `<span>${sideLabel(side)}</span><b data-summary="${side}"></b></button>`).join("") + `</div>` +
         segmentsMarkup(0) + segmentsMarkup(3) +
-        `<div class="touch-time-editing" aria-live="polite"><span data-editing></span><span data-width></span></div>` +
         `<div class="touch-time-keypad" role="group" aria-label="${t('query.time.keypad')}">` +
           [1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => `<button type="button" data-digit="${digit}">${digit}</button>`).join("") +
           `<button type="button" data-back aria-label="${t('query.time.backAria')}">${t('query.time.back')}</button>` +
           `<button type="button" data-digit="0">0</button><button type="button" data-next></button></div>` +
-        `<p class="touch-time-dialog-hint">${t('query.time.hint')}</p>` +
-        `<div class="touch-time-duration" aria-live="polite"></div>` +
         `<div class="touch-time-error" role="alert"></div>` +
-        `<div class="touch-time-dialog-footer"><button type="button" data-cancel>${t('query.time.cancel')}</button>` +
+        `<div class="touch-time-dialog-footer"><div class="touch-time-duration" aria-live="polite"></div>` +
+          `<button type="button" data-cancel>${t('query.time.cancel')}</button>` +
           `<button type="button" class="touch-time-apply" data-apply>${t('query.time.apply')}</button></div>` +
       `</section>`;
     document.body.appendChild(overlay);
@@ -123,8 +119,6 @@
         button.setAttribute("aria-label", `${labels()[index]} ${value}`);
         button.querySelector("b").textContent = active && typing ? value.padEnd(widths[index], "_") : value;
       }
-      overlay.querySelector("[data-editing]").textContent = t('query.time.editing', { side: sideLabel(side), field: labels()[part] });
-      overlay.querySelector("[data-width]").textContent = t('query.time.digits', { count: widths[part] });
       overlay.querySelector("[data-next]").textContent = side === "end" && part === 5 ? t('query.time.done') : t('query.time.next');
       const start = dateFromParts(draft.start), end = dateFromParts(draft.end);
       overlay.querySelector(".touch-time-duration").textContent = start && end && end >= start ?
@@ -204,7 +198,6 @@
     }
 
     trigger.addEventListener("click", open);
-    overlay.querySelector(".touch-time-close").addEventListener("click", close);
     overlay.querySelector("[data-cancel]").addEventListener("click", close);
     overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
     for (const button of overlay.querySelectorAll("[data-side], [data-part]")) {
@@ -221,13 +214,32 @@
     }
     overlay.querySelector("[data-back]").addEventListener("click", backspace);
     overlay.querySelector("[data-next]").addEventListener("click", () => { advance(); renderEditor(); });
-    overlay.querySelector("[data-apply]").addEventListener("click", () => {
+    const applyButton = overlay.querySelector("[data-apply]");
+    applyButton.addEventListener("click", async () => {
       if (!commitField()) return;
       const start = dateFromParts(draft.start), end = dateFromParts(draft.end);
       if (!start || !end) {
         error.textContent = t('query.time.invalidDate', { side: sideLabel(!start ? "start" : "end") });
       } else if (start > end) error.textContent = t('query.time.order');
-      else { setRange(start, end); close(); }
+      else {
+        applyButton.disabled = true;
+        try {
+          const response = await global.fetch('/api/config/app-settings', { cache: 'no-store' });
+          if (!response.ok) throw new Error();
+          const settings = await response.json();
+          const maxWindow = settings.query_limits.max_window_hours * 60 * 60 * 1000;
+          if (end - start > maxWindow) {
+            draft.start = dateParts(new Date(end.getTime() - maxWindow));
+            side = "start"; part = 0; typing = false;
+            renderEditor();
+            error.textContent = t('query.time.adjusted', { start: formatParts(draft.start) });
+          } else { setRange(start, end); close(); }
+        } catch {
+          error.textContent = t('query.time.limitFailed');
+        } finally {
+          applyButton.disabled = false;
+        }
+      }
     });
     document.addEventListener("keydown", event => {
       if (overlay.hidden) return;
