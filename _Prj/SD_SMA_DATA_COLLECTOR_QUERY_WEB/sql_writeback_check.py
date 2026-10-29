@@ -138,6 +138,33 @@ def check_length_policy() -> None:
     assert page.max_len == 4096
 
 
+def check_chinese_sql_writeback() -> None:
+    for value in ["测试", "混合abc'\\%_!", "温度🔥"]:
+        literal = quote_literal(value, "mysql")
+        assert literal.isascii()
+        assert literal.startswith("_utf8mb4 X'") and literal.endswith("'")
+        assert bytes.fromhex(literal[len("_utf8mb4 X'"):-1]).decode("utf-8") == value
+    assert quote_literal("测试", "sqlite") == "'测试'"
+
+    req = _request(filters=[QueryFilter(field="name", op="contains", value="测试%_!")])
+    compiled = compile_history_query(req, COLUMNS, dialect="mysql")
+    assert compiled.count_params["f_0"] == "%测试!%!_!!%"
+    assert compiled.data_params["f_0"] == "%测试!%!_!!%"
+    assert "`name` LIKE _utf8mb4 X'25E6B58BE8AF952125215F212125' ESCAPE '!'" in compiled.executed_sql
+    assert compiled.executed_sql.isascii()
+    payload, warning = prepare_sql_payload(compiled.executed_sql, 500)
+    assert payload == compiled.executed_sql and warning is None
+    payload, warning = prepare_sql_payload(compiled.executed_sql, len(compiled.executed_sql) - 1)
+    assert payload == "" and warning
+
+    plc = FakePlc()
+    assert asyncio.run(write_executed_sql(
+        enabled=True, endpoint_url=ENDPOINT, node_id=NODE,
+        sql=compiled.executed_sql, max_bytes=500, writer=plc.write_scalar,
+    )) is None
+    assert plc.writes == [(ENDPOINT, NODE, compiled.executed_sql)]
+
+
 def check_fake_plc_writeback() -> None:
     plc = FakePlc()
     sql = "SELECT 1"
@@ -261,6 +288,7 @@ def main() -> None:
     check_literal_escaping()
     check_render_matches_executed_sql()
     check_length_policy()
+    check_chinese_sql_writeback()
     check_fake_plc_writeback()
     asyncio.run(check_background_queue())
     print("sql_writeback_check: ok")

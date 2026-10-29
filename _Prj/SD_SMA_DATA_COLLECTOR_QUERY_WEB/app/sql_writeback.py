@@ -84,7 +84,7 @@ class SqlWritebackConfig:
 
 
 def quote_literal(value: Any, dialect: str) -> str:
-    """把绑定参数写成与该方言驱动一致的字面量。"""
+    """渲染写回参数；MySQL 非 ASCII 文本用 UTF-8 十六进制表达式传输。"""
     if value is None:
         return "NULL"
     if isinstance(value, bool):
@@ -100,6 +100,9 @@ def quote_literal(value: Any, dialect: str) -> str:
         return "'" + value.isoformat() + "'"
     text = str(value)
     if str(dialect or "").lower() == "mysql":
+        # 纯 ASCII 通过 PLC；字面量让字段决定排序规则，避免 CONVERT 与字段的隐式规则冲突。
+        if not text.isascii():
+            return f"_utf8mb4 X'{text.encode('utf-8').hex().upper()}'"
         text = (
             text.replace("\\", "\\\\")
             .replace("'", "\\'")

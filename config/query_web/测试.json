@@ -19,7 +19,7 @@
   "opcua": {
     "endpoint_url": "opc.tcp://127.0.0.1:4840/",
     "username": "",
-    "heartbeat_node": "ns=6;s=::DataSQLAla:strSQLQuery",
+    "heartbeat_node": "ns=6;s=::DataRev:uiHeartBeat",
     "poll_interval_ms": 500,
     "nodes": [
       {
