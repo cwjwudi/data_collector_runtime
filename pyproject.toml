@@ -1,6 +1,6 @@
 [project]
 name = "sd-sma-runtime"
-version = "1.0.0"
+version = "1.0.2"
 description = "Independent SD SMA launcher runtime"
 requires-python = ">=3.10,<3.13"
 dependencies = [
