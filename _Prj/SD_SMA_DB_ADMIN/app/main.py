@@ -86,6 +86,10 @@ class BackupRequest(BaseModel):
     output_dir: str = ""
 
 
+class OutputDirectoryConfig(BaseModel):
+    output_dir: str = ""
+
+
 class BackupTableRequest(BaseModel):
     connection: DbConnection
     database: str
@@ -196,7 +200,7 @@ def filesystem_browser(purpose: str) -> tuple[FilesystemBrowser, set[str], bool]
     configured = cfg.get("allowed_browse_roots") or []
     if not isinstance(configured, list):
         configured = []
-    roots = [backup_dir(), *configured, *windows_removable_roots()]
+    roots = [backup_dir(), resolve_output_dir(None), *configured, *windows_removable_roots()]
     normalized = purpose.strip().lower()
     if normalized == "sql":
         return FilesystemBrowser(roots), {".sql"}, True
@@ -232,7 +236,7 @@ def persist_last_output_dir(path: Path) -> None:
 def backup_roots() -> list[Path]:
     roots: list[Path] = []
     seen: set[str] = set()
-    for candidate in (backup_dir(), last_output_dir()):
+    for candidate in (backup_dir(), resolve_output_dir(None), last_output_dir()):
         if candidate is None:
             continue
         key = str(candidate.resolve())
@@ -246,7 +250,9 @@ def backup_roots() -> list[Path]:
 def resolve_output_dir(value: str | None) -> Path:
     raw = (value or "").strip()
     if not raw:
-        return backup_dir()
+        raw = str(load_config().get("output_dir") or "").strip()
+        if not raw:
+            return last_output_dir() or backup_dir()
     raw = raw.replace("${DB_ADMIN_ROOT}", str(BASE_DIR)).replace("${CONFIG_DIR}", str(CONFIG_DIR))
     path = Path(os.path.expandvars(raw))
     if not path.is_absolute():
@@ -1836,6 +1842,7 @@ async def _app_lifespan(_app: FastAPI):
 configure_console_logging()
 app = FastAPI(title="SD SMA DB Admin", version="0.1.0", lifespan=_app_lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
+app.mount("/common", StaticFiles(directory=str(COMMON_ROOT / "sd_sma_common" / "web")), name="common")
 install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 
@@ -1864,6 +1871,11 @@ def admin_page() -> FileResponse:
     return FileResponse(BASE_DIR / "app" / "static" / "admin.html")
 
 
+@app.get("/config")
+def config_page() -> FileResponse:
+    return FileResponse(BASE_DIR / "app" / "static" / "config.html")
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {"status": "ok"}
@@ -1877,6 +1889,7 @@ def get_config() -> dict[str, Any]:
     return {
         "default_connection": connection,
         "backup_dir": str(backup_dir()),
+        "output_dir": str(resolve_output_dir(None)),
         "last_output_dir": str(remembered) if remembered else "",
         "mysql_tools": cfg.get("mysql_tools") or {},
         "max_concurrent_jobs": max(1, int(cfg.get("max_concurrent_jobs") or 2)),
@@ -1887,6 +1900,18 @@ def get_config() -> dict[str, Any]:
 def save_connection_config(conn: DbConnection) -> dict[str, Any]:
     saved = persist_default_connection(conn)
     return {"ok": True, "default_connection": saved}
+
+
+@app.post("/api/config/output")
+def save_output_config(settings: OutputDirectoryConfig) -> dict[str, Any]:
+    try:
+        path = resolve_output_dir(settings.output_dir.strip() or str(backup_dir()))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    cfg = load_config()
+    cfg["output_dir"] = str(path)
+    save_config(cfg)
+    return {"ok": True, "output_dir": str(path)}
 
 
 @app.get("/api/filesystem/roots")

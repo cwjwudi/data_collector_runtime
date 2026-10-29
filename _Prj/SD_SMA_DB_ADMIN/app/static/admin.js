@@ -1,7 +1,8 @@
 const STATE_KEY = 'sd_sma_db_admin_state_v2';
 let activeJobId = '';
 let pollTimer = null;
-let defaultOutputDir = '';
+let configuredOutputDir = '';
+let savedConnection = {};
 let availableBackups = [];
 let selectedManagedFiles = new Map();
 let currentManagedPath = '';
@@ -73,105 +74,7 @@ function setHint(id, text, cls = 'muted') {
   }
 }
 
-async function openFilesystemBrowser({ purpose, initialPath = '', allowFiles = false }) {
-  const overlay = document.getElementById('filesystem-modal-overlay');
-  const title = document.getElementById('filesystem-modal-title');
-  const pathLabel = document.getElementById('filesystem-modal-path');
-  const list = document.getElementById('filesystem-modal-list');
-  const cancel = document.getElementById('filesystem-modal-cancel');
-  const select = document.getElementById('filesystem-modal-select');
-  const refresh = document.getElementById('filesystem-modal-refresh');
-  if (!overlay) throw new Error('文件浏览窗口不可用');
-  let current = '';
-  let removablePollTimer = null;
-  let rootSignature = '';
-
-  return new Promise((resolve, reject) => {
-    const close = () => {
-      if (removablePollTimer) clearInterval(removablePollTimer);
-      removablePollTimer = null;
-      overlay.style.display = 'none';
-    };
-    const finish = value => { close(); resolve(value); };
-    const fail = error => { close(); reject(error); };
-    cancel.onclick = () => finish('');
-    overlay.onclick = event => { if (event.target === overlay) finish(''); };
-    select.style.display = allowFiles ? 'none' : '';
-    select.onclick = () => finish(current);
-    refresh.style.display = purpose === 'removable-directory' ? '' : 'none';
-    title.textContent = allowFiles
-      ? `选择 ${purpose.toUpperCase()} 文件`
-      : (purpose === 'removable-directory' ? '选择外部设备目录' : '选择服务器目录');
-    overlay.style.display = 'flex';
-
-    const renderButton = (label, meta, onClick) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'filesystem-entry';
-      const name = document.createElement('span');
-      const detail = document.createElement('span');
-      name.textContent = label;
-      detail.textContent = meta;
-      detail.className = 'muted';
-      button.append(name, detail);
-      button.onclick = onClick;
-      list.appendChild(button);
-    };
-    const renderRoots = data => {
-      current = '';
-      select.disabled = true;
-      pathLabel.textContent = '允许访问的位置';
-      list.innerHTML = '';
-      for (const root of data.roots || []) {
-        renderButton(root.name, root.exists ? root.path : '目录不存在', () => {
-          if (root.exists) showDirectory(root.path).catch(fail);
-        });
-      }
-      if (!(data.roots || []).some(root => root.exists)) {
-        renderButton('未检测到外部设备', '插入后会自动刷新，也可点击“立即刷新”', () => {});
-      }
-    };
-    const showRoots = async () => {
-      const data = await fetchJson(`/api/filesystem/roots?purpose=${encodeURIComponent(purpose)}`);
-      rootSignature = JSON.stringify((data.roots || []).map(root => [root.path, root.exists]));
-      renderRoots(data);
-    };
-    const showDirectory = async path => {
-      const data = await fetchJson(`/api/filesystem/entries?purpose=${encodeURIComponent(purpose)}&path=${encodeURIComponent(path)}`);
-      current = data.current;
-      select.disabled = false;
-      pathLabel.textContent = current;
-      list.innerHTML = '';
-      if (data.parent) renderButton('..', '上一级', () => showDirectory(data.parent).catch(fail));
-      else renderButton('位置列表', '返回', () => showRoots().catch(fail));
-      for (const entry of data.entries || []) {
-        const isDirectory = entry.type === 'directory';
-        renderButton(entry.name, isDirectory ? '文件夹' : entry.modified_at, () => {
-          if (isDirectory) showDirectory(entry.path).catch(fail);
-          else if (allowFiles) finish(entry.path);
-        });
-      }
-    };
-    const pollRemovableRoots = async () => {
-      if (purpose !== 'removable-directory') return;
-      const data = await fetchJson(`/api/filesystem/roots?purpose=${encodeURIComponent(purpose)}`);
-      const nextSignature = JSON.stringify((data.roots || []).map(root => [root.path, root.exists]));
-      if (nextSignature === rootSignature) return;
-      rootSignature = nextSignature;
-      const roots = (data.roots || []).filter(root => root.exists);
-      const normalizedCurrent = current.toLowerCase();
-      const currentStillAvailable = roots.some(root => normalizedCurrent.startsWith(root.path.toLowerCase()));
-      if (!current || !currentStillAvailable) renderRoots(data);
-    };
-    refresh.onclick = () => showRoots().catch(fail);
-    if (purpose === 'removable-directory') {
-      removablePollTimer = setInterval(() => pollRemovableRoots().catch(() => {}), 1000);
-    }
-    (initialPath ? showDirectory(initialPath).catch(() => showRoots()) : showRoots()).catch(fail);
-  });
-}
-
-function showConfirmModal({ title, message, confirmText = '确认执行' }) {
+function showConfirmModal({ title, message, confirmText = SdI18n.t('dbAdmin.showConfirmModal.text1') }) {
   if (
     !confirmModalOverlay ||
     !confirmModalTitle ||
@@ -179,7 +82,7 @@ function showConfirmModal({ title, message, confirmText = '确认执行' }) {
     !confirmModalCancel ||
     !confirmModalConfirm
   ) {
-    showStatusBar('无法显示操作确认，操作已取消。', 'error');
+    showStatusBar(SdI18n.t('dbAdmin.showConfirmModal.text2'), 'error');
     return Promise.resolve(false);
   }
 
@@ -294,52 +197,8 @@ function setSelectValueIfPresent(id, value) {
   if (name && hasOption(sel, name)) sel.value = name;
 }
 
-function updateQuickChipState() {
-  const host = String(document.getElementById('dbHost').value).trim();
-  const port = String(document.getElementById('dbPort').value).trim();
-  const username = String(document.getElementById('dbUsername').value).trim();
-  for (const chip of document.querySelectorAll('.quick-chip')) {
-    const matchesHost = !chip.dataset.connHost || chip.dataset.connHost === host;
-    const matchesPort = !chip.dataset.connPort || chip.dataset.connPort === port;
-    const matchesUser = !chip.dataset.connUser || chip.dataset.connUser === username;
-    chip.classList.toggle('is-selected', matchesHost && matchesPort && matchesUser);
-  }
-}
-
-function applyConnectionShortcut(chip) {
-  if (chip.dataset.connHost) document.getElementById('dbHost').value = chip.dataset.connHost;
-  if (chip.dataset.connPort) document.getElementById('dbPort').value = chip.dataset.connPort;
-  if (chip.dataset.connUser) document.getElementById('dbUsername').value = chip.dataset.connUser;
-  saveState();
-  updateQuickChipState();
-  setHint('connectionHint', '已套用快捷连接参数，请输入密码后测试连接。');
-}
-
-function togglePasswordVisibility() {
-  const input = document.getElementById('dbPassword');
-  const btn = document.getElementById('btnTogglePassword');
-  const shouldShow = input.type === 'password';
-  input.type = shouldShow ? 'text' : 'password';
-  btn.textContent = shouldShow ? '隐藏' : '显示';
-  btn.setAttribute('aria-label', shouldShow ? '隐藏密码' : '显示密码');
-  input.focus();
-}
-
-function clearPassword() {
-  const input = document.getElementById('dbPassword');
-  input.value = '';
-  persistConnectionConfig().catch(() => saveState());
-  input.focus();
-}
-
 function getConnectionPayload() {
-  return {
-    engine: 'mysql',
-    host: document.getElementById('dbHost').value.trim() || '127.0.0.1',
-    port: Number(document.getElementById('dbPort').value || 3306),
-    username: document.getElementById('dbUsername').value.trim(),
-    database: coerceIdentName(document.getElementById('databaseSelect').value) || '',
-  };
+  return { ...savedConnection, database: coerceIdentName(document.getElementById('databaseSelect').value) || '' };
 }
 
 function getSelectedValue(id, message, { asIdent = false } = {}) {
@@ -348,35 +207,26 @@ function getSelectedValue(id, message, { asIdent = false } = {}) {
   if (!value || value === '[object Object]') throw new Error(message);
   // SQL identifiers only — do not apply to backup/CSV filenames (they contain '.').
   if (asIdent && !/^[A-Za-z0-9_]+$/.test(value)) {
-    throw new Error(`${message}（非法名称: ${value}）`);
+    throw new Error(SdI18n.t('dbAdmin.getSelectedValue.text1', { value1: message, value2: value }));
   }
   return value;
 }
 
 function getExportDatabase() {
-  return getSelectedValue('databaseSelect', '请先选择数据库', { asIdent: true });
+  return getSelectedValue('databaseSelect', SdI18n.t('dbAdmin.getExportDatabase.text1'), { asIdent: true });
 }
 
 function getExportTable() {
-  return getSelectedValue('tableSelect', '请先选择表', { asIdent: true });
-}
-
-function getOutputDir() {
-  return document.getElementById('outputDir').value.trim();
+  return getSelectedValue('tableSelect', SdI18n.t('dbAdmin.getExportTable.text1'), { asIdent: true });
 }
 
 function saveState() {
   const state = {
-    host: document.getElementById('dbHost').value,
-    port: document.getElementById('dbPort').value,
-    username: document.getElementById('dbUsername').value,
-    password: document.getElementById('dbPassword').value,
     database: document.getElementById('databaseSelect').value,
     table: document.getElementById('tableSelect').value,
     restoreDatabase: document.getElementById('restoreDatabaseSelect').value,
     importDatabase: document.getElementById('importDatabaseSelect').value,
     importTable: document.getElementById('importTableSelect').value,
-    outputDir: document.getElementById('outputDir').value,
   };
   safeStorageSet(STATE_KEY, JSON.stringify(state));
 }
@@ -390,6 +240,8 @@ function loadSavedState() {
     for (const key of ['database', 'table', 'restoreDatabase', 'importDatabase', 'importTable']) {
       state[key] = coerceIdentName(state[key]);
     }
+    for (const key of ['host', 'port', 'username', 'password', 'outputDir']) delete state[key];
+    safeStorageSet(STATE_KEY, JSON.stringify(state));
     return state;
   } catch {
     return null;
@@ -398,45 +250,9 @@ function loadSavedState() {
 
 async function loadConfig() {
   const config = await fetchJson('/api/config');
-  const saved = loadSavedState();
-  const conn = { ...(config.default_connection || {}), ...(saved || {}) };
-  defaultOutputDir = config.backup_dir || '';
-  document.getElementById('dbHost').value = conn.host || '127.0.0.1';
-  document.getElementById('dbPort').value = Number(conn.port || 3306);
-  document.getElementById('dbUsername').value = conn.username || '';
-  // Passwords are never restored into the DOM or browser storage. Launcher-managed
-  // services receive the credential through their process environment.
-  document.getElementById('dbPassword').value = '';
-  document.getElementById('outputDir').value =
-    saved?.outputDir || config.last_output_dir || defaultOutputDir;
-  const passwordState = config.default_connection?.password_managed
-    ? '数据库密码由 Launcher 管理'
-    : (config.default_connection?.password_configured ? '数据库密码已安全保存' : '尚未配置数据库密码');
-  setHint('connectionHint', `${passwordState} · 默认导出目录: ${defaultOutputDir || '-'}`);
-  updateQuickChipState();
-}
-
-async function persistConnectionConfig() {
-  saveState();
-  await fetchJson('/api/config/connection', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(getConnectionPayload()),
-  });
-}
-
-async function testConnection() {
-  const data = await fetchJson('/api/connect/test', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(getConnectionPayload()),
-  });
-  if (data.ok) {
-    await persistConnectionConfig().catch(() => saveState());
-    setHint('connectionHint', `连接成功: ${data.engine}, version=${data.version || data.path || '-'}`, 'muted ok');
-  } else {
-    setHint('connectionHint', `连接失败: ${data.message || '-'}`, 'muted warn');
-  }
+  loadSavedState();
+  savedConnection = config.default_connection || {};
+  configuredOutputDir = config.output_dir || config.backup_dir || '';
 }
 
 function populateDatabaseSelects(databases) {
@@ -462,7 +278,7 @@ async function loadDatabases(preferred = {}) {
   setSelectValueIfPresent('databaseSelect', preferred.database || '');
   setSelectValueIfPresent('restoreDatabaseSelect', preferred.restoreDatabase || preferred.database || '');
   setSelectValueIfPresent('importDatabaseSelect', preferred.importDatabase || preferred.database || '');
-  setHint('objectHint', `数据库数量: ${databases.length}`);
+  setHint('objectHint', SdI18n.t('dbAdmin.loadDatabases.text1', { value1: databases.length }));
   saveState();
   if (document.getElementById('databaseSelect').value) await loadExportTables(preferred.table || '');
   if (document.getElementById('importDatabaseSelect').value) await loadImportTables(preferred.importTable || '');
@@ -485,12 +301,12 @@ async function loadExportTables(preferredTable = '') {
   sel.innerHTML = '';
   for (const item of tables) appendOption(sel, item, sizedLabel(item.name, item.size_bytes));
   if (previous && hasOption(sel, previous)) sel.value = previous;
-  setHint('objectHint', `数据库 ${database}，表数量: ${tables.length}`);
+  setHint('objectHint', SdI18n.t('dbAdmin.loadExportTables.text1', { value1: database, value2: tables.length }));
   saveState();
 }
 
 async function loadImportTables(preferredTable = '') {
-  const database = getSelectedValue('importDatabaseSelect', '请先选择导入目标数据库', { asIdent: true });
+  const database = getSelectedValue('importDatabaseSelect', SdI18n.t('dbAdmin.loadImportTables.text1'), { asIdent: true });
   const tables = normalizeSizedItems(await fetchTables(database));
   const sel = document.getElementById('importTableSelect');
   const previous = coerceIdentName(preferredTable || sel.value);
@@ -512,18 +328,6 @@ async function refreshSizedCatalog() {
   await loadDatabases(preferred);
 }
 
-async function chooseOutputFolder() {
-  setHint('backupHint', '请选择服务允许访问的输出目录...');
-  const selected = await openFilesystemBrowser({ purpose: 'directory', initialPath: getOutputDir() || defaultOutputDir });
-  if (selected) {
-    document.getElementById('outputDir').value = selected;
-    saveState();
-    setHint('backupHint', `已选择导出目录: ${selected}`, 'muted ok');
-  } else {
-    setHint('backupHint', '已取消选择导出目录', 'muted');
-  }
-}
-
 async function startBackup() {
   const database = getExportDatabase();
   const data = await fetchJson('/api/backup', {
@@ -532,11 +336,10 @@ async function startBackup() {
     body: JSON.stringify({
       connection: getConnectionPayload(),
       database,
-      output_dir: getOutputDir(),
     }),
   });
   watchJob(data.job.id);
-  setHint('backupHint', `已开始整库 SQL 备份，输出目录: ${getOutputDir() || defaultOutputDir}`, 'muted ok');
+  setHint('backupHint', SdI18n.t('dbAdmin.startBackup.text1', { value1: configuredOutputDir }), 'muted ok');
 }
 
 async function startTableBackup() {
@@ -549,11 +352,10 @@ async function startTableBackup() {
       connection: getConnectionPayload(),
       database,
       table,
-      output_dir: getOutputDir(),
     }),
   });
   watchJob(data.job.id);
-  setHint('backupHint', `已开始单表 SQL 备份: ${database}.${table}`, 'muted ok');
+  setHint('backupHint', SdI18n.t('dbAdmin.startTableBackup.text1', { value1: database, value2: table }), 'muted ok');
 }
 
 async function startCsvExport() {
@@ -566,24 +368,23 @@ async function startCsvExport() {
       connection: getConnectionPayload(),
       database,
       table,
-      output_dir: getOutputDir(),
     }),
   });
   watchJob(data.job.id);
-  setHint('backupHint', `已开始 CSV 导出（适合小数据）: ${database}.${table}`, 'muted ok');
+  setHint('backupHint', SdI18n.t('dbAdmin.startCsvExport.text1', { value1: database, value2: table }), 'muted ok');
 }
 
 async function requireDoubleConfirm(kind, target) {
   const first = await showConfirmModal({
-    title: `${kind}确认（1/2）`,
-    message: `${kind} 将写入数据库：${target}。是否继续？`,
-    confirmText: '继续',
+    title: SdI18n.t('dbAdmin.requireDoubleConfirm.text1', { value1: kind }),
+    message: SdI18n.t('dbAdmin.requireDoubleConfirm.text2', { value1: kind, value2: target }),
+    confirmText: SdI18n.t('dbAdmin.requireDoubleConfirm.text3'),
   });
   if (!first) return false;
   return showConfirmModal({
-    title: `${kind}确认（2/2）`,
-    message: `二次确认：${kind} 执行后可能覆盖或追加数据，确定继续？`,
-    confirmText: '确认执行',
+    title: SdI18n.t('dbAdmin.requireDoubleConfirm.text4', { value1: kind }),
+    message: SdI18n.t('dbAdmin.requireDoubleConfirm.text5', { value1: kind }),
+    confirmText: SdI18n.t('dbAdmin.requireDoubleConfirm.text6'),
   });
 }
 
@@ -597,10 +398,10 @@ async function requestConfirmationToken(action, database, table = '') {
 }
 
 async function registerLocalFile(kind) {
-  setHint('importHint', `请选择服务允许访问的 ${kind.toUpperCase()} 文件...`);
-  const selected = await openFilesystemBrowser({ purpose: kind, initialPath: getOutputDir() || defaultOutputDir, allowFiles: true });
+  setHint('importHint', SdI18n.t('dbAdmin.registerLocalFile.text1', { value1: kind.toUpperCase() }));
+  const selected = await openFilesystemBrowser({ purpose: kind, initialPath: configuredOutputDir, allowFiles: true });
   if (!selected) {
-    setHint('importHint', '已取消登记本地文件', 'muted');
+    setHint('importHint', SdI18n.t('dbAdmin.registerLocalFile.text2'), 'muted');
     return;
   }
   const data = await fetchJson('/api/register-file', {
@@ -610,10 +411,10 @@ async function registerLocalFile(kind) {
   });
   if (kind === 'csv') {
     await loadServerCsvExports();
-    setHint('importHint', `已登记 CSV: ${data.filename}`, 'muted ok');
+    setHint('importHint', SdI18n.t('dbAdmin.registerLocalFile.text3', { value1: data.filename }), 'muted ok');
   } else {
     await loadServerBackups();
-    setHint('importHint', `已登记 SQL: ${data.filename}`, 'muted ok');
+    setHint('importHint', SdI18n.t('dbAdmin.registerLocalFile.text4', { value1: data.filename }), 'muted ok');
   }
 }
 
@@ -627,8 +428,8 @@ async function loadServerBackups() {
     const option = document.createElement('option');
     option.value = backup.filename;
     const scope = backup.scope === 'table' && backup.table
-      ? `表 ${backup.database || ''}.${backup.table}`
-      : (backup.scope === 'external' ? '外部登记' : '整库');
+      ? SdI18n.t('dbAdmin.loadServerBackups.text1', { value1: backup.database || '', value2: backup.table })
+      : (backup.scope === 'external' ? SdI18n.t('dbAdmin.loadServerBackups.text2') : SdI18n.t('dbAdmin.loadServerBackups.text3'));
     option.textContent = `${backup.filename} [${scope}] (${formatBytes(backup.size_bytes)})`;
     select.appendChild(option);
   }
@@ -642,9 +443,9 @@ function destinationIsOnAvailableDrive(destination) {
 
 function managedFileMeta(item) {
   const origin = item.scope === 'table' && item.table
-    ? `单表 ${item.database || ''}.${item.table}`
-    : (item.database ? `数据库 ${item.database}` : (item.scope === 'external' ? '外部登记' : '已完成'));
-  return `${String(item.kind || '').toUpperCase()} · ${origin} · ${formatBytes(item.size || 0)} · ${item.completed_at || item.modified_at || '时间未知'}`;
+    ? SdI18n.t('dbAdmin.managedFileMeta.text1', { value1: item.database || '', value2: item.table })
+    : (item.database ? SdI18n.t('dbAdmin.managedFileMeta.text2', { value1: item.database }) : (item.scope === 'external' ? SdI18n.t('dbAdmin.managedFileMeta.text3') : SdI18n.t('dbAdmin.managedFileMeta.text4')));
+  return SdI18n.t('dbAdmin.managedFileMeta.text6', { value1: String(item.kind || '').toUpperCase(), value2: origin, value3: formatBytes(item.size || 0), value4: item.completed_at || item.modified_at || SdI18n.t('dbAdmin.managedFileMeta.text5') });
 }
 
 function selectedManagedFileList() {
@@ -654,7 +455,7 @@ function selectedManagedFileList() {
 function renderManagedSelection() {
   const selected = selectedManagedFileList();
   const totalBytes = selected.reduce((sum, item) => sum + Number(item.size || 0), 0);
-  document.getElementById('backupSelectionSummary').textContent = `已选择 ${selected.length} 个文件，共 ${formatBytes(totalBytes)}`;
+  document.getElementById('backupSelectionSummary').textContent = SdI18n.t('dbAdmin.renderManagedSelection.text1', { value1: selected.length, value2: formatBytes(totalBytes) });
   const container = document.getElementById('backupSelectedFiles');
   container.innerHTML = '';
   for (const item of selected) {
@@ -665,7 +466,7 @@ function renderManagedSelection() {
     text.title = item.path;
     const remove = document.createElement('button');
     remove.type = 'button';
-    remove.textContent = '移除';
+    remove.textContent = SdI18n.t('dbAdmin.renderManagedSelection.text2');
     remove.addEventListener('click', () => {
       selectedManagedFiles.delete(item.path);
       renderManagedEntries();
@@ -678,10 +479,10 @@ function renderManagedSelection() {
   document.getElementById('btnCopyBackups').disabled = !selected.length || !destination || !destinationIsOnAvailableDrive(destination);
   document.getElementById('btnDeleteBackupFiles').disabled = !selected.length;
   document.getElementById('btnClearBackupSelection').disabled = !selected.length;
-  const driveText = removableRoots.length ? `${removableRoots.length} 个外部设备可用` : '未检测到外部设备';
+  const driveText = removableRoots.length ? SdI18n.t('dbAdmin.renderManagedSelection.text3', { value1: removableRoots.length }) : SdI18n.t('dbAdmin.renderManagedSelection.text4');
   setHint(
     'backupManagerHint',
-    `${driveText}；已选择 ${selected.length} 个文件（${formatBytes(totalBytes)}）`,
+    SdI18n.t('dbAdmin.renderManagedSelection.text5', { value1: driveText, value2: selected.length, value3: formatBytes(totalBytes) }),
     removableRoots.length ? 'muted' : 'muted warn',
   );
 }
@@ -689,13 +490,13 @@ function renderManagedSelection() {
 function renderManagedEntries() {
   const list = document.getElementById('backupFilesList');
   list.innerHTML = '';
-  document.getElementById('backupFilesPath').textContent = currentManagedPath || '允许访问的位置';
+  document.getElementById('backupFilesPath').textContent = currentManagedPath || SdI18n.t('dbAdmin.renderManagedEntries.text1');
   document.getElementById('btnBackupFilesParent').disabled = !currentManagedParent;
   document.getElementById('btnSelectCurrentBackupFiles').disabled = !currentManagedFiles.some(item => item.type === 'file');
   if (!currentManagedFiles.length) {
     const empty = document.createElement('div');
     empty.className = 'backup-files-empty';
-    empty.textContent = '当前目录没有有效的 SQL / CSV 备份文件';
+    empty.textContent = SdI18n.t('dbAdmin.renderManagedEntries.text2');
     list.appendChild(empty);
     return;
   }
@@ -791,7 +592,7 @@ async function refreshRemovableDrives({ announce = false } = {}) {
   if (announce) {
     setHint(
       'backupManagerHint',
-      removableRoots.length ? `已检测到 ${removableRoots.length} 个外部设备` : '未检测到外部设备',
+      removableRoots.length ? SdI18n.t('dbAdmin.refreshRemovableDrives.text1', { value1: removableRoots.length }) : SdI18n.t('dbAdmin.refreshRemovableDrives.text2'),
       removableRoots.length ? 'muted ok' : 'muted warn',
     );
   }
@@ -813,13 +614,13 @@ async function chooseBackupCopyDestination() {
 async function startCopyBackups() {
   const selected = selectedManagedFileList();
   const destination = document.getElementById('backupCopyDestination').value.trim();
-  if (!selected.length) throw new Error('请至少选择一个 SQL 或 CSV 文件');
-  if (!destination || !destinationIsOnAvailableDrive(destination)) throw new Error('请选择当前可用的外部设备目录');
+  if (!selected.length) throw new Error(SdI18n.t('dbAdmin.startCopyBackups.text1'));
+  if (!destination || !destinationIsOnAvailableDrive(destination)) throw new Error(SdI18n.t('dbAdmin.startCopyBackups.text2'));
   const totalBytes = selected.reduce((sum, item) => sum + Number(item.size || 0), 0);
   const confirmed = await showConfirmModal({
-    title: '确认复制备份文件',
-    message: `将 ${selected.length} 个文件（${formatBytes(totalBytes)}）复制到外部设备：${destination}。复制后将校验 SHA-256。`,
-    confirmText: '开始复制',
+    title: SdI18n.t('dbAdmin.startCopyBackups.text3'),
+    message: SdI18n.t('dbAdmin.startCopyBackups.text4', { value1: selected.length, value2: formatBytes(totalBytes), value3: destination }),
+    confirmText: SdI18n.t('dbAdmin.startCopyBackups.text5'),
   });
   if (!confirmed) return;
   const data = await fetchJson('/api/copy-backup-files', {
@@ -831,23 +632,23 @@ async function startCopyBackups() {
     }),
   });
   watchJob(data.job.id);
-  setHint('backupManagerHint', `已开始复制到外部设备：${destination}`, 'muted ok');
+  setHint('backupManagerHint', SdI18n.t('dbAdmin.startCopyBackups.text6', { value1: destination }), 'muted ok');
 }
 
 async function deleteSelectedBackupFiles() {
   const selected = selectedManagedFileList();
-  if (!selected.length) throw new Error('请至少选择一个要删除的文件');
+  if (!selected.length) throw new Error(SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text1'));
   const totalBytes = selected.reduce((sum, item) => sum + Number(item.size || 0), 0);
   const first = await showConfirmModal({
-    title: '删除备份文件（1/2）',
-    message: `将永久删除 ${selected.length} 个文件及其 manifest，共 ${formatBytes(totalBytes)}。此操作不可恢复，是否继续？`,
-    confirmText: '继续',
+    title: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text2'),
+    message: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text3', { value1: selected.length, value2: formatBytes(totalBytes) }),
+    confirmText: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text4'),
   });
   if (!first) return;
   const second = await showConfirmModal({
-    title: '删除备份文件（2/2）',
-    message: '二次确认：所选 SQL / CSV 及校验清单将被永久删除，确定执行？',
-    confirmText: '永久删除',
+    title: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text5'),
+    message: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text6'),
+    confirmText: SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text7'),
   });
   if (!second) return;
   const paths = selected.map(item => item.path);
@@ -864,7 +665,7 @@ async function deleteSelectedBackupFiles() {
   selectedManagedFiles.clear();
   await Promise.all([refreshManagedFiles(), loadServerBackups(), loadServerCsvExports()]);
   renderManagedSelection();
-  setHint('backupManagerHint', `已永久删除 ${result.count} 个文件（${formatBytes(result.size_bytes)}）`, 'muted ok');
+  setHint('backupManagerHint', SdI18n.t('dbAdmin.deleteSelectedBackupFiles.text8', { value1: result.count, value2: formatBytes(result.size_bytes) }), 'muted ok');
 }
 
 async function loadServerCsvExports() {
@@ -875,7 +676,7 @@ async function loadServerCsvExports() {
   for (const item of data.exports || []) {
     const option = document.createElement('option');
     option.value = item.filename;
-    const origin = item.table ? `${item.database || ''}.${item.table}` : '外部登记';
+    const origin = item.table ? `${item.database || ''}.${item.table}` : SdI18n.t('dbAdmin.loadServerCsvExports.text1');
     option.textContent = `${item.filename} [${origin}] (${formatBytes(item.size_bytes)})`;
     select.appendChild(option);
   }
@@ -883,9 +684,9 @@ async function loadServerCsvExports() {
 }
 
 async function startRestoreServerBackup() {
-  const database = getSelectedValue('restoreDatabaseSelect', '请先选择恢复目标数据库', { asIdent: true });
-  const filename = getSelectedValue('serverBackupSelect', '没有可恢复的已完成备份');
-  if (!(await requireDoubleConfirm('恢复服务器备份', `${filename} → ${database}`))) return;
+  const database = getSelectedValue('restoreDatabaseSelect', SdI18n.t('dbAdmin.startRestoreServerBackup.text1'), { asIdent: true });
+  const filename = getSelectedValue('serverBackupSelect', SdI18n.t('dbAdmin.startRestoreServerBackup.text2'));
+  if (!(await requireDoubleConfirm(SdI18n.t('dbAdmin.startRestoreServerBackup.text3'), `${filename} → ${database}`))) return;
   const confirmationToken = await requestConfirmationToken('restore-backup', database);
   const data = await fetchJson('/api/restore-backup', {
     method: 'POST',
@@ -898,7 +699,7 @@ async function startRestoreServerBackup() {
     }),
   });
   watchJob(data.job.id);
-  setHint('importHint', `已开始校验并恢复: ${filename} → ${database}`, 'muted warn');
+  setHint('importHint', SdI18n.t('dbAdmin.startRestoreServerBackup.text4', { value1: filename, value2: database }), 'muted warn');
 }
 
 function syncForceImportTruncate() {
@@ -913,13 +714,13 @@ function syncForceImportTruncate() {
 }
 
 async function startImportServerCsv() {
-  const database = getSelectedValue('importDatabaseSelect', '请先选择导入目标数据库', { asIdent: true });
-  const table = getSelectedValue('importTableSelect', '请先选择导入目标表', { asIdent: true });
-  const filename = getSelectedValue('serverCsvSelect', '没有可导入的已导出 CSV');
+  const database = getSelectedValue('importDatabaseSelect', SdI18n.t('dbAdmin.startImportServerCsv.text1'), { asIdent: true });
+  const table = getSelectedValue('importTableSelect', SdI18n.t('dbAdmin.startImportServerCsv.text2'), { asIdent: true });
+  const filename = getSelectedValue('serverCsvSelect', SdI18n.t('dbAdmin.startImportServerCsv.text3'));
   const force = document.getElementById('forceCsvImport').checked;
   if (force) syncForceImportTruncate();
-  if (!(await requireDoubleConfirm('导入 CSV', `${filename} → ${database}.${table}`))) {
-    setHint('importHint', '已取消 CSV 导入', 'muted');
+  if (!(await requireDoubleConfirm(SdI18n.t('dbAdmin.startImportServerCsv.text4'), `${filename} → ${database}.${table}`))) {
+    setHint('importHint', SdI18n.t('dbAdmin.startImportServerCsv.text5'), 'muted');
     return;
   }
   const confirmationToken = await requestConfirmationToken('import-server-csv', database, table);
@@ -937,7 +738,7 @@ async function startImportServerCsv() {
     }),
   });
   watchJob(data.job.id);
-  setHint('importHint', `已开始 CSV 导入: ${filename} → ${database}.${table}`, 'muted warn');
+  setHint('importHint', SdI18n.t('dbAdmin.startImportServerCsv.text6', { value1: filename, value2: database, value3: table }), 'muted warn');
 }
 
 function statusClass(status) {
@@ -958,11 +759,11 @@ function notifyJobOutcome(job) {
   if (status === 'done') {
     const outputPath = job.result?.path || job.result?.destination || '';
     const output = outputPath ? `：${outputPath}` : '';
-    showStatusBar(`任务成功：${title}${output}`, 'ok');
+    showStatusBar(SdI18n.t('dbAdmin.notifyJobOutcome.text1', { value1: title, value2: output }), 'ok');
   } else if (status === 'cancelled' || status === 'canceled') {
-    showStatusBar(`任务已取消：${title}`, 'warn');
+    showStatusBar(SdI18n.t('dbAdmin.notifyJobOutcome.text2', { value1: title }), 'warn');
   } else if (status === 'failed') {
-    showStatusBar(`任务失败：${title}：${job.error || '未知错误'}`, 'error');
+    showStatusBar(SdI18n.t('dbAdmin.notifyJobOutcome.text4', { value1: title, value2: job.error || SdI18n.t('dbAdmin.notifyJobOutcome.text3') }), 'error');
   }
 }
 
@@ -971,7 +772,7 @@ function formatDuration(seconds) {
   const n = Math.max(0, Math.round(Number(seconds) || 0));
   const m = Math.floor(n / 60);
   const s = n % 60;
-  return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+  return m > 0 ? SdI18n.t('dbAdmin.formatDuration.text1', { value1: m, value2: s }) : SdI18n.t('dbAdmin.formatDuration.text2', { value1: s });
 }
 
 function renderProgress(job) {
@@ -987,7 +788,7 @@ function renderJobs(jobs) {
   const table = document.getElementById('jobsTable');
   table.innerHTML = '';
   const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><th>状态</th><th>进度</th><th>任务</th><th>耗时</th><th>预计剩余</th><th>输出/结果</th></tr>';
+  thead.innerHTML = SdI18n.t('dbAdmin.renderJobs.text1');
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
   for (const job of jobs) {
@@ -999,7 +800,7 @@ function renderJobs(jobs) {
     } else if (job.result?.destination) {
       const copied = (job.result.copied || []).length;
       const skipped = (job.result.skipped || []).length;
-      result = `${job.result.destination} / 已复制 ${copied} / 已跳过 ${skipped}`;
+      result = SdI18n.t('dbAdmin.renderJobs.text2', { value1: job.result.destination, value2: copied, value3: skipped });
     }
     const statusCell = document.createElement('td');
     const statusButton = document.createElement('button');
@@ -1013,16 +814,16 @@ function renderJobs(jobs) {
       const cancelButton = document.createElement('button');
       cancelButton.type = 'button';
       cancelButton.className = 'job-cancel';
-      cancelButton.textContent = '取消';
+      cancelButton.textContent = SdI18n.t('dbAdmin.renderJobs.text3');
       cancelButton.addEventListener('click', async event => {
         event.stopPropagation();
-        if (!(await showConfirmModal({ title: '取消任务', message: `确定取消 ${job.title || job.id}？`, confirmText: '确认取消' }))) return;
+        if (!(await showConfirmModal({ title: SdI18n.t('dbAdmin.renderJobs.text4'), message: SdI18n.t('dbAdmin.renderJobs.text5', { value1: job.title || job.id }), confirmText: SdI18n.t('dbAdmin.renderJobs.text6') }))) return;
         try {
           await fetchJson(`/api/jobs/${encodeURIComponent(job.id)}/cancel`, { method: 'POST' });
-          showStatusBar(`已提交任务取消请求：${job.title || job.id}`, 'warn');
+          showStatusBar(SdI18n.t('dbAdmin.renderJobs.text7', { value1: job.title || job.id }), 'warn');
           await refreshJobs();
         } catch (err) {
-          showStatusBar(`任务取消失败：${job.title || job.id}：${err.message}`, 'error');
+          showStatusBar(SdI18n.t('dbAdmin.renderJobs.text8', { value1: job.title || job.id, value2: err.message }), 'error');
         }
       });
       statusCell.appendChild(cancelButton);
@@ -1049,7 +850,7 @@ function renderJobs(jobs) {
       resultCell.appendChild(document.createTextNode(' '));
       const downloadLink = document.createElement('a');
       downloadLink.href = job.result.download_url;
-      downloadLink.textContent = '下载';
+      downloadLink.textContent = SdI18n.t('dbAdmin.renderJobs.text9');
       downloadLink.setAttribute('download', job.result.filename || '');
       resultCell.appendChild(downloadLink);
     }
@@ -1066,7 +867,7 @@ function renderJobLog(job) {
   const lines = job && Array.isArray(job.logs) ? job.logs : [];
   document.getElementById('jobLog').value = lines.join('\n');
   document.getElementById('jobSummary').textContent = job
-    ? `当前任务: ${job.title || job.id} / ${job.status} / ${job.progress || 0}%`
+    ? SdI18n.t('dbAdmin.renderJobLog.text1', { value1: job.title || job.id, value2: job.status, value3: job.progress || 0 })
     : '';
 }
 
@@ -1098,14 +899,6 @@ function watchJob(jobId) {
 }
 
 function bindEvents() {
-  for (const chip of document.querySelectorAll('.quick-chip')) {
-    chip.addEventListener('click', () => applyConnectionShortcut(chip));
-  }
-  document.getElementById('btnTogglePassword').addEventListener('click', togglePasswordVisibility);
-  document.getElementById('btnClearPassword').addEventListener('click', clearPassword);
-  document.getElementById('btnTestConnection').addEventListener('click', () => {
-    testConnection().catch(err => setHint('connectionHint', err.message, 'muted warn'));
-  });
   document.getElementById('btnLoadDatabases').addEventListener('click', () => {
     loadDatabases().catch(err => setHint('objectHint', err.message, 'muted warn'));
   });
@@ -1129,25 +922,6 @@ function bindEvents() {
       });
     });
   }
-  document.getElementById('outputDir').addEventListener('change', saveState);
-  for (const id of ['dbHost', 'dbPort', 'dbUsername']) {
-    document.getElementById(id).addEventListener('change', () => {
-      persistConnectionConfig().catch(() => saveState());
-      updateQuickChipState();
-    });
-    document.getElementById(id).addEventListener('input', updateQuickChipState);
-  }
-  document.getElementById('dbPassword').addEventListener('change', () => {
-    persistConnectionConfig().catch(() => saveState());
-  });
-  document.getElementById('dbPassword').addEventListener('input', saveState);
-  document.getElementById('btnUseDefaultOutputDir').addEventListener('click', () => {
-    document.getElementById('outputDir').value = defaultOutputDir;
-    saveState();
-  });
-  document.getElementById('btnChooseOutputDir').addEventListener('click', () => {
-    chooseOutputFolder().catch(err => setHint('backupHint', err.message, 'muted warn'));
-  });
   document.getElementById('btnBackupSql').addEventListener('click', () => {
     startBackup().catch(err => setHint('backupHint', err.message, 'muted warn'));
   });
@@ -1220,9 +994,7 @@ async function init() {
   bindEvents();
   enableButtonClickFeedback();
   const saved = loadSavedState();
-  if (saved && saved.database) {
-    await loadDatabases(saved).catch(err => setHint('objectHint', err.message, 'muted warn'));
-  }
+  await loadDatabases(saved || {}).catch(err => setHint('objectHint', err.message, 'muted warn'));
   await refreshJobs();
   await loadServerBackups();
   await refreshRemovableDrives();

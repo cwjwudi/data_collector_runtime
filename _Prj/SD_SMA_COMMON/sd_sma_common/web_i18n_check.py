@@ -16,6 +16,7 @@ from pathlib import Path
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 REPO_ROOT = WEB_DIR.parents[3]
+ADMIN_STATIC = REPO_ROOT / "_Prj/SD_SMA_DB_ADMIN/app/static"
 QUERY_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR_QUERY_WEB" / "app" / "static"
 CACHE_VERSION = "20261020_03"
 
@@ -75,11 +76,14 @@ def check_collector_assets() -> None:
 
 def collect_used_keys() -> set:
     used = set()
-    for html in [*QUERY_STATIC.glob("*.html"), * (REPO_ROOT / "_Launcher/static").glob("*.html")]:
+    for html in [*QUERY_STATIC.glob("*.html"), *ADMIN_STATIC.glob("*.html"), * (REPO_ROOT / "_Launcher/static").glob("*.html")]:
         for m in re.finditer(r'data-i18n(?:-placeholder|-aria)?="([^"]+)"', html.read_text(encoding="utf-8")):
             used.add(m.group(1))
-    for js in [*QUERY_STATIC.glob("*.js"), REPO_ROOT / "_Launcher/static/app.js", REPO_ROOT / "_Prj/SD_SMA_DATA_COLLECTOR/web_config/static/config.js"]:
-        for m in re.finditer(r"\bt\(\s*'([^']+)'", js.read_text(encoding="utf-8")):
+    for js in [*QUERY_STATIC.glob("*.js"), *ADMIN_STATIC.glob("*.js"), REPO_ROOT / "_Launcher/static/app.js", REPO_ROOT / "_Prj/SD_SMA_DATA_COLLECTOR/web_config/static/config.js"]:
+        source = js.read_text(encoding="utf-8")
+        for m in re.finditer(r"\bt\(\s*'([^']+)'", source):
+            used.add(m.group(1))
+        for m in re.finditer(r"'(dbConfig\.[\w.]+)'", source):
             used.add(m.group(1))
     return used
 
