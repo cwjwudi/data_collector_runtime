@@ -215,6 +215,17 @@ def check_backup(config, binary, directory):
             cursor.execute('DROP TABLE Data_Test')
             cursor.execute('DROP TABLE dict_BatchCode')
     module.restore_verified_backup_job('validation', conn, DATABASE, backup['filename'])
+    for key, value in {'HOST': config['host'], 'PORT': str(config['port']), 'USERNAME': config['username'],
+                       'PASSWORD': config['password'], 'DATABASE': DATABASE}.items():
+        os.environ['SD_SMA_DB_' + key] = value
+    os.environ['SD_SMA_MANAGED_DATABASE'] = '1'
+    os.environ['SD_SMA_DB_TOOLS_DIR'] = str(binary)
+    status = module.managed_storage_status()
+    assert status['available'] and status['size_bytes'] > 0 and status['free_bytes'] > 0, status
+    assert module.resolve_mysql_tool('mysql') == str(binary / 'mariadb.exe')
+    os.environ['SD_SMA_DB_PASSWORD'] = 'wrong-test-password'
+    assert module.managed_storage_status()['error'] == 'credentials'
+    print('PASS managed storage status: real database capacity and actionable credential error', flush=True)
 
 
 if __name__ == '__main__':

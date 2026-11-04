@@ -69,6 +69,18 @@ def check_api(directory):
         managed = client.get('/api/config').json()['default_connection']
         assert managed['password_managed'] and managed['host'] == 'managed-host'
         assert module.connection_password(module.DbConnection(password='ignored')) == 'managed-test-password'
+        os.environ['SD_SMA_MANAGED_DATABASE'] = '1'
+        os.environ['SD_SMA_DB_HOST'] = '127.0.0.1'
+        os.environ['SD_SMA_DB_PORT'] = '1'
+        managed = client.get('/api/config').json()['default_connection']
+        assert managed['managed_storage'] and not any(key in managed for key in ('host', 'port', 'username'))
+        assert 'managed-test-password' not in json.dumps(managed)
+        assert client.post('/api/config/connection', json=payload).status_code == 409
+        status = client.get('/api/storage/status').json()
+        assert status == {'managed': True, 'available': False, 'error': 'unavailable'}
+        assert 'id="managedStoragePanel"' in admin.text and 'id="managedStoragePanel"' in config.text
+        os.environ.pop('SD_SMA_MANAGED_DATABASE')
+        assert client.get('/api/storage/status').json() == {'managed': False}
 
 
 def check_browser_script():
@@ -143,6 +155,28 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   await vm.runInContext('init()', context);
   assert.equal(element('connectionFields').disabled, true);
   assert.equal(element('btnSaveConnection').disabled, true);
+  saved.managed_storage = true;
+  await vm.runInContext('init()', context);
+  assert.equal(element('connectionPanel').hidden, true);
+  let storage = {managed: true, available: true, version: '11.4.13', size_bytes: 1024, free_bytes: 4096};
+  const storageContext = vm.createContext({document: {getElementById: element}, SdI18n: {t: key => key},
+    fetch: async () => ({ok: true, json: async () => storage})});
+  vm.runInContext(fs.readFileSync(root + '/storage.js', 'utf8'), storageContext);
+  await vm.runInContext('refreshManagedStorage()', storageContext);
+  assert.equal(element('managedStoragePanel').hidden, false);
+  assert.equal(element('managedStorageStatus').textContent, 'dbStorage.status.online');
+  for (const code of ['credentials', 'disk', 'unavailable']) {
+    storage = {managed: true, available: false, error: code};
+    await vm.runInContext('refreshManagedStorage()', storageContext);
+    assert.equal(element('managedStorageStatus').textContent, `dbStorage.status.${code}`);
+  }
+  storage = {managed: false};
+  await vm.runInContext('refreshManagedStorage()', storageContext);
+  assert.equal(element('managedStoragePanel').hidden, true);
+  vm.runInContext('fetch = async () => { throw new Error(); }', storageContext);
+  await vm.runInContext('refreshManagedStorage()', storageContext);
+  assert.equal(element('managedStorageStatus').textContent, 'dbStorage.status.requestFailed');
+  assert.equal(element('refreshManagedStorage').disabled, false);
   const adminContext = vm.createContext({document: {getElementById: element}, window, SdI18n: {t: key => key}});
   vm.runInContext(admin.replace(/init\(\)\.catch\([^\n]+\);\s*$/, ''), adminContext);
   vm.runInContext('loadSavedState()', adminContext);

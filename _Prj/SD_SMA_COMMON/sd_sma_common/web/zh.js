@@ -4,6 +4,15 @@
  * 业务代码不写死中文,一律 SdI18n.t('key') 或 data-i18n="key"
  * ============================================================ */
 window.SD_SMA_I18N_ZH = {
+  "dbStorage.panel.title": "托管存储",
+  "dbStorage.panel.hint": "本机数据库由系统管理，无需填写连接信息。请在数据库运维页面执行备份恢复；操作前先在管理台停止采集服务，完成后再启动。",
+  "dbStorage.panel.refresh": "刷新存储状态",
+  "dbStorage.status.online": "存储正常",
+  "dbStorage.status.details": "MariaDB {version} · 业务表占用约 {size} MB · 数据盘可用 {free} GB",
+  "dbStorage.status.credentials": "数据库或账号不可用。请重新运行同版安装程序检查初始化；请勿删除数据库或凭据文件。",
+  "dbStorage.status.disk": "无法读取数据盘状态，请检查 ProgramData 目录权限和磁盘是否可访问。",
+  "dbStorage.status.unavailable": "无法连接本机存储。请确认 Windows 服务 SD_SMA_DB 已启动，再刷新状态。",
+  "dbStorage.status.requestFailed": "状态读取失败，请刷新页面并确认 DB Admin 服务正在运行。",
   "query.condition.configHint": "精确查询使用来源表和来源字段；模糊查询只需名称和绑定列，客户直接输入包含的文字。条件按当前 Group 保存。",
   "query.condition.method": "查询方法",
   "query.condition.exact": "精确查询",

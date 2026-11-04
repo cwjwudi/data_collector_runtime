@@ -14,7 +14,14 @@
       <span class="page-nav-current" data-i18n="dbConfig.nav.title"></span>
     </nav>
     <main class="layout layout-stack">
-      <section class="panel connection-panel">
+      <section id="managedStoragePanel" class="panel" hidden>
+        <h2 data-i18n="dbStorage.panel.title"></h2>
+        <p class="hint" data-i18n="dbStorage.panel.hint"></p>
+        <p id="managedStorageStatus" role="status" aria-live="polite"></p>
+        <p id="managedStorageDetails" class="muted"></p>
+        <button id="refreshManagedStorage" type="button" data-i18n="dbStorage.panel.refresh"></button>
+      </section>
+      <section id="connectionPanel" class="panel connection-panel">
         <h2 data-i18n="dbConfig.form.title"></h2>
         <p class="hint" data-i18n="dbConfig.form.hint"></p>
         <form id="connectionForm">
@@ -75,9 +82,10 @@
       </div>
     </div>
 
-    <script src="/common/zh.js?v=20261029_02"></script>
+    <script src="/common/zh.js?v=20261104_01"></script>
     <script src="/common/i18n.js?v=20261020_03"></script>
     <script src="/static/filesystem.js?v=20261029_02"></script>
-    <script src="/static/config.js?v=20261029_02"></script>
+    <script src="/static/config.js?v=20261104_01"></script>
+    <script src="/static/storage.js?v=20261104_01"></script>
   </body>
 </html>

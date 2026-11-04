@@ -312,6 +312,13 @@ def _find_tool_under_roots(aliases: tuple[str, ...], roots: list[Path]) -> str |
 
 
 def resolve_mysql_tool(name: str) -> str:
+    bundled = os.getenv('SD_SMA_DB_TOOLS_DIR')
+    if bundled:
+        filename = 'mariadb-dump.exe' if name == 'mysqldump' else 'mariadb.exe'
+        path = Path(bundled) / filename
+        if not path.is_file():
+            raise FileNotFoundError('Packaged database client is missing; repair the installation')
+        return str(path)
     cfg = load_config()
     tools = cfg.get("mysql_tools") if isinstance(cfg.get("mysql_tools"), dict) else {}
     configured = str(tools.get(name) or "").strip()
@@ -398,10 +405,16 @@ def default_connection() -> dict[str, Any]:
         os.getenv("SD_SMA_DB_PASSWORD") or conn.get("password")
     )
     base["password_managed"] = bool(os.getenv("SD_SMA_DB_CREDENTIAL_MANAGED"))
+    base['managed_storage'] = os.getenv('SD_SMA_MANAGED_DATABASE') == '1'
+    if base['managed_storage']:
+        for key in ('host', 'port', 'username'):
+            base.pop(key, None)
     return base
 
 
 def persist_default_connection(conn: DbConnection) -> dict[str, Any]:
+    if os.getenv('SD_SMA_MANAGED_DATABASE') == '1':
+        raise HTTPException(409, 'Managed storage connection is controlled by Launcher')
     cfg = load_config()
     current = dict(cfg.get("default_connection") or {}) if isinstance(cfg.get("default_connection"), dict) else {}
     legacy_password = str(current.get("password") or "")
@@ -1894,6 +1907,30 @@ def get_config() -> dict[str, Any]:
         "mysql_tools": cfg.get("mysql_tools") or {},
         "max_concurrent_jobs": max(1, int(cfg.get("max_concurrent_jobs") or 2)),
     }
+
+
+@app.get('/api/storage/status')
+def managed_storage_status() -> dict[str, Any]:
+    if os.getenv('SD_SMA_MANAGED_DATABASE') != '1':
+        return {'managed': False}
+    try:
+        conn = managed_connection(DbConnection())
+        with connect_mysql(conn) as db:
+            with db.cursor() as cursor:
+                cursor.execute('SELECT VERSION()')
+                version = str(cursor.fetchone()[0])
+                cursor.execute('SELECT COALESCE(SUM(data_length + index_length), 0) '
+                               'FROM information_schema.tables WHERE table_schema=%s', (conn.database,))
+                size = int(cursor.fetchone()[0])
+        free = shutil.disk_usage(os.getenv('SD_SMA_DATA_ROOT') or BASE_DIR).free
+        return {'managed': True, 'available': True, 'version': version,
+                'size_bytes': size, 'free_bytes': free}
+    except pymysql.MySQLError as error:
+        code = error.args[0] if error.args else 0
+        return {'managed': True, 'available': False,
+                'error': 'credentials' if code in (1044, 1045, 1049) else 'unavailable'}
+    except OSError:
+        return {'managed': True, 'available': False, 'error': 'disk'}
 
 
 @app.post("/api/config/connection")

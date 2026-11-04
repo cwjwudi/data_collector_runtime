@@ -17,6 +17,13 @@
     <div id="appStatusBar" class="app-status-bar" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
     <div class="layout layout-stack">
+      <section id="managedStoragePanel" class="panel" hidden>
+        <h2 data-i18n="dbStorage.panel.title"></h2>
+        <p class="hint" data-i18n="dbStorage.panel.hint"></p>
+        <p id="managedStorageStatus" role="status" aria-live="polite"></p>
+        <p id="managedStorageDetails" class="muted"></p>
+        <button id="refreshManagedStorage" type="button" data-i18n="dbStorage.panel.refresh"></button>
+      </section>
       <section class="panel">
         <h2 data-i18n="dbAdmin.markup.h21"></h2>
         <p class="hint" data-i18n="dbAdmin.markup.p1"></p>
@@ -171,9 +178,10 @@
       </div>
     </div>
 
-    <script src="/common/zh.js?v=20261029_02"></script>
+    <script src="/common/zh.js?v=20261104_01"></script>
     <script src="/common/i18n.js?v=20261020_03"></script>
     <script src="/static/filesystem.js?v=20261029_02"></script>
     <script src="/static/admin.js?v=20261029_02"></script>
+    <script src="/static/storage.js?v=20261104_01"></script>
   </body>
 </html>

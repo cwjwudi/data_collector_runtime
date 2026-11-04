@@ -71,9 +71,10 @@ async function init() {
     document.getElementById('outputDir').value = defaultOutputDir;
   });
   configuredConnection = config.default_connection;
-  document.getElementById('dbHost').value = configuredConnection.host;
-  document.getElementById('dbPort').value = configuredConnection.port;
-  document.getElementById('dbUsername').value = configuredConnection.username;
+  document.getElementById('connectionPanel').hidden = Boolean(configuredConnection.managed_storage);
+  document.getElementById('dbHost').value = configuredConnection.host || '';
+  document.getElementById('dbPort').value = configuredConnection.port || '';
+  document.getElementById('dbUsername').value = configuredConnection.username || '';
   const managed = Boolean(configuredConnection.password_managed);
   document.getElementById('connectionFields').disabled = managed;
   document.getElementById('btnTestConnection').disabled = managed;
