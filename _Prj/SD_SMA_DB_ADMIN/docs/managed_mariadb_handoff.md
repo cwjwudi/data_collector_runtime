@@ -9,7 +9,7 @@
 
 ## 可直接发给下一位 AI 的任务
 
-> 在当前工作树继续开发 SD SMA 托管数据库版。先核对当前分支 `variant/managed-mariadb`，阅读 `AGENTS.md` 和本文件，确认下面的基线结果。第一轮先完成 MariaDB 实例验证并汇报实测证据，再进入安装包改造。按 TODO 顺序分阶段交付，所有变体改动留在当前分支。未经要求不推送或发布。
+> 在当前工作树继续开发 SD SMA 托管数据库版。先核对当前分支 `variant/managed-mariadb`，阅读 `AGENTS.md` 和本文件，确认下面的基线和 MariaDB 实测结果。数据库实测已完成，下一轮从构建 TODO 开始。按 TODO 顺序分阶段交付，所有变体改动留在当前分支。未经要求不推送或发布。
 >
 > 目标是干净 Windows x64 机器断网运行一个安装包，安装完成后客户只需配置 PLC。安装包带 MariaDB Community Server，自动建立本机数据库服务、业务库和运行账号。Launcher 管理连接凭据，客户通过 SD SMA 查看存储状态、备份和恢复。沿用 `build.bat installer`、Inno Setup、Launcher 和 DB Admin。
 >
@@ -17,7 +17,7 @@
 
 ## 开发 TODO
 
-- [ ] **数据库实测。** 以 MariaDB Community Server 11.4 LTS 为候选，用官方 Windows x64 发行包在测试实例中跑真实的采集建表、补列、写入、历史查询、备份和恢复。记录准确版本、来源、SHA-256、用例与实际所需权限。采集账号限定在业务库内写入、建表和补列，查询账号只读，运维账号限定在业务库的备份恢复。用运行账号验证权限边界。
+- [x] **数据库实测。** 以 MariaDB Community Server 11.4 LTS 为候选，用官方 Windows x64 发行包在测试实例中跑真实的采集建表、补列、写入、历史查询、备份和恢复。记录准确版本、来源、SHA-256、用例与实际所需权限。采集账号限定在业务库内写入、建表和补列，查询账号只读，运维账号限定在业务库的备份恢复。用运行账号验证权限边界。2026-11-04 完成，证据与范围见下文。
 - [ ] **构建。** 在 `_Launcher/scripts/build_installer_package.ps1` 固定 Windows x64 服务端和配套客户端工具的来源，构建遇到依赖缺失或哈希不符时停止。客户安装过程离线。保留现有暂存区编译版 Launcher `--smoke` 检查。测试安装包的外部依赖应在干净虚拟机上覆盖。
 - [ ] **安装和卸载。** 从 `_Launcher/installer/SD_SMA.iss` 和现有初始化脚本接入 `SD_SMA_DB`。实例使用独立固定端口，只监听 `127.0.0.1`。二进制放 Program Files，实例数据放 `ProgramData\SmartData\SD SMA`。检查端口占用，确保安装步骤失败能反馈到安装器。同版覆盖安装复用实例和凭据，卸载移除产品服务并默认保留数据库文件。
 - [ ] **账号和启动。** 首次安装预建业务库并为各服务生成每机独立的随机密码。使用机器范围 Windows DPAPI 配合 SYSTEM 和管理员目录权限保护凭据，复用 Launcher 按服务下发连接信息的方式。初始化凭据不得进入命令行参数、日志、普通配置或页面接口。服务模式配置数据库依赖，手动模式由启动入口确保数据库启动，Launcher 等实际连接可用后再启动依赖模块。明确初始化中断后重试的行为，已有实例和凭据不得被覆盖。
@@ -52,3 +52,51 @@ git status --short --branch
 - 标准版基线产物为 `_Build/SD_SMA_Installer_Package/SD_SMA_Setup_1.0.2.exe`，大小为 62,467,333 字节，SHA-256 为 `304736A6EA3A18375367702E9D2B15B38FD2020C4531FE8D8B35F3E7C0BA70DD`。构建从本机 MySQL 安装目录带入了备份客户端工具。
 - 产物用于开发对照。暂存区启动验证在构建机上完成。打包脚本从本机 Codex Python 运行时复制了额外工具和库，Nuitka 也报告无法随包纳入 Windows Runtime DLL。托管版发版应在受控构建环境检查打包清单，并在干净虚拟机确认 Windows 运行库要求。
 - 下一项是 MariaDB 实例验证。此基线未执行 MariaDB 或实际 Windows 安装、重启、卸载与换机恢复。
+
+## MariaDB 实测复现入口
+
+新增 `_Prj/SD_SMA_DB_ADMIN/managed_mariadb_check.py`，直接调用采集器存储处理器、历史查询实现和 DB Admin 备份恢复函数。仅在 `_Build/mariadb-validation/` 下创建临时实例，监听本机临时端口，不注册服务；运行结束后关闭进程并删除实例。测试账号密码每次随机生成，不写入命令行或配置文件。
+
+候选包为 MariaDB Community Server 11.4.13 Windows x64 ZIP：
+
+- [官方文件列表](https://dlm.mariadb.com/browse/mariadb_server/11.4.13/winx64-packages/)
+- [官方归档包](https://archive.mariadb.org/mariadb-11.4.13/winx64-packages/mariadb-11.4.13-winx64.zip)
+- [官方 SHA-256 清单](https://archive.mariadb.org/mariadb-11.4.13/winx64-packages/sha256sums.txt)
+- 实测大小：95,024,126 字节；整包 SHA-256 与官方清单一致：`d62986d433eeebfde218560b276103831604a61e929e87f1a17f5aebd80257e2`。归档站下载较慢，使用 [Princeton 镜像的同一发行包](https://mirror.math.princeton.edu/pub/mariadb/mariadb-11.4.13/winx64-packages/mariadb-11.4.13-winx64.zip) 补齐后校验；本机留存为 `_Build/mariadb-validation/mariadb-verified.zip`。
+
+```powershell
+& .\.venv\Scripts\python.exe _Prj\SD_SMA_DB_ADMIN\managed_mariadb_check.py --mariadb-home _Build\mariadb-validation\mariadb-11.4.13-winx64
+& .\.venv\Scripts\python.exe selfcheck.py
+```
+
+统一自检不下载或启动数据库：新增检查无参数时输出 `SKIP live validation`。必须另外执行上述带路径命令，不能用统一自检的 passed 数量代替数据库实测。
+
+### 2026-11-04 实际结果
+
+- 环境：Windows 11 专业版 x64，系统版本 `10.0.26200`，当前 worktree 的 Python 3.12.13。
+- 服务端返回 `11.4.13-MariaDB`；同包 `mariadb-dump.exe` 为 client 10.19，`mariadb.exe` 为 client 15.2，均显示来自 11.4.13-MariaDB Win64。
+- 采集：`DataStorageProcessor.initialize_tables_for_runtime` 建表、重复启动补列、索引存在性检查通过；实际存储处理器批量写入 3 条记录，`DatabaseManager.execute_update` 更新成功，字典字段幂等同步成功。数据包含中文、单引号、反斜线和 emoji。
+- 查询：只读账号调用 `QueryDatabase.query_history`，按时间及批次筛选，验证总数、两页记录和更新后的值。
+- 运维：业务库账号直接调用 `backup_mysql_job` 和 `restore_verified_backup_job`，生成 SQL 与 manifest；同长度篡改 SQL 后 SHA-256 校验拒绝恢复；删除测试业务表后重新恢复，全部历史记录及字典值与备份前一致。
+- 越权：采集账号 11 项、查询账号 15 项、运维账号 9 项操作被 MariaDB 拒绝。包含其他业务库的读写删表、相似库名 `smaXvalidation` 的读取、读取 `mysql.user`、创建其他数据库、创建用户、设置全局变量、转授权；另验证采集账号不能删行/删表，查询账号不能写入、更新、删除或执行 DDL。
+- 最终实测输出：`managed_mariadb_check: live assertions passed; instance stopped and removed`。日志：`_Build/mariadb-validation/live-check.log`。
+- 统一自检：`selfcheck: 16/16 passed`，日志：`_Build/mariadb-validation/selfcheck.log`。原有 15 项加上显式跳过的 live 入口；真实数据库成功证据以独立实测日志为准。
+- 本阶段只新增自检并更新本交接文档，生产代码无需修改。没有注册数据库服务，测试实例及随机账号随临时数据目录删除。
+
+### 本阶段验证的授权
+
+以下权限均只授予业务库 `sma_validation`，账号 host 为 `127.0.0.1`，不授予 `GRANT OPTION`，不授予 `*.*` 或 `mysql.*` 权限。安装阶段应替换为正式业务库名，并保留授权语句中的通配符转义。
+
+**已复现的授权陷阱：** `GRANT ... ON sma_validation.*` 中 `_` 会匹配任意单字符；实测采集账号因此能读到 `smaXvalidation.secret`。改为 ``GRANT ... ON `sma\_validation`.*`` 后相似库名访问被拒绝。单独加反引号并不足够，初始化脚本必须转义库名中的 `_`（若允许 `%`，也需转义）。失败证据在 `_Build/mariadb-validation/grant-wildcard.log`，最终检查已保留该拒绝用例。
+
+| 账号 | 已实测可用的权限 | 用途 |
+|---|---|---|
+| 采集 | `SELECT, INSERT, UPDATE, CREATE, ALTER, INDEX` | 元数据/历史读取、采集写入、批次更新、建表补列、独立建索引 |
+| 查询 | `SELECT` | 表和列信息、历史与字典查询 |
+| 运维 | `SELECT, INSERT, CREATE, DROP, ALTER, LOCK TABLES, EVENT` | 导出业务表、恢复建表/插入/启停键及锁表；兼容现有 `--events` 参数 |
+
+额外做过一次运维减权实验：去掉 `EVENT` 后，现有备份命令的 `show events` 返回 1044；加回业务库级 `EVENT` 即通过。失败证据在 `_Build/mariadb-validation/reduced-grants.log`。运维账号未授予 `INDEX, SHOW VIEW, TRIGGER` 也可完成本次纯业务表备份恢复。
+
+本次库内没有存储过程、视图、事件或触发器，不能由此声称这些对象可完整备份恢复。现有 `--routines` 在此用例下无需读取系统库；若未来业务引入这些对象，必须增加对象级用例并重新评估权限，不能直接扩大到全局权限。库级 `ALTER` 也允许修改/删除业务列，`DROP` 允许删除业务库，`EVENT` 允许管理业务库事件；数据库授权不能把它们严格限制为“只补列”或“只恢复”，本阶段验证的是业务库边界。
+
+未覆盖真实 PLC 通讯、压力/大库、并发 DDL 与备份、Windows 服务启动和干净虚拟机安装。安装、重启、覆盖安装、卸载保留数据及换机恢复仍按后续 TODO 验收；本次在同一临时实例内清空业务表后恢复，不等同于换机恢复。备份期间应避免采集端执行建表/补列等 DDL，单事务导出不能保证跨并发 DDL 的一致性（[MariaDB 官方导出说明](https://mariadb.com/docs/server/clients-and-utilities/backup-restore-and-import-clients/mariadb-dump)）。
