@@ -1,0 +1,54 @@
+# SD SMA 托管数据库版开发交接
+
+## 基线与工作方式
+
+- 分支为 `variant/managed-mariadb`，从标准版 `v1.0.2`（`dd602f0ebc91a54d497399725defe21f3800ef8e`）分出。
+- 在独立 worktree `data_collector_runtime_managed` 开发，使用该目录自己的 `.venv` 和 `_Build`。开始前运行 `git status --short --branch`，并阅读根目录 `AGENTS.md`。
+- 标准版继续从 `main` 发布。变体按阶段提交，提交信息使用仓库规定的一行中文格式。主线需要的修复按提交挑入变体分支。发布通过验收后可在变体提交上使用独立标签，例如 `managed-db-v0.1.0`。安装包使用构建脚本接受的数字版本，显示名和文件名标明托管数据库版。
+- 第一版用干净 Windows 虚拟机安装。现有服务和 ProgramData 在机器级共享，同机并装标准版与托管版属于独立需求。
+
+## 可直接发给下一位 AI 的任务
+
+> 在当前工作树继续开发 SD SMA 托管数据库版。先核对当前分支 `variant/managed-mariadb`，阅读 `AGENTS.md` 和本文件，确认下面的基线结果。第一轮先完成 MariaDB 实例验证并汇报实测证据，再进入安装包改造。按 TODO 顺序分阶段交付，所有变体改动留在当前分支。未经要求不推送或发布。
+>
+> 目标是干净 Windows x64 机器断网运行一个安装包，安装完成后客户只需配置 PLC。安装包带 MariaDB Community Server，自动建立本机数据库服务、业务库和运行账号。Launcher 管理连接凭据，客户通过 SD SMA 查看存储状态、备份和恢复。沿用 `build.bat installer`、Inno Setup、Launcher 和 DB Admin。
+>
+> 第一版覆盖新装、重启、手动和服务两种启动、同版覆盖安装、卸载保留数据以及换机恢复。旧版升级、旧库迁移和同机并装在本期范围之外。保留应用通过 PyMySQL 连接外部数据库的能力。每阶段汇报改动文件、验证命令、实际结果和遗留项。
+
+## 开发 TODO
+
+- [ ] **数据库实测。** 以 MariaDB Community Server 11.4 LTS 为候选，用官方 Windows x64 发行包在测试实例中跑真实的采集建表、补列、写入、历史查询、备份和恢复。记录准确版本、来源、SHA-256、用例与实际所需权限。采集账号限定在业务库内写入、建表和补列，查询账号只读，运维账号限定在业务库的备份恢复。用运行账号验证权限边界。
+- [ ] **构建。** 在 `_Launcher/scripts/build_installer_package.ps1` 固定 Windows x64 服务端和配套客户端工具的来源，构建遇到依赖缺失或哈希不符时停止。客户安装过程离线。保留现有暂存区编译版 Launcher `--smoke` 检查。测试安装包的外部依赖应在干净虚拟机上覆盖。
+- [ ] **安装和卸载。** 从 `_Launcher/installer/SD_SMA.iss` 和现有初始化脚本接入 `SD_SMA_DB`。实例使用独立固定端口，只监听 `127.0.0.1`。二进制放 Program Files，实例数据放 `ProgramData\SmartData\SD SMA`。检查端口占用，确保安装步骤失败能反馈到安装器。同版覆盖安装复用实例和凭据，卸载移除产品服务并默认保留数据库文件。
+- [ ] **账号和启动。** 首次安装预建业务库并为各服务生成每机独立的随机密码。使用机器范围 Windows DPAPI 配合 SYSTEM 和管理员目录权限保护凭据，复用 Launcher 按服务下发连接信息的方式。初始化凭据不得进入命令行参数、日志、普通配置或页面接口。服务模式配置数据库依赖，手动模式由启动入口确保数据库启动，Launcher 等实际连接可用后再启动依赖模块。明确初始化中断后重试的行为，已有实例和凭据不得被覆盖。
+- [ ] **客户界面。** 复用 DB Admin 的备份和恢复入口，展示托管存储的状态和可操作错误。客户无需填写数据库地址、端口、用户名和密码。涉及文案时更新公共 i18n 字典及静态资源缓存版本。
+- [ ] **发布验收。** 更新相关 `*_check.py`，保留自检的 `x/y passed` 结果。在干净 Windows 虚拟机验证断网安装、采集与查询、端口冲突、初始化失败、重启、覆盖安装保留数据、卸载保留数据和新机器恢复业务备份。归档安装包 SHA-256、验收结果，以及随包数据库和工具的许可证、版权声明和对应源码交付材料。
+
+## 复现命令
+
+在当前 worktree 的根目录执行。
+
+```powershell
+git status --short --branch
+& .\.venv\Scripts\python.exe --version
+& .\.venv\Scripts\python.exe selfcheck.py
+.\build.bat installer
+```
+
+新增工作树缺少虚拟环境时，可用同级标准版工作树已确认可用的项目解释器创建本地环境。
+
+```powershell
+& ..\data_collector_runtime\.venv\Scripts\python.exe -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install -r _Launcher\requirements-unified.txt 'nuitka==4.3.1' zstandard 'httpx2==2.16.0'
+```
+
+安装包构建需要 Inno Setup 6 和可用的 C 编译工具。新工作树还要在 `_Launcher/installer/tools/` 准备 WinSW 2.12.0 的 `WinSW-x64.exe` 和 `WinSW-LICENSE.txt`。本次从同级标准版工作树复制，先按构建脚本校验 SHA-256，两个文件均由 Git 忽略。自检所需的 `httpx2` 只安装在开发环境。按 `AGENTS.md`，运行自检和安装 Python 依赖均显式指定当前 worktree 的解释器。
+
+## 标准版基线实测
+
+- 开发环境使用 Python 3.12.13、Nuitka 4.3.1、FastAPI 0.162.0、Starlette 1.10.0 和 httpx2 2.16.0。打包暂存步骤按现有脚本选择的 Python 基础运行时为 3.12.14。
+- `selfcheck.py` 首轮为 `11/15 passed`，四个检查均因 Starlette TestClient 缺少 `httpx2` 而失败。补齐开发依赖后复跑得到 `selfcheck: 15/15 passed`。日志位于 `_Build/baseline-v1.0.2-selfcheck.log`。
+- `build.bat installer` 首轮因新工作树缺少 WinSW 停止。补齐并校验 WinSW 后，构建退出码为 0，编译版 Launcher 的暂存区检查输出 `[smoke] ok`，Inno Setup 成功出包。日志位于 `_Build/baseline-v1.0.2-installer.log`。
+- 标准版基线产物为 `_Build/SD_SMA_Installer_Package/SD_SMA_Setup_1.0.2.exe`，大小为 62,467,333 字节，SHA-256 为 `304736A6EA3A18375367702E9D2B15B38FD2020C4531FE8D8B35F3E7C0BA70DD`。构建从本机 MySQL 安装目录带入了备份客户端工具。
+- 产物用于开发对照。暂存区启动验证在构建机上完成。打包脚本从本机 Codex Python 运行时复制了额外工具和库，Nuitka 也报告无法随包纳入 Windows Runtime DLL。托管版发版应在受控构建环境检查打包清单，并在干净虚拟机确认 Windows 运行库要求。
+- 下一项是 MariaDB 实例验证。此基线未执行 MariaDB 或实际 Windows 安装、重启、卸载与换机恢复。
