@@ -10,6 +10,7 @@
     <username>LocalSystem</username>
   </serviceaccount>
   <startmode>Automatic</startmode>
+  <depend>SD_SMA_DB</depend>
   <delayedAutoStart>true</delayedAutoStart>
   <stoptimeout>30sec</stoptimeout>
   <onfailure action="restart" delay="30 sec" />

@@ -1,0 +1,14 @@
+<service>
+  <id>SD_SMA_DB</id>
+  <name>SD SMA Managed Database</name>
+  <description>Local MariaDB storage for SD SMA</description>
+  <executable>%BASE%\..\_Database\bin\mariadbd.exe</executable>
+  <arguments>--defaults-file="%PROGRAMDATA%\SmartData\SD SMA\database\my.ini" --console</arguments>
+  <workingdirectory>%BASE%\..\_Database</workingdirectory>
+  <serviceaccount><username>LocalSystem</username></serviceaccount>
+  <startmode>Automatic</startmode>
+  <stoptimeout>60sec</stoptimeout>
+  <onfailure action="restart" delay="10 sec" />
+  <logpath>%PROGRAMDATA%\SmartData\SD SMA\logs\database</logpath>
+  <log mode="roll-by-size"><sizeThreshold>10485760</sizeThreshold><keepFiles>5</keepFiles></log>
+</service>

@@ -222,7 +222,7 @@ class ConfigLoader:
             raise ValueError("database.auto_create 必须是布尔值")
                 
         database = DatabaseConfig(
-            type=db_data.get('type', 'sqlite'),
+            type=os.environ.get('SD_SMA_DB_ENGINE') or db_data.get('type', 'sqlite'),
             name=os.environ.get('SD_SMA_DB_DATABASE') or db_data.get('name', 'data.db'),
             host=os.environ.get('SD_SMA_DB_HOST') or db_data.get('host', '127.0.0.1'),
             port=int(os.environ.get('SD_SMA_DB_PORT') or db_data.get('port', 3306)),

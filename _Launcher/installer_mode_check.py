@@ -33,9 +33,10 @@ def main():
     tasks = sections["[Tasks]"]
     assert 'Flags: exclusive' in tasks[0] and 'unchecked' not in tasks[0]
     assert 'Flags: exclusive unchecked' in tasks[1]
-    run = sections["[Run]"]
-    assert 'Tasks:' not in run[0]  # Both modes initialize the same data directory.
-    assert run[1].endswith('Tasks: servicemode')
+    assert "RunRequiredScript('Initialize-SD_SMA.ps1', '')" in source
+    assert "RunRequiredScript('Manage-SD_SMA-Database.ps1', '-Action Initialize')" in source
+    assert "if WizardIsTaskSelected('servicemode') then" in source
+    assert 'if ResultCode <> 0 then' in source and 'RaiseException(' in source
     icons = sections["[Icons]"]
     assert len(icons) == 4
     assert all('Tasks:' in line for line in icons)
@@ -47,24 +48,29 @@ def main():
         payload = root / "Runtime"
         payload.mkdir()
         (payload / "placeholder.txt").write_text("installer compile check", encoding="ascii")
+        (payload / '_Service').mkdir()
+        (payload / '_Launcher').mkdir()
+        shutil.copy(launcher / 'installer/Manage-SD_SMA-Database.ps1', payload / '_Service')
+        shutil.copy(launcher / 'launcher_config.json', payload / '_Launcher')
+        (payload / '_Service/VC_redist.x64.exe').write_bytes(b'compile-only fixture')
         result = subprocess.run(
             [compiler, f"/DSourceRoot={payload}", f"/DOutputDir={root / 'Output'}",
-             "/DAppVersion=0.0.0", str(installer)],
+             "/DAppVersion=0.0.0", "/DVCRuntimeVersion=14.0.0.0", str(installer)],
             capture_output=True, text=True, errors="replace", timeout=60,
         )
         assert result.returncode == 0, result.stdout + result.stderr
-        assert (root / "Output" / "SD_SMA_Setup_0.0.0.exe").is_file()
+        assert (root / "Output" / "SD_SMA_ManagedDB_Setup_0.0.0.exe").is_file()
 
-    script = launcher / "installer" / "Start-SD_SMA.ps1"
-    result = subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         "$tokens=$null; $errors=$null; "
-         "[System.Management.Automation.Language.Parser]::ParseFile('"
-         + str(script).replace("'", "''") + "', [ref]$tokens, [ref]$errors) | Out-Null; "
-         "if($errors.Count){$errors | Out-String | Write-Error; exit 1}"],
-        capture_output=True, text=True, errors="replace", timeout=30,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
+    for script in [*(launcher / 'installer').glob('*.ps1'), *(launcher / 'scripts').glob('*.ps1')]:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "$tokens=$null; $errors=$null; "
+             "[System.Management.Automation.Language.Parser]::ParseFile('"
+             + str(script).replace("'", "''") + "', [ref]$tokens, [ref]$errors) | Out-Null; "
+             "if($errors.Count){$errors | Out-String | Write-Error; exit 1}"],
+            capture_output=True, text=True, errors="replace", timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
     print("installer modes: task/shortcut checks, Inno compilation and PowerShell syntax passed")
 
 

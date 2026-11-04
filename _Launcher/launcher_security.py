@@ -23,8 +23,9 @@ def _atomic_json(path: Path, data: Mapping[str, Any]) -> None:
 
 
 class LauncherSecurityStore:
-    def __init__(self, path: Path, *, session_seconds: int = 15 * 60) -> None:
+    def __init__(self, path: Path, *, session_seconds: int = 15 * 60, managed_credentials: Mapping | None = None) -> None:
         self.path = path
+        self.managed_credentials = dict(managed_credentials or {})
         self.session_seconds = session_seconds
         self._lock = threading.RLock()
         self._sessions: dict[str, float] = {}
@@ -143,7 +144,8 @@ class LauncherSecurityStore:
                 row = {key: value for key, value in raw.items() if key not in {"password_protected", "password"}}
                 row["password_configured"] = bool(raw.get("password"))
                 rows.append(row)
-            return {"credentials": rows, "assignments": dict(self._data.get("assignments", {}))}
+            return {"credentials": rows, "assignments": dict(self._data.get("assignments", {})),
+                    "managed_database": bool(self.managed_credentials)}
 
     def upsert_credential(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         with self._lock:
@@ -200,6 +202,8 @@ class LauncherSecurityStore:
     def credential_for_service(self, service: str) -> dict[str, Any] | None:
         with self._lock:
             credential_id = str(self._data.get("assignments", {}).get(service, ""))
+            if not credential_id and service in self.managed_credentials:
+                return dict(self.managed_credentials[service])
             row = next(
                 (dict(item) for item in self._data.get("credentials", []) if str(item.get("id")) == credential_id),
                 None,

@@ -547,6 +547,7 @@ class UnifiedConfigStore:
     def get_app_settings(self) -> dict[str, Any]:
         settings = dict(self.get_active_config().get("app_settings", {}))
         database = dict(settings.get("database", {}))
+        database['type'] = os.environ.get('SD_SMA_DB_ENGINE') or database.get('type', 'mysql')
         database["host"] = os.environ.get("SD_SMA_DB_HOST") or database.get("host", "127.0.0.1")
         database["port"] = int(os.environ.get("SD_SMA_DB_PORT") or database.get("port", 3306))
         database["username"] = os.environ.get("SD_SMA_DB_USERNAME") or database.get("username", "")

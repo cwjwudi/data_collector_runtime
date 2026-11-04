@@ -54,6 +54,7 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
 
 from launcher_imports import ConfigImportManager  # noqa: E402
 from launcher_security import LauncherSecurityStore  # noqa: E402
+from managed_database import ManagedDatabase  # noqa: E402
 from launcher_settings import (  # noqa: E402
     NETWORK_HOSTS,
     NetworkAccessController,
@@ -1180,6 +1181,8 @@ def service_with_launcher_credential(
         }
     )
     environment["SD_SMA_DB_CREDENTIAL_MANAGED"] = "1"
+    environment["SD_SMA_DB_ENGINE"] = str(credential.get("engine", "mysql"))
+    environment["SD_SMA_MANAGED_DATABASE"] = "1" if credential.get("managed_storage") else ""
     result["env"] = environment
     return result
 
@@ -1204,6 +1207,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="Start services, wait for health checks, then stop")
     parser.add_argument("--install-missing", action="store_true", help="Install missing dependencies before start")
     parser.add_argument("--no-browser", action="store_true", help="Do not open browser tabs")
+    parser.add_argument("--initialize-database", action="store_true", help="Provision the installed local database offline")
+    parser.add_argument("--check-database", action="store_true", help="Wait for the installed local database")
     return parser.parse_args()
 
 
@@ -1220,6 +1225,18 @@ def main() -> int:
     install_missing = args.install_missing or bool(config.get("auto_install_missing", False))
 
     try:
+        database_settings = config.get("managed_database", {})
+        database = ManagedDatabase(PACKAGE_ROOT, DATA_ROOT, database_settings) if database_settings.get("enabled") else None
+        if args.initialize_database or args.check_database:
+            if database is None:
+                raise RuntimeError("Managed database is disabled in launcher configuration")
+            if args.initialize_database:
+                database.initialize()
+            else:
+                for credential in database.credentials().values():
+                    database.wait_ready(credential)
+            print("[database] ok")
+            return 0
         if repair_bundled_venv():
             print(f"[env] repaired bundled Python paths: {PACKAGE_ROOT / '.venv' / 'pyvenv.cfg'}")
         python = find_python(config)
@@ -1229,7 +1246,8 @@ def main() -> int:
         if args.check:
             print("[check] ok")
             return 0
-        security = LauncherSecurityStore(DATA_ROOT / "secrets" / "launcher_security.json")
+        security = LauncherSecurityStore(DATA_ROOT / "secrets" / "launcher_security.json",
+                                         managed_credentials=database.credentials() if database else None)
         os.environ["SD_SMA_SESSION_SECRET"] = load_or_create_secret(DATA_ROOT / "secrets" / "session.secret")
         importer = ConfigImportManager(DATA_ROOT)
         network_store = NetworkSettingsStore(DATA_ROOT / "state" / "network.json")
@@ -1239,6 +1257,11 @@ def main() -> int:
         )
 
         def managed_start(service: dict[str, Any]) -> ServiceProcess:
+            credential = security.credential_for_service(str(service.get("name", "")))
+            if database and credential and credential.get("managed_storage") and service.get("name") != "db_admin":
+                database.wait_ready(credential, timeout=5)
+            if database and service.get("name") == "db_admin":
+                service = {**service, "env": {**service.get("env", {}), "SD_SMA_DB_TOOLS_DIR": str(database.binary)}}
             return start_service(python, config, service_with_launcher_credential(service, security))
 
         supervisor = ServiceSupervisor(

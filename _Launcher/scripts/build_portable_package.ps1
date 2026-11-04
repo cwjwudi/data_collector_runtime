@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDir = "",
     [string]$Python = "",
     [string]$PipIndexUrl = "https://pypi.tuna.tsinghua.edu.cn/simple",
@@ -6,6 +6,7 @@ param(
     [string]$HttpProxy = "",
     [switch]$BuildWheelhouse,
     [switch]$SkipVenv,
+    [switch]$SkipDatabaseTools,
     [switch]$Zip
 )
 
@@ -67,120 +68,11 @@ function Get-PythonVersionInfo {
     }
 }
 
-function Test-PythonCandidate {
-    param([string]$Candidate)
-
-    if ([string]::IsNullOrWhiteSpace($Candidate)) {
-        return $false
-    }
-    if (Test-Path -LiteralPath $Candidate) {
-        return $true
-    }
-    try {
-        $null = Get-Command $Candidate -ErrorAction Stop
-        return $true
-    }
-    catch {
-        return $false
-    }
-}
-
 function Resolve-BuildPython {
     param([string]$RequestedPython)
-
-    $candidates = New-Object System.Collections.Generic.List[string]
-    if (-not [string]::IsNullOrWhiteSpace($RequestedPython)) {
-        $candidates.Add($RequestedPython)
-    }
-
-    $repoVenvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-    if (Test-Path -LiteralPath $repoVenvPython) {
-        try {
-            $basePrefix = & $repoVenvPython -c "import sys; print(sys.base_prefix)"
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($basePrefix)) {
-                $baseExe = Join-Path $basePrefix.Trim() "python.exe"
-                if (Test-Path -LiteralPath $baseExe) {
-                    $candidates.Add($baseExe)
-                }
-            }
-        }
-        catch {
-            # ignore and continue with other candidates
-        }
-        $candidates.Add($repoVenvPython)
-    }
-
-    $codexRuntimePython = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-    if (Test-Path -LiteralPath $codexRuntimePython) {
-        $candidates.Add($codexRuntimePython)
-    }
-
-    foreach ($launcher in @("py")) {
-        try {
-            $pyList = & $launcher -0p 2>$null
-            if ($LASTEXITCODE -eq 0 -and $pyList) {
-                foreach ($line in ($pyList -split "`r?`n")) {
-                    if ($line -match "(\d+\.\d+).*\s+(\S:\\.*python\.exe)\s*$") {
-                        $candidates.Add($Matches[2])
-                    }
-                }
-            }
-        }
-        catch {
-            # py launcher may be unavailable
-        }
-    }
-
-    $candidates.Add("python")
-
-    $seen = @{}
-    $usable = @()
-    foreach ($candidate in $candidates) {
-        if (-not (Test-PythonCandidate $candidate)) {
-            continue
-        }
-        try {
-            $info = Get-PythonVersionInfo -PythonExe $candidate
-        }
-        catch {
-            continue
-        }
-        $key = $info.Executable.ToLowerInvariant()
-        if ($seen.ContainsKey($key)) {
-            continue
-        }
-        $seen[$key] = $true
-        $usable += $info
-    }
-
-    if (-not $usable) {
-        throw "No usable Python interpreter found. Install Python 3.10-3.12 or pass -Python."
-    }
-
-    function Get-PythonPreferenceScore {
-        param($Info)
-        $path = [string]$Info.Executable
-        $score = 0
-        if ($Info.MajorMinor.Major -eq 3 -and $Info.MajorMinor.Minor -ge 10 -and $Info.MajorMinor.Minor -le 12) {
-            $score += 100
-        }
-        # Prefer real installs / runtime bases over nested virtualenvs.
-        if ($path -match '(?i)[\\/]\.venv[\\/]|[\\/]venv[\\/]') {
-            $score -= 50
-        }
-        if ($path -match '(?i)codex-runtimes|Program Files|Local\\Programs\\Python') {
-            $score += 10
-        }
-        $score += $Info.MajorMinor.Minor
-        return $score
-    }
-
-    $ranked = $usable | Sort-Object { - (Get-PythonPreferenceScore $_) }, { $_.Executable }
-    $best = $ranked | Select-Object -First 1
-    if ($best.MajorMinor.Major -ne 3 -or $best.MajorMinor.Minor -lt 10 -or $best.MajorMinor.Minor -gt 12) {
-        Write-Host "[warn] No Python 3.10-3.12 found; falling back to $($best.Executable) ($($best.Version))"
-    }
-    return $best
+    $candidate = if ($RequestedPython) { $RequestedPython } else { Join-Path $RepoRoot ".venv\Scripts\python.exe" }
+    if (-not (Test-Path -LiteralPath $candidate)) { throw "Project Python is missing: $candidate" }
+    return Get-PythonVersionInfo -PythonExe $candidate
 }
 
 function Invoke-Pip {
@@ -546,6 +438,7 @@ Copy-Item -LiteralPath (Join-Path $LauncherDir "sd_sma_launcher.py") -Destinatio
 Copy-Item -LiteralPath (Join-Path $LauncherDir "resource_monitor.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_supervisor.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_security.py") -Destination $PackageLauncher -Force
+Copy-Item -LiteralPath (Join-Path $LauncherDir "managed_database.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_imports.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_web.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_settings.py") -Destination $PackageLauncher -Force
@@ -574,7 +467,7 @@ foreach ($projectName in $projectNames) {
 }
 
 . (Join-Path $ScriptDir "database_tools.ps1")
-$DatabaseToolsResult = Install-DatabaseClientTools -RepoRoot $RepoRoot -ProjectsRoot $PackageProjects
+$DatabaseToolsResult = if ($SkipDatabaseTools) { $null } else { Install-DatabaseClientTools -RepoRoot $RepoRoot -ProjectsRoot $PackageProjects }
 
 Materialize-UnifiedRuntimeDirs
 
@@ -677,6 +570,6 @@ Write-Host "[done] start with: $PackageRoot\start.bat"
 if ($DatabaseToolsResult.Included) {
     Write-Host "[done] database client included: $($DatabaseToolsResult.Family)"
 }
-else {
+elseif (-not $SkipDatabaseTools) {
     Write-Warning "[done] database client was not included in the portable package."
 }

@@ -1,6 +1,8 @@
 """Run the installer tool probe in Windows PowerShell without building a package."""
 
 import os
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -48,6 +50,25 @@ def main():
             if missing:
                 (root / f"{missing}.py").write_text("", encoding="utf-8")
     print("installer build checks: 5/5 passed")
+    helper = builder.parent / 'managed_database_package.ps1'
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        tools = root / 'installer/tools'
+        tools.mkdir(parents=True)
+        archive = tools / 'mariadb.zip'
+        (root / 'installer/mariadb-package.json').write_text(json.dumps({
+            'filename': archive.name, 'url': 'https://example.invalid/test-fixture',
+            'sha256': hashlib.sha256(b'checked-package').hexdigest(),
+        }))
+        command = ['powershell', '-NoProfile', '-Command',
+                   "$ErrorActionPreference='Stop'; . '" + str(helper) + "'; Get-ManagedDatabasePackage -LauncherDir '" + str(root) + "'"]
+        for content, expected in ((None, False), (b'tampered', False), (b'checked-package', True)):
+            if content is not None:
+                archive.write_bytes(content)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30,
+                                    env={key: value for key, value in os.environ.items() if key.lower() != 'psmodulepath'})
+            assert (result.returncode == 0) == expected, result.stdout + result.stderr
+    print('MariaDB package: missing and corrupt archives rejected; matching SHA-256 accepted')
 
 
 if __name__ == "__main__":

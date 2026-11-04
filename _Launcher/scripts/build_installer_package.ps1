@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDir = "",
     [string]$Python = "",
     [string]$Version = "1.0.2",
@@ -28,7 +28,7 @@ $BuildRoot = Join-Path $RepoRoot "_Build"
 $PackageRoot = Join-Path $InstallerPackageRoot "Runtime"
 $NuitkaOutput = Join-Path $InstallerPackageRoot "Nuitka"
 
-. (Join-Path $ScriptDir "database_tools.ps1")
+. (Join-Path $ScriptDir "managed_database_package.ps1")
 
 function Assert-ChildPath {
     param(
@@ -55,37 +55,11 @@ function Remove-DirectorySafely {
 
 function Resolve-BuildPython {
     param([string]$Requested)
-    $candidates = @()
-    if (-not [string]::IsNullOrWhiteSpace($Requested)) {
-        $candidates += $Requested
-    }
-    $candidates += (Join-Path $RepoRoot ".venv\Scripts\python.exe")
-    try {
-        $pyPaths = & py -0p 2>$null
-        foreach ($line in $pyPaths) {
-            if ($line -match '(\S:\\.*python\.exe)\s*$') {
-                $candidates += $Matches[1]
-            }
-        }
-    }
-    catch {
-        # Python launcher is optional.
-    }
-
-    foreach ($candidate in ($candidates | Select-Object -Unique)) {
-        if (-not (Test-Path -LiteralPath $candidate)) {
-            continue
-        }
-        $versionText = & $candidate -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-        if ($LASTEXITCODE -ne 0) {
-            continue
-        }
-        $version = [version]$versionText.Trim()
-        if ($version.Major -eq 3 -and $version.Minor -ge 10 -and $version.Minor -le 12) {
-            return (Resolve-Path -LiteralPath $candidate).Path
-        }
-    }
-    throw "Installer builds require Python 3.10-3.12. Pass -Python or create the repository .venv."
+    $candidate = if ($Requested) { $Requested } else { Join-Path $RepoRoot ".venv\Scripts\python.exe" }
+    if (-not (Test-Path -LiteralPath $candidate)) { throw "Project Python is missing: $candidate" }
+    & $candidate -c "import sys; sys.exit(0 if sys.version_info.major == 3 and 10 <= sys.version_info.minor <= 12 else 1)"
+    if ($LASTEXITCODE -ne 0) { throw "Installer builds require a working Python 3.10-3.12: $candidate" }
+    return (Resolve-Path -LiteralPath $candidate).Path
 }
 
 function Ensure-Nuitka {
@@ -190,6 +164,10 @@ function Convert-ProjectSourcesToBytecode {
 function Reset-PackagedRuntimeState {
     param([Parameter(Mandatory = $true)][string]$RuntimeRoot)
 
+    foreach ($name in @('secrets', 'state', 'ImportBox')) {
+        Remove-DirectorySafely -Parent $RuntimeRoot -Target (Join-Path $RuntimeRoot $name)
+    }
+
     $configRoot = Join-Path $RuntimeRoot "config"
     if (Test-Path -LiteralPath $configRoot) {
         Get-ChildItem -LiteralPath $configRoot -File -Force |
@@ -244,6 +222,9 @@ function Set-VenvRelocationProbe {
 }
 
 $PythonExe = Resolve-BuildPython -Requested $Python
+$MariaDbArchive = Get-ManagedDatabasePackage -LauncherDir $LauncherDir
+$VCRuntime = Get-ManagedDatabasePackage -LauncherDir $LauncherDir -ManifestName 'vc-runtime-package.json'
+$VCRuntimeManifest = Get-Content (Join-Path $LauncherDir 'installer\vc-runtime-package.json') -Raw | ConvertFrom-Json
 $InnoSetupExe = Resolve-InnoSetup -Requested $InnoSetup
 Ensure-Nuitka -PythonExe $PythonExe
 Write-Host "[python] $PythonExe"
@@ -268,14 +249,14 @@ $InstallerOutput = (New-Item -ItemType Directory -Force -Path $InstallerPackageR
 
 Write-Host "[portable] creating shared runtime staging package"
 & $PortableBuilder -OutputDir $PackageRoot -Python $PythonExe `
-    -PipIndexUrl $PipIndexUrl -PipTrustedHost $PipTrustedHost -HttpProxy $HttpProxy
+    -PipIndexUrl $PipIndexUrl -PipTrustedHost $PipTrustedHost -HttpProxy $HttpProxy -SkipDatabaseTools
 if ($LASTEXITCODE -ne 0) {
     throw "Portable staging package build failed."
 }
 
 $PackageProjects = Join-Path $PackageRoot "_Prj"
 Remove-DevelopmentContent -ProjectsRoot $PackageProjects
-$DatabaseToolsResult = Install-DatabaseClientTools -RepoRoot $RepoRoot -ProjectsRoot $PackageProjects
+Install-ManagedDatabasePackage -Archive $MariaDbArchive -RuntimeRoot $PackageRoot -LauncherDir $LauncherDir
 $StagingPython = Join-Path $PackageRoot ".venv\Scripts\python.exe"
 Convert-ProjectSourcesToBytecode -PythonExe $StagingPython -ProjectsRoot $PackageProjects
 
@@ -289,7 +270,7 @@ New-Item -ItemType Directory -Force -Path $NuitkaOutput | Out-Null
     --python-flag=no_docstrings `
     --include-package=psutil `
     --company-name=SmartData `
-    --product-name="SD SMA Runtime" `
+    --product-name="SD SMA Managed Database Runtime" `
     --file-description="SD SMA Unified Launcher" `
     --file-version=$Version `
     --product-version=$Version `
@@ -309,13 +290,17 @@ $InstalledLauncher = Join-Path $PackageLauncher "SD_SMA_Launcher.exe"
 Copy-Item -LiteralPath $CompiledLauncher -Destination $InstalledLauncher -Force
 Remove-Item -LiteralPath (Join-Path $PackageLauncher "sd_sma_launcher.py") -Force
 Remove-Item -LiteralPath (Join-Path $PackageLauncher "resource_monitor.py") -Force
-foreach ($launcherModule in @("launcher_supervisor.py", "launcher_security.py", "launcher_imports.py", "launcher_web.py", "launcher_settings.py")) {
+foreach ($launcherModule in @("launcher_supervisor.py", "launcher_security.py", "launcher_imports.py", "launcher_web.py", "launcher_settings.py", "managed_database.py")) {
     Remove-Item -LiteralPath (Join-Path $PackageLauncher $launcherModule) -Force
 }
 
 $PackageService = Join-Path $PackageRoot "_Service"
 New-Item -ItemType Directory -Force -Path $PackageService | Out-Null
+Copy-Item -LiteralPath $VCRuntime -Destination $PackageService
 Copy-Item -LiteralPath $WinSWSource -Destination (Join-Path $PackageService "SD_SMA_Service.exe") -Force
+Copy-Item -LiteralPath $WinSWSource -Destination (Join-Path $PackageService "SD_SMA_DB.exe") -Force
+Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\SD_SMA_DB.xml") -Destination $PackageService -Force
+Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Manage-SD_SMA-Database.ps1") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\tools\WinSW-LICENSE.txt") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\SD_SMA_Service.xml") -Destination $PackageService -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "installer\Initialize-SD_SMA.ps1") -Destination $PackageService -Force
@@ -335,12 +320,14 @@ $stagedConfig.auto_install_missing = $false
 
 @"
 @echo off
+set "PSModulePath="
 cd /d "%~dp0"
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\_Service\Start-SD_SMA.ps1" %*
 "@ | Set-Content -LiteralPath (Join-Path $PackageLauncher "start.bat") -Encoding ASCII
 
 @"
 @echo off
+set "PSModulePath="
 cd /d "%~dp0_Launcher"
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0_Service\Start-SD_SMA.ps1" %*
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot "start.bat") -Encoding ASCII
@@ -363,21 +350,20 @@ else {
 
 Reset-PackagedRuntimeState -RuntimeRoot $PackageRoot
 
+# The staging smoke checks service bytecode without installing a machine-level database service.
+$stagedConfig.managed_database.enabled = $true
+[System.IO.File]::WriteAllText($stagedConfigPath, ($stagedConfig | ConvertTo-Json -Depth 30) + "`r`n", [System.Text.UTF8Encoding]::new($false))
+
 Write-Host "[installer] compiling Inno Setup package"
-& $InnoSetupExe "/DSourceRoot=$PackageRoot" "/DOutputDir=$InstallerOutput" "/DAppVersion=$Version" $InnoScript
+& $InnoSetupExe "/DSourceRoot=$PackageRoot" "/DOutputDir=$InstallerOutput" "/DAppVersion=$Version" "/DVCRuntimeVersion=$($VCRuntimeManifest.version)" $InnoScript
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup compilation failed."
 }
 
-$InstallerExe = Join-Path $InstallerOutput "SD_SMA_Setup_$Version.exe"
+$InstallerExe = Join-Path $InstallerOutput "SD_SMA_ManagedDB_Setup_$Version.exe"
 if (-not (Test-Path -LiteralPath $InstallerExe)) {
     throw "Installer output not found: $InstallerExe"
 }
 Write-Host "[done] installer: $InstallerExe"
 Write-Host "[done] one shared service runtime: $PackageRoot\.venv"
-if ($DatabaseToolsResult.Included) {
-    Write-Host "[done] database client included: $($DatabaseToolsResult.Family)"
-}
-else {
-    Write-Warning "[done] database client was not included in the installer."
-}
+Write-Host "[done] pinned MariaDB server and clients included"
