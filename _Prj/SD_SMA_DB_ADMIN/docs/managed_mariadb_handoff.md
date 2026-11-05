@@ -146,3 +146,13 @@ $env:PYTHONPATH = '_Prj/SD_SMA_COMMON'
 - 产物：_Build/SD_SMA_Installer_Package/SD_SMA_ManagedDB_Setup_1.0.2.exe；大小 132073975 字节；SHA-256：AC70E0F6A7B8EBA5C3EF044307F7FB79B6BD7F3847BABD6A07C379784D984C87。
 - Nuitka 仍提示未内嵌 Windows Runtime DLL；安装器已包含并先行安装固定版本的微软离线运行库，不依赖客户联网。全新系统效果留待最终虚拟机验收。
 - 代码提交：2782503（安装、凭据和启动），df74d6e（客户存储界面）。
+
+## 2026-11-05 安装预检查错误详情
+
+另一台电脑或虚拟机安装时出现笼统的预检查失败，截图无法确定根因。修复 Manage-SD_SMA-Database.ps1 将实际异常写入安装器临时错误文件，SD_SMA.iss 读取并显示 UTF-8 错误原因及退出码，同时记录到安装日志。保留现有端口、安装归属与数据保护检查。该通道仅用于预检查，不记录数据库初始化 SQL 或密码。
+
+installer_mode_check.py 实际运行标准版残留、损坏 JSON 两种失败，验证非零退出、错误文件生成及旧错误替换；实际 Inno 编译通过。统一检查结果 selfcheck: 17/17 passed，日志 _Build/managed-preflight-selfcheck.log。
+
+仅安装脚本改动，复制源脚本到既有已通过 smoke 的暂存区，再用同一 Inno 脚本重新生成安装包；未重新编译未改动的 Launcher。构建退出码 0，日志 _Build/managed-preflight-installer.log。当前同名候选包替换 11 月 4 日产物：大小 132075279 字节，SHA-256 45144C4C9635FBEF5BF7AE65ECF15AEDF881ABE75FFCD37329E6313050F9B2E1。
+
+目标机器的具体原因仍待用此包重试读取；本机复现的标准版配置残留不代表目标机器原因。最终虚拟机发布验收仍暂缓。

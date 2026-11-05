@@ -1,9 +1,18 @@
 param(
     [ValidateSet('Preflight', 'Initialize', 'Start', 'Stop', 'Remove')][string]$Action,
     [string]$ProgramRoot = (Split-Path -Parent $PSScriptRoot),
-    [string]$ConfigPath = ''
+    [string]$ConfigPath = '',
+    [string]$ErrorFile = ''
 )
 $ErrorActionPreference = 'Stop'
+trap {
+    if ($ErrorFile) {
+        [IO.File]::WriteAllText($ErrorFile, $_.Exception.Message, [Text.UTF8Encoding]::new($false))
+        exit 1
+    }
+    throw $_
+}
+if ($ErrorFile -and (Test-Path -LiteralPath $ErrorFile)) { Remove-Item -LiteralPath $ErrorFile }
 $dataRoot = Join-Path $env:ProgramData 'SmartData\SD SMA'
 $serviceExe = Join-Path $ProgramRoot '_Service\SD_SMA_DB.exe'
 $launcher = Join-Path $ProgramRoot '_Launcher\SD_SMA_Launcher.exe'

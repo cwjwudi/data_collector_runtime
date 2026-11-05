@@ -61,6 +61,27 @@ def main():
         assert result.returncode == 0, result.stdout + result.stderr
         assert (root / "Output" / "SD_SMA_ManagedDB_Setup_0.0.0.exe").is_file()
 
+        installed = root / 'SmartData/SD SMA/config/launcher/launcher_config.json'
+        installed.parent.mkdir(parents=True)
+        error_file = root / 'preflight-error.txt'
+        env = {key: value for key, value in os.environ.items() if key.lower() not in ('programdata', 'psmodulepath')}
+        env['ProgramData'] = str(root)
+        for content, expected in (('{"managed_database":{"enabled":false}}', 'Existing standard installation'),
+                                  ('invalid-json', None)):
+            installed.write_text(content, encoding='utf-8')
+            error_file.write_text('stale error', encoding='utf-8')
+            result = subprocess.run(
+                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+                 str(launcher / 'installer/Manage-SD_SMA-Database.ps1'), '-Action', 'Preflight',
+                 '-ProgramRoot', str(payload), '-ErrorFile', str(error_file)],
+                env=env, capture_output=True, timeout=30,
+            )
+            assert result.returncode == 1, result.stdout + result.stderr
+            message = error_file.read_text(encoding='utf-8')
+            assert message and message != 'stale error'
+            if expected:
+                assert expected in message, message
+
     for script in [*(launcher / 'installer').glob('*.ps1'), *(launcher / 'scripts').glob('*.ps1')]:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command",

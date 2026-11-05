@@ -72,6 +72,7 @@ var
   Installed: Cardinal;
   Version: Int64;
   RequiredVersion: Int64;
+  ErrorText: AnsiString;
 begin
   Result := '';
   if not StrToVersion('{#VCRuntimeVersion}', RequiredVersion) then
@@ -95,11 +96,16 @@ begin
   ExtractTemporaryFile('database-preflight.ps1');
   ExtractTemporaryFile('managed-db-config.json');
   Command := '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\database-preflight.ps1') +
-    '" -Action Preflight -ProgramRoot "' + ExpandConstant('{app}') + '" -ConfigPath "' + ExpandConstant('{tmp}\managed-db-config.json') + '"';
+    '" -Action Preflight -ProgramRoot "' + ExpandConstant('{app}') + '" -ConfigPath "' + ExpandConstant('{tmp}\managed-db-config.json') +
+    '" -ErrorFile "' + ExpandConstant('{tmp}\managed-db-preflight-error.txt') + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Command, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     Result := '无法执行托管数据库预检查。'
-  else if ResultCode <> 0 then
-    Result := '托管数据库预检查失败：请检查数据库端口占用、旧服务是否已停止，以及是否存在标准版或其他安装目录。';
+  else if ResultCode <> 0 then begin
+    Result := '托管数据库预检查失败，错误码：' + IntToStr(ResultCode);
+    if LoadStringFromFile(ExpandConstant('{tmp}\managed-db-preflight-error.txt'), ErrorText) then
+      Result := Result + #13#10 + UTF8Decode(ErrorText);
+    Log(Result);
+  end;
   if Result <> '' then Exit;
   ServiceExe := ExpandConstant('{app}\_Service\SD_SMA_Service.exe');
   if FileExists(ServiceExe) then
