@@ -56,6 +56,7 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
 from sd_sma_common.session_bridge import install_session_middleware
+from sd_sma_common.database_settings import database_credentials_from_env
 
 AUTH_EXEMPT_PATHS = {"/api/health"}
 
@@ -107,10 +108,7 @@ def _normalize_app_settings(data: dict[str, Any] | None) -> dict[str, Any]:
             "name": str(database.get("name", "") or ""),
             "host": str(database.get("host", "127.0.0.1") or "127.0.0.1"),
             "port": int(database.get("port", 3306) or 3306),
-            "username": str(database.get("username", "") or ""),
-            "password": str(database.get("password", "") or ""),
-            "password_configured": bool(database.get("password_configured", False)),
-            "clear_password": bool(database.get("clear_password", False)),
+            "launcher_managed": bool(database.get('launcher_managed')),
         },
         "query_limits": {
             "requests_per_minute": max(int(query_limits.get("requests_per_minute", 120) or 120), 0),
@@ -121,7 +119,9 @@ def _normalize_app_settings(data: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _load_app_settings() -> dict[str, Any]:
-    return _normalize_app_settings(config_store.get_app_settings())
+    settings = _normalize_app_settings(config_store.get_app_settings())
+    settings["database"].update(database_credentials_from_env())
+    return settings
 
 
 def _save_app_settings(data: dict[str, Any]) -> dict[str, Any]:
@@ -241,8 +241,8 @@ install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 def _raise_db_error(exc: Exception) -> None:
     detail = (
-        "数据库连接失败，请检查 "
-        "当前统一 config 中 app_settings.database 的 host/port/name/username/password 是否正确。"
+        "数据库连接失败。"
+        "请检查 Launcher 的数据库凭据和当前配置中的 host/port/name 是否正确。"
     )
     raise HTTPException(status_code=503, detail=f"{detail} 原因: {exc}") from exc
 
@@ -1232,6 +1232,20 @@ def check_database(request: Request) -> dict[str, Any]:
         _raise_db_error(exc)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Database check failed: {exc}") from exc
+
+
+from sd_sma_common.database_control import require_database_controller, database_connection_status
+
+
+@app.get('/api/internal/database')
+def database_runtime(request: Request) -> dict:
+    require_database_controller(request)
+    result = database_connection_status(db.db_config)
+    try:
+        db.ping()
+    except Exception:
+        result['connected'] = False
+    return result
 
 
 @app.get("/api/config/app-settings")

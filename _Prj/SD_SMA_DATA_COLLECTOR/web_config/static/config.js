@@ -77,8 +77,6 @@ function createDefaultConfig() {
       name: "",
       host: "127.0.0.1",
       port: 3306,
-      username: "",
-      password: "",
       auto_create: false,
       data_groups: [],
     },
@@ -114,6 +112,9 @@ function normalizeConfig(payload) {
   next.points = Array.isArray(next.points) ? next.points : [];
   next.groups = Array.isArray(next.groups) ? next.groups : [];
   next.database = typeof next.database === "object" && next.database ? { ...base.database, ...next.database } : { ...base.database };
+  for (const key of ["username", "password", "password_enc", "password_configured", "clear_password"]) {
+    delete next.database[key];
+  }
   next.logging = typeof next.logging === "object" && next.logging ? { ...base.logging, ...next.logging } : { ...base.logging };
   next.persistent_queue = typeof next.persistent_queue === "object" && next.persistent_queue
     ? { ...base.persistent_queue, ...next.persistent_queue }
@@ -124,11 +125,6 @@ function normalizeConfig(payload) {
 function savePageState() {
   const activeTab = document.querySelector(".tab-btn.active")?.dataset?.tab || "communications";
   const persistedConfig = JSON.parse(JSON.stringify(currentConfig));
-  if (persistedConfig.database && typeof persistedConfig.database === "object") {
-    persistedConfig.database.password = "";
-    persistedConfig.database.clear_password = false;
-    delete persistedConfig.database.password_enc;
-  }
   const state = {
     currentConfig: persistedConfig,
     currentFilename,
@@ -154,9 +150,6 @@ function loadPageState() {
     if (parsed && typeof parsed === "object") {
       if (parsed.currentConfig) {
         currentConfig = normalizeConfig(parsed.currentConfig);
-        currentConfig.database.password = "";
-        currentConfig.database.clear_password = false;
-        delete currentConfig.database.password_enc;
       }
       if (typeof parsed.currentFilename === "string") {
         currentFilename = parsed.currentFilename;
@@ -1370,31 +1363,14 @@ function renderDatabase() {
       createInput(db.port || 3306, (v) => (db.port = Number(v) || 3306), "number"),
     ])
   );
-  appendHeaders(panel, ["用户名", SdI18n.t('common.password.label'), "数据组(data_groups)"]);
-  const passwordCell = document.createElement("div");
-  passwordCell.className = "password-field";
-  const passwordInput = createInput("", (v) => {
-    db.password = v;
-    if (v) db.clear_password = false;
-  }, "password");
-  passwordInput.autocomplete = "new-password";
-  passwordInput.placeholder = db.password_configured ? "已配置；留空保持不变" : "输入数据库密码";
-  passwordCell.appendChild(passwordInput);
-  const clearLabel = document.createElement("label");
-  clearLabel.className = "inline-checkbox";
-  const clearInput = createCheckbox(!!db.clear_password, (checked) => {
-    db.clear_password = checked;
-    if (checked) {
-      db.password = "";
-      passwordInput.value = "";
-    }
-  });
-  clearLabel.append(clearInput, document.createTextNode(" 清除已保存密码"));
-  passwordCell.appendChild(clearLabel);
+  const credentialsHint = document.createElement("p");
+  for (const input of panel.querySelectorAll('input, select')) input.disabled = Boolean(db.launcher_managed);
+  credentialsHint.className = "hint";
+  credentialsHint.textContent = SdI18n.t('common.database.credentialsHint');
+  panel.appendChild(credentialsHint);
+  appendHeaders(panel, [SdI18n.t('collector.database.dataGroups')]);
   panel.appendChild(
     createRow([
-      createInput(db.username || "", (v) => (db.username = v)),
-      passwordCell,
       createMultiSelect(groupOptions, db.data_groups || [], (values) => {
         db.data_groups = values;
       }),
@@ -1633,12 +1609,6 @@ async function saveCurrentFile() {
     method: "POST",
     body: JSON.stringify({ payload: currentConfig, filename }),
   });
-  const passwordWasEntered = Boolean(currentConfig.database.password);
-  const passwordWasCleared = Boolean(currentConfig.database.clear_password);
-  currentConfig.database.password_configured =
-    passwordWasCleared ? false : (passwordWasEntered || Boolean(currentConfig.database.password_configured));
-  currentConfig.database.password = "";
-  currentConfig.database.clear_password = false;
   currentFilename = filename;
   await refreshFileList();
   renderDatabase();

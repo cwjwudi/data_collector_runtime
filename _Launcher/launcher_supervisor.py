@@ -160,6 +160,28 @@ class ServiceSupervisor:
             if should_restart:
                 self.command(name, "restart")
 
+    def database_hold(self, enabled: bool) -> None:
+        with self._lock:
+            for name in ('collector_web', 'db_admin'):
+                item = self._require(name)
+                item.config['env'] = {**item.config.get('env', {}), 'SD_SMA_DATABASE_SWITCH_HOLD': '1' if enabled else ''}
+
+    def stop_for_database(self, names: list[str]) -> None:
+        """Synchronous stop: a failed termination must never allow a new target to start."""
+        with self._lock:
+            for name in names:
+                item = self._require(name)
+                item.desired_running = False
+                if item.process is not None:
+                    self.stop_process(item.process)
+                    if item.process.process.poll() is None:
+                        raise RuntimeError('Service process did not stop: ' + name)
+                    item.process = None
+                item.state = 'stopped'
+                item.health_ready = False
+                item.restart_at = None
+            self._persist_desired_state()
+
     def set_listen_host(self, host: str) -> None:
         if host not in {"0.0.0.0", "127.0.0.1"}:
             raise ValueError("Unsupported listen host")

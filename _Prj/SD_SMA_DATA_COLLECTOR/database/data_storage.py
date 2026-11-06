@@ -257,6 +257,22 @@ class DataStorageProcessor:
         if self.persistent_store is not None:
             self._run_outbox_maintenance_if_due(force=True)
 
+    async def drain_for_database_switch(self) -> dict:
+        """Producer must already be paused; retain failed rows and batch context on refusal."""
+        self.running = False
+        if self._batch_ready_event:
+            self._batch_ready_event.set()
+        if self.processing_task:
+            await asyncio.wait_for(asyncio.shield(self.processing_task), timeout=30)
+            self.processing_task = None
+        self._restore_ready_outbox_rows()
+        pending = [*self.retry_queue, *self.data_queue]
+        if pending:
+            self.retry_queue.clear()
+            self.data_queue.clear()
+            await self._process_batch(pending, requeue_db_failures=True)
+        return self.get_runtime_metrics()
+
     def initialize_tables_for_runtime(self) -> bool:
         """
         启动时集中检查需要的数据表。

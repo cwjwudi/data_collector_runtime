@@ -181,3 +181,20 @@ button.is-clicked {
 th {
   background: var(--sd-color-th-bg);
 }
+
+/* Launcher uses the shared controls at its existing touch-screen size. */
+.sd-launcher button, .sd-launcher input, .sd-launcher select, .sd-launcher textarea { font: inherit; min-height: 56px; border-radius: var(--sd-radius-lg); border: 1px solid var(--sd-color-border); font-size: var(--sd-font-base); }
+.sd-launcher button { padding: 0 24px; cursor: pointer; font-weight: 700; background: var(--sd-color-panel-bg); }
+.sd-launcher button:disabled { opacity: .45; cursor: not-allowed; }
+.sd-launcher .primary { background: var(--sd-color-link); color: var(--sd-color-panel-bg); border-color: var(--sd-color-link); }
+.sd-launcher .secondary { background: var(--sd-color-panel-bg); color: var(--sd-color-text); }
+.sd-launcher .danger { background: var(--sd-color-danger); color: var(--sd-color-panel-bg); border-color: var(--sd-color-danger); }
+.sd-launcher .warning { background: var(--sd-color-muted); color: var(--sd-color-panel-bg); border-color: var(--sd-color-muted); }
+.sd-launcher .panel { max-width: 1120px; margin: auto; }
+.sd-launcher .panel label { display: block; font-weight: 700; margin: 15px 0; }
+.sd-launcher .panel input, .sd-launcher .panel select, .sd-launcher .panel textarea, .sd-launcher dialog input { width: 100%; padding: 0 14px; margin-top: 7px; background: var(--sd-color-panel-bg); }
+.sd-launcher .panel textarea { padding: 12px; min-height: 100px; }
+.sd-launcher .hint, .sd-launcher small { color: var(--sd-color-muted); }
+
+.sd-launcher fieldset { border: 0; padding: 0; margin: 0; }
+.sd-launcher pre { white-space: pre-wrap; overflow-wrap: anywhere; }

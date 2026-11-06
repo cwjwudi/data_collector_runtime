@@ -71,7 +71,7 @@ async function init() {
     document.getElementById('outputDir').value = defaultOutputDir;
   });
   configuredConnection = config.default_connection;
-  document.getElementById('connectionPanel').hidden = Boolean(configuredConnection.managed_storage);
+  document.getElementById('connectionPanel').hidden = Boolean(configuredConnection.password_managed);
   document.getElementById('dbHost').value = configuredConnection.host || '';
   document.getElementById('dbPort').value = configuredConnection.port || '';
   document.getElementById('dbUsername').value = configuredConnection.username || '';

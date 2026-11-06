@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>SD SMA 管理中心</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/common/base.css?v=20261105_02">
+  <link rel="stylesheet" href="/static/styles.css?v=20261105_02">
 </head>
-<body>
+<body class="sd-launcher">
   <div id="securityWarning" class="security-warning hidden">管理员 PIN 未启用：当前网络中的访问者可以执行全部管理操作。</div>
+  <div id="databaseConfigError" class="security-warning hidden" role="alert"></div>
   <header>
     <div><h1>SD SMA 管理中心</h1><p id="clock">本机服务管理</p></div>
     <button id="lockButton" class="secondary">管理操作</button>
@@ -16,7 +18,7 @@
   <nav aria-label="功能导航">
     <button class="nav active" data-page="services">服务状态</button>
     <button class="nav" data-page="import">导入配置</button>
-    <button class="nav" data-page="credentials">数据库密码</button>
+    <button class="nav" data-page="credentials" data-i18n="launcher.database.title">数据库管理</button>
     <button class="nav" data-page="settings">系统设置</button>
   </nav>
 
@@ -59,11 +61,35 @@
 
     <section id="credentialsPage" class="page">
       <div class="panel">
-        <div class="panel-title"><h2>数据库凭据档案</h2><button id="newCredential" class="primary">新增档案</button></div>
+        <h2 data-i18n="launcher.database.title"></h2>
+        <p id="databaseCurrent" role="status" aria-live="polite"></p>
+        <div id="databaseTargets"></div>
+        <p class="hint" data-i18n="launcher.database.historyHint"></p>
         <p class="hint" data-i18n="launcher.credentials.storageHint"></p>
-        <div id="credentialList" class="credential-list"></div>
-        <h3>服务分配</h3>
-        <div id="assignmentList" class="assignment-list"></div>
+        <form id="databaseForm">
+          <label><span data-i18n="launcher.database.mode"></span>
+            <select id="databaseMode"><option value="managed" data-i18n="launcher.database.managed"></option><option value="external" data-i18n="launcher.database.external"></option></select>
+          </label>
+          <fieldset id="externalDatabaseFields" hidden>
+            <label><span data-i18n="launcher.database.profile"></span><select id="databaseProfile"></select></label>
+            <div class="two-cols">
+              <label><span data-i18n="launcher.database.host"></span><input id="credentialHost" autocomplete="off"></label>
+              <label><span data-i18n="launcher.database.port"></span><input id="credentialPort" type="number" min="1" max="65535" value="3306"></label>
+              <label><span data-i18n="launcher.database.name"></span><input id="credentialDatabase" autocomplete="off"></label>
+              <label><span data-i18n="launcher.database.username"></span><input id="credentialUsername" autocomplete="username" value="root"></label>
+            </div>
+            <label><span data-i18n="launcher.database.password"></span><input id="credentialPassword" type="password" autocomplete="new-password"></label>
+            <p class="hint" data-i18n="launcher.database.passwordHint"></p>
+            <p class="hint" data-i18n="launcher.database.createHint"></p>
+          </fieldset>
+          <div class="row">
+            <button id="databaseTest" type="button" data-i18n="launcher.database.test"></button>
+            <button id="databaseApply" type="submit" class="primary" data-i18n="launcher.database.apply"></button>
+            <button id="databaseRefresh" type="button" data-i18n="launcher.database.refresh"></button>
+          </div>
+        </form>
+        <pre id="databaseResult" role="status" aria-live="polite"></pre>
+        <a id="databaseAdminLink" target="_blank" rel="noopener" data-i18n="launcher.database.admin"></a>
       </div>
     </section>
 
@@ -98,26 +124,14 @@
     </form>
   </dialog>
 
-  <dialog id="credentialDialog">
-    <form method="dialog" id="credentialForm">
-      <h2>数据库凭据档案</h2>
-      <input id="credentialId" type="hidden">
-      <label>档案名称<input id="credentialName" required maxlength="60"></label>
-      <div class="two-cols"><label>主机<input id="credentialHost" required value="127.0.0.1"></label><label>端口<input id="credentialPort" required type="number" value="3306"></label></div>
-      <div class="two-cols"><label>用户名<input id="credentialUsername" required value="root"></label><label>数据库（可选）<input id="credentialDatabase"></label></div>
-      <label>密码<input id="credentialPassword" type="password" autocomplete="new-password"><small>编辑时留空表示保留原密码</small></label>
-      <p id="credentialError" class="error"></p>
-      <div class="dialog-actions"><button id="credentialCancel" type="button" value="cancel" class="secondary">取消</button><button id="credentialSave" type="submit" value="default" class="primary">保存并应用</button></div>
-    </form>
-  </dialog>
-
   <dialog id="confirmDialog">
     <form method="dialog"><h2 id="confirmTitle">确认操作</h2><p id="confirmText"></p><div class="dialog-actions"><button value="cancel" class="secondary">取消</button><button value="ok" class="danger">确认</button></div></form>
   </dialog>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/common/zh.js?v=20261026_01"></script>
+  <script src="/common/zh.js?v=20261105_02"></script>
   <script src="/common/i18n.js?v=20261026_01"></script>
-  <script src="/static/app.js?v=20261026_02"></script>
+  <script src="/static/app.js?v=20261105_02"></script>
+  <script src="/static/database.js?v=20261105_02"></script>
 </body>
 </html>

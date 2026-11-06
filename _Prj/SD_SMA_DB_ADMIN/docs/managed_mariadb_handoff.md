@@ -1,5 +1,7 @@
 # SD SMA 托管数据库版开发交接
 
+后续“在管理中心选择内置或外部数据库、统一管理连接”的升级，请按 [数据库统一管理升级计划与 TODO](database_management_upgrade_plan.md) 执行。该计划于 2026-11-05 新增，尚未实施；本文的历史完成记录及最终虚拟机验收暂缓状态保持有效。
+
 ## 基线与工作方式
 
 - 分支为 `variant/managed-mariadb`，从标准版 `v1.0.2`（`dd602f0ebc91a54d497399725defe21f3800ef8e`）分出。
@@ -156,3 +158,22 @@ installer_mode_check.py 实际运行标准版残留、损坏 JSON 两种失败�
 仅安装脚本改动，复制源脚本到既有已通过 smoke 的暂存区，再用同一 Inno 脚本重新生成安装包；未重新编译未改动的 Launcher。构建退出码 0，日志 _Build/managed-preflight-installer.log。当前同名候选包替换 11 月 4 日产物：大小 132075279 字节，SHA-256 45144C4C9635FBEF5BF7AE65ECF15AEDF881ABE75FFCD37329E6313050F9B2E1。
 
 目标机器的具体原因仍待用此包重试读取；本机复现的标准版配置残留不代表目标机器原因。最终虚拟机发布验收仍暂缓。
+
+## 2026-11-05 数据库统一管理升级 P0 已完成
+
+在 `variant/managed-mariadb` 保留原有未提交改动，完成新计划的 P0。扩展 `_Launcher/managed_database_check.py` 的离线真实解析自检，覆盖内置分账号、共用外部 root/专用账号、混合分配、重载不改写旧配置、环境变量注入与脱敏；统一选择字段、优先级、全部调用链及安装/打包范围已记录到 [升级计划](database_management_upgrade_plan.md) 第 9 节。下一阶段为 P1，当前尚无统一切换功能。
+
+本轮实际执行 `& .\.venv\Scripts\python.exe selfcheck.py`，修改前与交付前均为 `selfcheck: 18/18 passed`；聚焦 `managed_database_check.py` 通过；显式 `web_i18n_check` 为 OK，字典 284 条、引用 284 处；`git diff --check` 通过。真实数据库 live 检查仍跳过，未访问生产数据库、未构建/安装/发布。原托管版的最终虚拟机发布验收继续暂缓。
+
+
+## 2026-11-05 数据库统一管理开发与本机验收完成
+
+用户随后要求继续 P1 及所有后续阶段。本轮连续完成统一选择/原子配置、外部模式启动、预检与暂停排空/整体切换/失败回退、管理中心与服务页面统一，以及真实数据库/进程验证；详细改动和矩阵见 [升级计划第 10 节](database_management_upgrade_plan.md)。原有未提交修改全部保留，没有提交或发布。
+
+当前管理中心“数据库管理”支持内置 MariaDB 或外部 MySQL/MariaDB；外部 root、业务库专用账号均经过真实进程验证。统一绑定只影响 Collector、Query Web 和 DB Admin；Report Copy 不参与。测试不保存，应用前处理旧库待写任务，存在积压/死信或运维任务则拒绝。候选预检通过后再失效的真实回退验证通过；回退失败不会报告成功，为保护内存任务可能保留采集宿主，按实际 PID/状态修复，不强制结束持有未写记录的进程。
+
+实际验证：`selfcheck: 21/21 passed`；i18n OK（323/323）；临时 MariaDB 11.4.13、临时 MySQL 8.0.24 的建表补列/写入/历史查询/字典/备份恢复与原 35 项越权拒绝通过。MySQL 原生客户端和随包 MariaDB 客户端组合都通过。TLS-required、ed25519 驱动不兼容均有实际拒绝诊断；不声称支持 TLS 正向接入。`database_live_check.py` 经 `start.bat` 启动真实四服务，覆盖缺内置凭据下外部启动、A/B/内置切换、换密码、重启保持、实际 OPC UA 模拟采集排空与恢复、原本停止服务保持停止，以及历史保留。没有访问真实 PLC 或生产数据库。
+
+构建源脚本新增 Launcher 模块与显式 sqlite3 打包（首轮编译 smoke 暴露动态依赖漏包，修复后重建），最终 `build.bat installer` 退出码 0、`[smoke] ok`，日志 `_Build/database-upgrade-installer.log`。当前同名候选安装包：`_Build/SD_SMA_Installer_Package/SD_SMA_ManagedDB_Setup_1.0.2.exe`，132,913,001 字节，SHA-256 `01612970AB8914A7B83AF6B9F66288C64C9A630D8E8A8F4061A9D43C408551BC`。关键源脚本与 staging 哈希一致，smoke 秘密材料已清除。
+
+最终干净 Windows 虚拟机发布验收继续暂缓；实际 SCM refresh、离线安装/重启/覆盖/卸载/换机恢复及许可证/源码交付材料仍待该阶段确认。未安装真实服务、不推送、不打标签、不发布。外部密码仍沿用 secrets JSON 明文存储，未擅自变更加密策略。

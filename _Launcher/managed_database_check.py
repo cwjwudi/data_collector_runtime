@@ -49,11 +49,73 @@ def main():
         else:
             raise AssertionError('Busy database port accepted')
     print('PASS machine DPAPI roundtrip, corruption rejection, port conflict')
+    check_legacy_routing()
     check_config_override()
     if args.mariadb_home:
         live(args.mariadb_home.resolve(), port)
     else:
         print('SKIP live provisioning (requires --mariadb-home); administrator ACL and services not exercised')
+
+
+def check_legacy_routing():
+    services = ('collector_web', 'query_web', 'db_admin')
+    managed = {
+        name: dict(engine='mysql', host='127.0.0.1', port=3307, database='sd_sma',
+                   username=f'sma_{name}', password=f'test-only-{name}', managed_storage=True)
+        for name in services
+    }
+    root = dict(id='external-root', engine='mysql', host='root.example.invalid', port=3306,
+                database='external_a', username='root', password='test-only-root')
+    operator = dict(id='external-operator', engine='mysql', host='operator.example.invalid', port=3308,
+                    database='external_b', username='sma_operator', password='test-only-operator')
+    cases = (
+        ('managed-default', {}, managed),
+        ('shared-root', dict.fromkeys(services, root['id']), dict.fromkeys(services, root)),
+        ('shared-operator', dict.fromkeys(services, operator['id']), dict.fromkeys(services, operator)),
+        ('mixed', {'collector_web': root['id'], 'db_admin': operator['id']},
+         {'collector_web': root, 'query_web': managed['query_web'], 'db_admin': operator}),
+    )
+    with tempfile.TemporaryDirectory() as temporary:
+        directory = Path(temporary)
+        for label, assignments, expected in cases:
+            path = directory / f'{label}.json'
+            legacy = dict(version=1, credentials=[root, operator], assignments=assignments)
+            path.write_text(json.dumps(legacy), encoding='utf-8')
+            original = path.read_bytes()
+            store = LauncherSecurityStore(path, managed_credentials=managed)
+            for name in services:
+                credential = store.credential_for_service(name)
+                assert credential == expected[name], (label, name)
+                service = {'name': name, 'env': {'KEEP': 'unchanged', 'SD_SMA_DB_HOST': 'stale'}}
+                before = json.dumps(service)
+                env = service_with_launcher_credential(service, store)['env']
+                assert json.dumps(service) == before
+                for field, key in (('host', 'HOST'), ('port', 'PORT'), ('database', 'DATABASE'),
+                                   ('username', 'USERNAME'), ('password', 'PASSWORD'), ('engine', 'ENGINE')):
+                    assert env[f'SD_SMA_DB_{key}'] == str(credential[field]), (label, name, field)
+                assert env['SD_SMA_DB_CREDENTIAL_MANAGED'] == '1' and env['KEEP'] == 'unchanged'
+                assert env['SD_SMA_MANAGED_DATABASE'] == ('1' if credential.get('managed_storage') else '')
+                credential['password'] = 'mutated-copy'
+                assert store.credential_for_service(name) == expected[name]
+            report = {'name': 'report_copy', 'env': {'KEEP': 'unchanged'}}
+            assert service_with_launcher_credential(report, store) == report
+            public = store.public_credentials()
+            assert public['assignments'] == assignments and public['managed_database']
+            for credential in [root, operator, *managed.values()]:
+                assert credential['password'] not in json.dumps(public)
+            assert path.read_bytes() == original, label
+            reloaded = LauncherSecurityStore(path, managed_credentials=managed)
+            assert [reloaded.credential_for_service(name) for name in services] == [expected[name] for name in services]
+            assert path.read_bytes() == original, label
+        missing = directory / 'source-without-launcher.json'
+        store = LauncherSecurityStore(missing)
+        for name in (*services, 'report_copy'):
+            service = {'name': name, 'env': {'KEEP': 'unchanged'}}
+            assert store.credential_for_service(name) is None
+            assert service_with_launcher_credential(service, store) == service
+        assert not missing.exists()
+    print('PASS legacy routing: managed defaults, shared root/operator, mixed assignments, reload without rewrite')
+    print('PASS source without Launcher credentials: no injection; ordinary Report Copy has no database credentials')
 
 
 def check_config_override():

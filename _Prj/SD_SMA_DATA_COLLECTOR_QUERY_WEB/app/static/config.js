@@ -265,9 +265,6 @@ function getAppSettingsPayload() {
       name: document.getElementById('appDbName').value.trim(),
       host: document.getElementById('appDbHost').value.trim(),
       port: Number(document.getElementById('appDbPort').value || 0),
-      username: document.getElementById('appDbUsername').value.trim(),
-      password: document.getElementById('appDbPassword').value,
-      clear_password: document.getElementById('appDbClearPassword').checked,
     },
     query_limits: {
       requests_per_minute: Number(document.getElementById('appRequestsPerMinute').value || 0),
@@ -284,11 +281,9 @@ function fillAppSettingsForm(data) {
   document.getElementById('appDbName').value = database.name || '';
   document.getElementById('appDbHost').value = database.host || '';
   document.getElementById('appDbPort').value = Number(database.port || 3306);
-  document.getElementById('appDbUsername').value = database.username || '';
-  const passwordInput = document.getElementById('appDbPassword');
-  passwordInput.value = '';
-  passwordInput.placeholder = database.password_configured ? '已配置；留空保持不变' : '输入数据库密码';
-  document.getElementById('appDbClearPassword').checked = false;
+  for (const id of ['appDbType', 'appDbName', 'appDbHost', 'appDbPort']) {
+    document.getElementById(id).disabled = Boolean(database.launcher_managed);
+  }
   document.getElementById('appRequestsPerMinute').value = Number(queryLimits.requests_per_minute || 120);
   document.getElementById('appDefaultWindowHours').value = Number(queryLimits.default_window_hours || 24);
   document.getElementById('appMaxWindowHours').value = Number(queryLimits.max_window_hours || 168);
@@ -1640,9 +1635,6 @@ document.getElementById('btnBrowseOpcuaNodes').addEventListener('click', () => {
     hint.textContent = '已加载节点，点「加入点位」后可在其它 NodeId 框中下拉选择';
     hint.className = 'muted ok';
   }).catch(err => setHintMessage('opcuaNodeHint', err.message || String(err)));
-});
-document.getElementById('appDbPassword').addEventListener('input', event => {
-  if (event.target.value) document.getElementById('appDbClearPassword').checked = false;
 });
 document.getElementById('appOpcuaPassword').addEventListener('input', event => {
   if (event.target.value) document.getElementById('appOpcuaClearPassword').checked = false;

@@ -19,15 +19,6 @@ $programRoot = Split-Path -Parent $PSScriptRoot
 $env:SD_SMA_DATA_ROOT = Join-Path $env:ProgramData "SmartData\SD SMA"
 $launcher = Join-Path $programRoot "_Launcher\SD_SMA_Launcher.exe"
 $config = Join-Path $env:SD_SMA_DATA_ROOT "config\launcher\launcher_config.json"
-try {
-    & (Join-Path $PSScriptRoot 'Manage-SD_SMA-Database.ps1') -Action Start
-    if ($LASTEXITCODE -ne 0) { throw 'Managed storage could not be started.' }
-}
-catch {
-    Add-Type -AssemblyName System.Windows.Forms
-    [Windows.Forms.MessageBox]::Show($_.Exception.Message, 'SD SMA') | Out-Null
-    exit 1
-}
 Set-Location -LiteralPath (Split-Path -Parent $launcher)
 & $launcher --config $config @LauncherArguments
 exit $LASTEXITCODE

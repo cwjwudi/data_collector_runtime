@@ -80,7 +80,28 @@ def check_api(directory):
         assert status == {'managed': True, 'available': False, 'error': 'unavailable'}
         assert 'id="managedStoragePanel"' in admin.text and 'id="managedStoragePanel"' in config.text
         os.environ.pop('SD_SMA_MANAGED_DATABASE')
-        assert client.get('/api/storage/status').json() == {'managed': False}
+        external = client.get('/api/storage/status').json()
+        assert external == {'managed': False, 'external': True, 'available': False, 'error': 'unavailable'}
+        assert 'free_bytes' not in external
+        assert client.post('/api/config/connection', json=payload).status_code == 409
+        assert client.post('/api/internal/database/pause').status_code == 403
+        os.environ['SD_SMA_WEB_TOKEN'] = 'test-only-controller'
+        headers = {'X-SD-SMA-Token': 'test-only-controller'}
+        import threading
+        release = threading.Event()
+        try:
+            module.start_job('test busy job', lambda job_id: release.wait(10))
+            assert client.post('/api/internal/database/pause', headers=headers).status_code == 409
+        finally:
+            release.set()
+        import time
+        for _ in range(100):
+            if all(job['status'] != 'running' for job in module._jobs.values()):
+                break
+            time.sleep(0.01)
+        assert client.post('/api/internal/database/pause', headers=headers).status_code == 200
+        assert client.post('/api/config/output', json={'output_dir': ''}).status_code == 409
+        assert client.post('/api/internal/database/resume', headers=headers).status_code == 200
 
 
 def check_browser_script():

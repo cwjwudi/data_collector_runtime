@@ -1,6 +1,8 @@
 """Compile the real installer with a tiny payload; never install or change services."""
 
 import os
+import json
+import socket
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,6 +25,10 @@ def main():
     assert compiler, "Install Inno Setup 6 to check installer modes"
 
     source = installer.read_text(encoding="utf-8-sig")
+    assert '<depend>SD_SMA_DB</depend>' not in (launcher / 'installer/SD_SMA_Service.xml').read_text()
+    service_script = (launcher / 'installer/Install-SD_SMA-Service.ps1').read_text()
+    assert 'sc.exe config SD_SMA depend= /' in service_script
+    assert "-Action Start" not in (launcher / 'installer/Start-SD_SMA.ps1').read_text()
     sections = {}
     section = []
     for line in source.splitlines():
@@ -81,6 +87,30 @@ def main():
             assert message and message != 'stale error'
             if expected:
                 assert expected in message, message
+
+        installed.write_text(json.dumps({'managed_database': {'enabled': True}}), encoding='utf-8')
+        secret = root / 'SmartData/SD SMA/secrets/launcher_security.json'
+        secret.parent.mkdir()
+        original = json.dumps({'database_binding': {'mode': 'external', 'external_credential_id': 'test-only'}})
+        secret.write_text(original, encoding='utf-8')
+        for action in ('Initialize', 'Start'):
+            result = subprocess.run(
+                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+                 str(launcher / 'installer/Manage-SD_SMA-Database.ps1'), '-Action', action,
+                 '-ProgramRoot', str(payload)], env=env, capture_output=True, timeout=30)
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert secret.read_text(encoding='utf-8') == original
+        with socket.socket() as occupied:
+            occupied.bind(('127.0.0.1', 0))
+            occupied.listen()
+            installed.write_text(json.dumps({'managed_database': {'enabled': True, 'port': occupied.getsockname()[1]}}), encoding='utf-8')
+            script_path = str(launcher / 'installer/Manage-SD_SMA-Database.ps1').replace("'", "''")
+            fixture = str(payload).replace("'", "''")
+            result = subprocess.run(
+                ['powershell', '-NoProfile', '-Command',
+                 "function Get-CimInstance { return $null }; & '" + script_path + "' -Action Preflight -ProgramRoot '" + fixture + "'"],
+                env=env, capture_output=True, timeout=30)
+            assert result.returncode == 0, result.stdout + result.stderr
 
     for script in [*(launcher / 'installer').glob('*.ps1'), *(launcher / 'scripts').glob('*.ps1')]:
         result = subprocess.run(

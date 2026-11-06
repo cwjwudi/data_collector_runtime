@@ -3,6 +3,7 @@
 仅创建 _Build 下的临时实例，不连接已有服务。无参数时明确跳过实测。
 """
 import argparse
+from contextlib import contextmanager
 import asyncio
 import importlib.util
 import os
@@ -20,10 +21,12 @@ import pymysql
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / '_Prj/SD_SMA_DATA_COLLECTOR'))
 sys.path.insert(0, str(ROOT / '_Prj/SD_SMA_DATA_COLLECTOR_QUERY_WEB'))
+sys.path.insert(0, str(ROOT / '_Launcher'))
 from database.db_manager import DatabaseManager
 from database.data_storage import DataStorageProcessor
 from app.database import QueryDatabase
 from app.models import HistoryQueryRequest
+from launcher_database import connection_preflight, REQUIRED
 
 DATABASE = 'sma_validation'
 # 数据库级 GRANT 会把下划线当作通配符，反引号本身不会取消通配。
@@ -37,13 +40,25 @@ GRANTS = {
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mariadb-home', type=Path)
+    homes = parser.add_mutually_exclusive_group()
+    homes.add_argument('--mariadb-home', type=Path)
+    homes.add_argument('--mysql-home', type=Path)
+    parser.add_argument('--client-home', type=Path, help='Optional explicit client pair for compatibility validation')
     args = parser.parse_args()
-    if args.mariadb_home is None:
-        print('managed_mariadb_check: SKIP live validation (requires --mariadb-home)')
+    if args.mariadb_home is None and args.mysql_home is None:
+        print('managed_mariadb_check: SKIP live validation (requires --mariadb-home or --mysql-home)')
         return
-    binary = args.mariadb_home.resolve() / 'bin'
-    for name in ('mariadb-install-db.exe', 'mariadbd.exe', 'mariadb.exe', 'mariadb-dump.exe'):
+    with isolated_database(args.mariadb_home or args.mysql_home, mariadb=bool(args.mariadb_home)) as instance:
+        admin, port, binary, directory = instance
+        check_database(admin, port, (args.client_home.resolve() / 'bin') if args.client_home else binary, directory)
+    print('managed_mariadb_check: live assertions passed; instance stopped and removed')
+
+
+@contextmanager
+def isolated_database(home: Path, *, mariadb: bool = True):
+    binary = home.resolve() / 'bin'
+    names = ('mariadb-install-db.exe', 'mariadbd.exe', 'mariadb.exe', 'mariadb-dump.exe') if mariadb else ('mysqld.exe', 'mysql.exe', 'mysqldump.exe')
+    for name in names:
         assert (binary / name).is_file(), binary / name
     for name in list(os.environ):
         if name.startswith('SD_SMA_DB_'):
@@ -55,12 +70,13 @@ def main():
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
-        subprocess.run([str(binary / 'mariadb-install-db.exe'),
-                        f'--datadir={directory / "data"}', f'--port={port}'],
+        initialize = ([str(binary / 'mariadb-install-db.exe'), f'--datadir={directory / "data"}', f'--port={port}']
+                      if mariadb else [str(binary / 'mysqld.exe'), '--no-defaults', '--initialize-insecure', f'--datadir={directory / "data"}'])
+        subprocess.run(initialize,
                        check=True, capture_output=True, timeout=90)
         with (directory / 'server.log').open('wb') as log:
             process = subprocess.Popen([
-                str(binary / 'mariadbd.exe'), '--no-defaults',
+                str(binary / ('mariadbd.exe' if mariadb else 'mysqld.exe')), '--no-defaults',
                 f'--basedir={binary.parent}', f'--datadir={directory / "data"}',
                 '--bind-address=127.0.0.1', f'--port={port}', '--console',
             ], stdout=log, stderr=subprocess.STDOUT,
@@ -68,7 +84,7 @@ def main():
             admin = None
             try:
                 admin = wait_ready(process, port)
-                check_database(admin, port, binary, directory)
+                yield admin, port, binary, directory
             finally:
                 if admin is not None:
                     try:
@@ -81,7 +97,7 @@ def main():
                 except subprocess.TimeoutExpired:
                     process.terminate()
                     process.wait(timeout=10)
-        print('managed_mariadb_check: live assertions passed; instance stopped and removed')
+
 
 
 def wait_ready(process, port):
@@ -96,11 +112,18 @@ def wait_ready(process, port):
 
 
 def check_database(admin, port, binary, directory):
+    import importlib.metadata
+    print('PyMySQL:', importlib.metadata.version('PyMySQL'), flush=True)
+    for name in (('mariadb.exe', 'mariadb-dump.exe') if (binary / 'mariadb.exe').is_file() else ('mysql.exe', 'mysqldump.exe')):
+        result = subprocess.run([str(binary / name), '--version'], capture_output=True, text=True, check=True)
+        print(result.stdout.strip(), flush=True)
     passwords = {name: secrets.token_urlsafe(24) for name in GRANTS}
     with admin.cursor() as cursor:
         cursor.execute('SELECT VERSION()')
-        print('Server:', cursor.fetchone()[0], flush=True)
-        cursor.execute("ALTER USER 'root'@'localhost' IDENTIFIED BY %s", (secrets.token_urlsafe(24),))
+        version = cursor.fetchone()[0]
+        print('Server:', version, flush=True)
+        root_password = secrets.token_urlsafe(24)
+        cursor.execute("ALTER USER 'root'@'localhost' IDENTIFIED BY %s", (root_password,))
         cursor.execute(f'CREATE DATABASE {DATABASE} CHARACTER SET utf8mb4')
         cursor.execute('CREATE DATABASE outside_business')
         cursor.execute('CREATE TABLE outside_business.secret (id INT)')
@@ -110,6 +133,35 @@ def check_database(admin, port, binary, directory):
             cursor.execute(f"CREATE USER '{name}'@'127.0.0.1' IDENTIFIED BY %s", (passwords[name],))
             cursor.execute(f"GRANT {grants} ON `{DATABASE_GRANT}`.* TO '{name}'@'127.0.0.1'")
             print(f'GRANT {name}: {grants} ON `{DATABASE_GRANT}`.*', flush=True)
+        cursor.execute("CREATE USER 'operator'@'127.0.0.1' IDENTIFIED BY %s", (passwords['collector'],))
+        cursor.execute(f"GRANT ALL PRIVILEGES ON `{DATABASE_GRANT}`.* TO 'operator'@'127.0.0.1'")
+    all_required = set.union(*REQUIRED.values())
+    target = dict(engine='mysql', host='127.0.0.1', port=port, database=DATABASE, username='root', password=root_password)
+    assert connection_preflight(target, all_required)['ok']
+    operator = dict(target, username='operator', password=passwords['collector'])
+    assert connection_preflight(operator, all_required)['ok']
+    limited = connection_preflight(dict(target, username='query', password=passwords['query']), all_required)
+    assert not limited['ok'] and limited['connected'] and 'INSERT' in limited['missing'], limited
+    assert connection_preflight(dict(target, password='wrong-test-only'), all_required)['error'] == 'authentication'
+    assert connection_preflight(dict(target, database='missing_test_only_database'), all_required)['error'] == 'database_missing'
+    assert not connection_preflight(dict(target, port=1), all_required)['ok']
+    with admin.cursor() as cursor:
+        if 'MariaDB' in version:
+            cursor.execute("INSTALL SONAME 'auth_ed25519'")
+            cursor.execute("CREATE USER 'plugin_only'@'127.0.0.1' IDENTIFIED VIA ed25519 USING PASSWORD(%s)", (root_password,))
+            cursor.execute(f"GRANT SELECT ON `{DATABASE_GRANT}`.* TO 'plugin_only'@'127.0.0.1'")
+            plugin = connection_preflight(dict(target, username='plugin_only'), {'SELECT'})
+            assert plugin['error'] == 'authentication_plugin', plugin
+            print('PASS incompatible ed25519 authentication diagnosed without changing server authentication', flush=True)
+        else:
+            cursor.execute('SET GLOBAL require_secure_transport=ON')
+            try:
+                tls = connection_preflight(target, all_required)
+                assert tls['error'] == 'tls_required', tls
+            finally:
+                cursor.execute('SET GLOBAL require_secure_transport=OFF')
+            print('PASS TLS-required temporary server rejected with explicit diagnostic', flush=True)
+    print('PASS preflight: root, scoped operator, read-only rejection, wrong password, missing database, unreachable; no writes', flush=True)
     configs = {name: dict(type='mysql', host='127.0.0.1', port=port,
                          name=DATABASE, username=name, password=password)
                for name, password in passwords.items()}
@@ -193,8 +245,9 @@ def check_backup(config, binary, directory):
     spec = importlib.util.spec_from_file_location('mariadb_validation_admin', Path(__file__).parent / 'app/main.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    module.save_config({'mysql_tools': {'mysql': str(binary / 'mariadb.exe'),
-                                       'mysqldump': str(binary / 'mariadb-dump.exe')}})
+    mariadb = (binary / 'mariadb.exe').is_file()
+    module.save_config({'mysql_tools': {'mysql': str(binary / ('mariadb.exe' if mariadb else 'mysql.exe')),
+                                       'mysqldump': str(binary / ('mariadb-dump.exe' if mariadb else 'mysqldump.exe'))}})
     conn = module.DbConnection(host=config['host'], port=config['port'], username=config['username'],
                                password=config['password'], database=DATABASE)
     backup = module.backup_mysql_job('validation', conn, DATABASE)
@@ -219,10 +272,18 @@ def check_backup(config, binary, directory):
                        'PASSWORD': config['password'], 'DATABASE': DATABASE}.items():
         os.environ['SD_SMA_DB_' + key] = value
     os.environ['SD_SMA_MANAGED_DATABASE'] = '1'
-    os.environ['SD_SMA_DB_TOOLS_DIR'] = str(binary)
+    if mariadb:
+        os.environ['SD_SMA_DB_TOOLS_DIR'] = str(binary)
+    else:
+        os.environ.pop('SD_SMA_DB_TOOLS_DIR', None)
     status = module.managed_storage_status()
     assert status['available'] and status['size_bytes'] > 0 and status['free_bytes'] > 0, status
-    assert module.resolve_mysql_tool('mysql') == str(binary / 'mariadb.exe')
+    assert module.resolve_mysql_tool('mysql') == str(binary / ('mariadb.exe' if mariadb else 'mysql.exe'))
+    os.environ['SD_SMA_DB_CREDENTIAL_MANAGED'] = '1'
+    os.environ.pop('SD_SMA_MANAGED_DATABASE')
+    external = module.managed_storage_status()
+    assert external['external'] and external['available'] and 'free_bytes' not in external
+    os.environ['SD_SMA_MANAGED_DATABASE'] = '1'
     os.environ['SD_SMA_DB_PASSWORD'] = 'wrong-test-password'
     assert module.managed_storage_status()['error'] == 'credentials'
     print('PASS managed storage status: real database capacity and actionable credential error', flush=True)

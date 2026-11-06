@@ -54,6 +54,7 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
 
 from launcher_imports import ConfigImportManager  # noqa: E402
 from launcher_security import LauncherSecurityStore  # noqa: E402
+from launcher_database import DatabaseController  # noqa: E402
 from managed_database import ManagedDatabase  # noqa: E402
 from launcher_settings import (  # noqa: E402
     NETWORK_HOSTS,
@@ -1227,6 +1228,8 @@ def main() -> int:
     try:
         database_settings = config.get("managed_database", {})
         database = ManagedDatabase(PACKAGE_ROOT, DATA_ROOT, database_settings) if database_settings.get("enabled") else None
+        security = LauncherSecurityStore(DATA_ROOT / "secrets" / "launcher_security.json",
+                                         managed_loader=database.credentials if database else None)
         if args.initialize_database or args.check_database:
             if database is None:
                 raise RuntimeError("Managed database is disabled in launcher configuration")
@@ -1246,9 +1249,8 @@ def main() -> int:
         if args.check:
             print("[check] ok")
             return 0
-        security = LauncherSecurityStore(DATA_ROOT / "secrets" / "launcher_security.json",
-                                         managed_credentials=database.credentials() if database else None)
         os.environ["SD_SMA_SESSION_SECRET"] = load_or_create_secret(DATA_ROOT / "secrets" / "session.secret")
+        os.environ['SD_SMA_WEB_TOKEN'] = load_or_create_secret(DATA_ROOT / 'secrets' / 'web.token')
         importer = ConfigImportManager(DATA_ROOT)
         network_store = NetworkSettingsStore(DATA_ROOT / "state" / "network.json")
         runtime_services = apply_network_host(
@@ -1258,7 +1260,8 @@ def main() -> int:
 
         def managed_start(service: dict[str, Any]) -> ServiceProcess:
             credential = security.credential_for_service(str(service.get("name", "")))
-            if database and credential and credential.get("managed_storage") and service.get("name") != "db_admin":
+            if database and credential and credential.get("managed_storage"):
+                database.start_installed_service()
                 database.wait_ready(credential, timeout=5)
             if database and service.get("name") == "db_admin":
                 service = {**service, "env": {**service.get("env", {}), "SD_SMA_DB_TOOLS_DIR": str(database.binary)}}
@@ -1275,7 +1278,10 @@ def main() -> int:
         management_host = NETWORK_HOSTS[network_store.mode]
         management_port = int(management.get("port", 8090))
         network = NetworkAccessController(network_store, supervisor)
-        app = create_management_app(supervisor, security, importer, LAUNCHER_DIR / "static", network)
+        collector_service = next(item for item in runtime_services if item['name'] == 'collector_web')
+        database_controller = DatabaseController(security, supervisor, config_dir_from_service(collector_service),
+                                                 resolve_path(collector_service['cwd']), database)
+        app = create_management_app(supervisor, security, importer, LAUNCHER_DIR / "static", network, database_controller)
         management_server = ManagementServer(app, host=management_host, port=management_port)
         network.attach_management_server(management_server)
         try:

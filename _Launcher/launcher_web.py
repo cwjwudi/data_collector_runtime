@@ -29,6 +29,7 @@ def create_management_app(
     importer: ConfigImportManager,
     static_dir: Path,
     network: Any | None = None,
+    database: Any | None = None,
 ) -> FastAPI:
     app = FastAPI(title="SD SMA Launcher", version="1.0")
     common_web = static_dir.resolve().parent.parent / "_Prj" / "SD_SMA_COMMON" / "sd_sma_common" / "web"
@@ -38,6 +39,8 @@ def create_management_app(
     @app.middleware("http")
     async def local_origin_guard(request: Request, call_next: Any) -> Response:
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            if database is not None and database.applying:
+                return Response('Database switch in progress', status_code=409)
             origin = request.headers.get("origin", "").strip()
             origin_host = urlsplit(origin).netloc.lower() if origin else ""
             request_host = request.headers.get("host", "").strip().lower()
@@ -76,6 +79,7 @@ def create_management_app(
             "pin_configured": security.pin_configured,
             "pin_enabled": security.pin_enabled,
             "pin_mode": security.pin_mode,
+            "database_error": security.load_error or security.database_error,
         }
         if network is not None:
             result["network"] = network.status()
@@ -163,6 +167,35 @@ def create_management_app(
         require_admin(request)
         return security.public_credentials()
 
+    @app.get('/api/launcher/database')
+    def database_status(request: Request) -> dict:
+        require_admin(request)
+        if database is None:
+            raise HTTPException(503, '数据库管理不可用')
+        return database.status()
+
+    @app.post('/api/launcher/database/test')
+    async def database_test(request: Request) -> dict:
+        require_admin(request)
+        if database is None:
+            raise HTTPException(503, '数据库管理不可用')
+        try:
+            body = await request.json()
+            return await asyncio.to_thread(database.test, body)
+        except (ValueError, TypeError, RuntimeError) as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post('/api/launcher/database/apply')
+    async def database_apply(request: Request) -> dict:
+        require_admin(request)
+        if database is None:
+            raise HTTPException(503, '数据库管理不可用')
+        try:
+            body = await request.json()
+            return await asyncio.to_thread(database.apply, body)
+        except (ValueError, TypeError, RuntimeError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+
     @app.post("/api/launcher/credentials")
     async def save_credential(request: Request) -> dict[str, Any]:
         require_admin(request)
@@ -171,6 +204,8 @@ def create_management_app(
         affected_before = security.services_for_credential(credential_id) if credential_id else []
         try:
             saved = security.upsert_credential(body)
+        except RuntimeError as exc:
+            raise HTTPException(409, str(exc)) from exc
         except (ValueError, OSError) as exc:
             raise HTTPException(400, str(exc)) from exc
         affected = sorted(set(affected_before + security.services_for_credential(str(saved["id"]))))
@@ -181,19 +216,26 @@ def create_management_app(
     def delete_credential(credential_id: str, request: Request) -> dict[str, Any]:
         require_admin(request)
         affected = security.services_for_credential(credential_id)
-        security.delete_credential(credential_id)
+        try:
+            security.delete_credential(credential_id)
+        except RuntimeError as exc:
+            raise HTTPException(409, str(exc)) from exc
         supervisor.restart_if_running(affected)
         return {"ok": True, "restarted_services": affected}
 
     @app.put("/api/launcher/credentials/assignments/{service}")
     async def assign_credential(service: str, request: Request) -> dict[str, Any]:
         require_admin(request)
+        if database is not None:
+            raise HTTPException(409, '请通过数据库统一应用修改连接')
         if service not in MANAGED_DB_SERVICES:
             raise HTTPException(400, "该服务不使用 Launcher 数据库凭据")
         body = await request.json()
         credential_id = str(body.get("credential_id") or "") or None
         try:
             security.assign(service, credential_id)
+        except RuntimeError as exc:
+            raise HTTPException(409, str(exc)) from exc
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
         supervisor.restart_if_running([service])
@@ -218,7 +260,7 @@ def create_management_app(
             )
             connection.close()
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(400, f"连接失败：{exc}") from exc
+            raise HTTPException(400, "连接失败，请检查地址、账号、权限及认证/TLS要求") from exc
         return {"ok": True, "message": "数据库连接成功"}
 
     @app.get("/api/launcher/filesystem/roots")

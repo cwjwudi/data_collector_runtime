@@ -12,6 +12,9 @@ import tempfile
 def main():
     builder = Path(__file__).parent / "scripts" / "build_installer_package.ps1"
     source = builder.read_text(encoding="utf-8-sig")
+    portable = (builder.parent / 'build_portable_package.ps1').read_text(encoding='utf-8-sig')
+    assert '"launcher_database.py"' in source and '"launcher_database.py"' in portable
+    assert '--include-package=sqlite3' in source
     probe = source[source.index("function Ensure-Nuitka {"):source.index("function Resolve-InnoSetup {")]
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)

@@ -18,7 +18,7 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 REPO_ROOT = WEB_DIR.parents[3]
 ADMIN_STATIC = REPO_ROOT / "_Prj/SD_SMA_DB_ADMIN/app/static"
 QUERY_STATIC = REPO_ROOT / "_Prj" / "SD_SMA_DATA_COLLECTOR_QUERY_WEB" / "app" / "static"
-CACHE_VERSION = "20261020_03"
+CACHE_VERSION = "20261105_02"
 
 
 def load_dict() -> dict:
@@ -40,7 +40,7 @@ def check_engine() -> None:
     # 示范页引用公共底座；业务脚本独立递增缓存版本。
     html = (QUERY_STATIC / "query.html").read_text(encoding="utf-8")
     assert f"/common/base.css?v={CACHE_VERSION}" in html, "query.html 未引用 base.css"
-    assert f"/common/i18n.js?v={CACHE_VERSION}" in html, "query.html 未引用 i18n.js"
+    assert "/common/i18n.js?v=20261020_03" in html, "query.html 未引用 i18n.js"
     assert "/static/query.js?v=20261028_02" in html, "query.js 版本号未更新"
 
 
@@ -79,11 +79,11 @@ def collect_used_keys() -> set:
     for html in [*QUERY_STATIC.glob("*.html"), *ADMIN_STATIC.glob("*.html"), * (REPO_ROOT / "_Launcher/static").glob("*.html")]:
         for m in re.finditer(r'data-i18n(?:-placeholder|-aria)?="([^"]+)"', html.read_text(encoding="utf-8")):
             used.add(m.group(1))
-    for js in [*QUERY_STATIC.glob("*.js"), *ADMIN_STATIC.glob("*.js"), REPO_ROOT / "_Launcher/static/app.js", REPO_ROOT / "_Prj/SD_SMA_DATA_COLLECTOR/web_config/static/config.js"]:
+    for js in [*QUERY_STATIC.glob("*.js"), *ADMIN_STATIC.glob("*.js"), *(REPO_ROOT / '_Launcher/static').glob('*.js'), REPO_ROOT / "_Prj/SD_SMA_DATA_COLLECTOR/web_config/static/config.js"]:
         source = js.read_text(encoding="utf-8")
         for m in re.finditer(r"\bt\(\s*'([^']+)'", source):
             used.add(m.group(1))
-        for m in re.finditer(r"'(dbConfig\.[\w.]+)'", source):
+        for m in re.finditer(r"'((?:dbConfig|dbStorage|launcher.database)\.[\w.]+)'", source):
             used.add(m.group(1))
     return used
 

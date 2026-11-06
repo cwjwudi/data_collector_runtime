@@ -18,6 +18,7 @@ from sd_sma_common.password_store import (
     prepare_password_mapping,
     resolve_password,
 )
+from sd_sma_common.database_settings import database_credentials_from_env, without_database_credentials, effective_database_settings
 
 _OPCUA_DEFAULT_HOST = "127.0.0.1"
 _OPCUA_DEFAULT_PORT = 4840
@@ -123,7 +124,6 @@ class UnifiedConfigStore:
                 "name": "",
                 "host": "127.0.0.1",
                 "port": 3306,
-                "username": "",
             },
             "query_limits": {
                 "requests_per_minute": 120,
@@ -322,14 +322,10 @@ class UnifiedConfigStore:
             changed = True
         app_settings = dict(normalized.get("app_settings", {}))
         database = app_settings.get("database")
-        migrated_database, database_changed = migrate_password_mapping(
-            self.config_dir,
-            database if isinstance(database, dict) else {},
-        )
+        migrated_database = without_database_credentials(database) if isinstance(database, dict) else {}
         if not isinstance(database, dict):
             migrated_database = dict(self._default_app_settings()["database"])
-            database_changed = True
-        if database_changed or migrated_database != database:
+        if migrated_database != database:
             app_settings["database"] = migrated_database
             normalized["app_settings"] = app_settings
             changed = True
@@ -524,11 +520,8 @@ class UnifiedConfigStore:
                 return self._clone_json(self._active_config_cache), signature
 
             data = self._load_json(path)
-            data, changed = self._normalize_profile_data(data, path.stem)
-            if changed:
-                self._write_json(path, data)
-                profile_signature = self._file_signature(path)
-                signature = (active_name, pointer_signature, profile_signature)
+            # 读取只在内存中兼容旧配置，实际清理留到用户保存。
+            data, _ = self._normalize_profile_data(data, path.stem)
 
             self._active_config_cache = data
             self._active_config_signature = signature
@@ -550,50 +543,25 @@ class UnifiedConfigStore:
         database['type'] = os.environ.get('SD_SMA_DB_ENGINE') or database.get('type', 'mysql')
         database["host"] = os.environ.get("SD_SMA_DB_HOST") or database.get("host", "127.0.0.1")
         database["port"] = int(os.environ.get("SD_SMA_DB_PORT") or database.get("port", 3306))
-        database["username"] = os.environ.get("SD_SMA_DB_USERNAME") or database.get("username", "")
         database["name"] = os.environ.get("SD_SMA_DB_DATABASE") or database.get("name", "")
-        database["password"] = resolve_password(
-            self.config_dir,
-            database,
-            env_name="SD_SMA_DB_PASSWORD",
-            label="数据库",
-        )
-        database.pop("password_enc", None)
+        database.update(database_credentials_from_env())
         settings["database"] = database
         return settings
 
     def get_public_app_settings(self) -> dict[str, Any]:
         config = self.get_active_config()
         settings = dict(config.get("app_settings", {}))
-        database = dict(settings.get("database", {}))
+        database = without_database_credentials(effective_database_settings(settings.get('database', {})))
+        database['launcher_managed'] = bool(os.getenv('SD_SMA_DB_CREDENTIAL_MANAGED'))
         database["host"] = os.environ.get("SD_SMA_DB_HOST") or database.get("host", "127.0.0.1")
         database["port"] = int(os.environ.get("SD_SMA_DB_PORT") or database.get("port", 3306))
-        database["username"] = os.environ.get("SD_SMA_DB_USERNAME") or database.get("username", "")
         database["name"] = os.environ.get("SD_SMA_DB_DATABASE") or database.get("name", "")
-        database.pop("password", None)
-        database.pop("password_enc", None)
-        database["password_configured"] = password_is_configured(
-            config.get("app_settings", {}).get("database", {}),
-            "SD_SMA_DB_PASSWORD",
-        )
         settings["database"] = database
         return settings
 
     def save_app_settings(self, data: dict[str, Any]) -> None:
         config = self.get_active_config()
-        existing_settings = config.get("app_settings", {})
-        existing_database = (
-            existing_settings.get("database", {})
-            if isinstance(existing_settings, dict)
-            else {}
-        )
-        settings = dict(data)
-        settings["database"] = prepare_password_mapping(
-            self.config_dir,
-            settings.get("database", {}),
-            existing_database if isinstance(existing_database, dict) else {},
-        )
-        config["app_settings"] = settings
+        config["app_settings"] = dict(data)
         self.save_active_config(config)
 
     def get_query_view_config(self) -> dict[str, Any]:
@@ -656,20 +624,11 @@ class UnifiedConfigStore:
     def get_public_profile(self) -> dict[str, Any]:
         config = self.get_active_config()
         public = self._clone_json(config)
+        public['app_settings'] = self.get_public_app_settings()
         settings = public.get("app_settings")
         if not isinstance(settings, dict):
             settings = self._default_app_settings()
             public["app_settings"] = settings
-        database = settings.get("database") if isinstance(settings.get("database"), dict) else {}
-        database.pop("password", None)
-        database.pop("password_enc", None)
-        database["password_configured"] = password_is_configured(
-            (config.get("app_settings") or {}).get("database", {})
-            if isinstance(config.get("app_settings"), dict)
-            else {},
-            "SD_SMA_DB_PASSWORD",
-        )
-        settings["database"] = database
         opcua = self._normalize_opcua_settings(public.get("opcua"))
         opcua.pop("password", None)
         opcua.pop("password_enc", None)
@@ -678,7 +637,7 @@ class UnifiedConfigStore:
         return public
 
     def replace_active_profile(self, submitted: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-        """用提交的整份配置替换当前文件。密码与已保存密码合并；库能连上时去掉不存在的分组。"""
+        """替换当前文件，保留 OPC UA 密码；库能连上时去掉不存在的分组。"""
         if not isinstance(submitted, dict):
             raise ValueError("配置必须为 JSON 对象")
         query_view = submitted.get("query_view")
@@ -687,13 +646,9 @@ class UnifiedConfigStore:
             raise ValueError("整份保存需要 query_view 与 plugins")
 
         existing = self.get_active_config()
-        existing_settings = existing.get("app_settings") if isinstance(existing.get("app_settings"), dict) else {}
         app_settings = dict(submitted.get("app_settings") or {})
-        app_settings["database"] = prepare_password_mapping(
-            self.config_dir,
-            app_settings.get("database") if isinstance(app_settings.get("database"), dict) else {},
-            existing_settings.get("database") if isinstance(existing_settings.get("database"), dict) else {},
-        )
+        database = app_settings.get("database")
+        app_settings["database"] = without_database_credentials(database) if isinstance(database, dict) else {}
         if not isinstance(app_settings.get("query_limits"), dict):
             app_settings["query_limits"] = dict(self._default_app_settings()["query_limits"])
 
@@ -711,14 +666,7 @@ class UnifiedConfigStore:
             "query_view": self._clone_json(query_view),
             "plugins": self._clone_json(plugins),
         }
-        runtime_database = dict(app_settings["database"])
-        runtime_database["password"] = resolve_password(
-            self.config_dir,
-            runtime_database,
-            env_name="SD_SMA_DB_PASSWORD",
-            label="数据库",
-        )
-        runtime_database.pop("password_enc", None)
+        runtime_database = effective_database_settings(app_settings['database'])
         live_groups = ConfigManager.probe_groups(runtime_database)
         report = ConfigManager.prune_editor_profile(profile, live_groups)
         ConfigManager.drop_view_query_conditions(profile.get("query_view"))

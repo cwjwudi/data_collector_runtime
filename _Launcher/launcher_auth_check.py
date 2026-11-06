@@ -57,4 +57,59 @@ script = helper + r"""
 })().catch(e=>{console.error(e);process.exitCode=1;});
 """
 subprocess.run(["node", "-e", script], check=True)
+
+script = r"""
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(process.argv[1],'utf8');
+const html=fs.readFileSync(process.argv[2],'utf8');
+const elements=Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{
+  value:'',disabled:false,hidden:false,textContent:'',required:false,
+  reportValidity(){return true;},replaceChildren(){},append(){},addEventListener(){},
+}]));
+const requests=[];
+let failure=false;
+const profile={id:'saved',name:'saved',host:'example.invalid',port:3306,database:'test_only',username:'operator',password_configured:true};
+const current={binding:{mode:'external',external_credential_id:'saved'},targets:{},legacy:false,managed_installed:false};
+const context=vm.createContext({
+  $:id=>{assert.ok(id in elements,id);return elements[id];},
+  state:{credentials:[],status:{services:[]}},window:{location:{protocol:'http:',hostname:'localhost'}},
+  document:{createElement:()=>({textContent:''})},Option:class {constructor(text,value){this.text=text;this.value=value;}},
+  SdI18n:{t:key=>key},toast(){},ensureAdmin:async()=>true,confirmAction:async()=>true,refreshStatus:async()=>{},
+  api:async(url,options={})=>{
+    requests.push({url,options});
+    if(url.endsWith('/credentials'))return {credentials:[profile]};
+    if(url.endsWith('/database'))return current;
+    if(failure)throw Error('injected network failure');
+    return {ok:true,services:{},...(url.endsWith('/apply')?{stage:'complete'}:{})};
+  },
+});
+(async()=>{
+  vm.runInContext(source,context);
+  await vm.runInContext('loadDatabaseManagement()',context);
+  // A real select retains a saved value once an option exists.
+  elements.databaseProfile.value='saved';
+  vm.runInContext('databaseProfileChanged()',context);
+  assert.equal(elements.credentialPassword.value,'');
+  assert.equal(elements.credentialUsername.value,'operator');
+  assert.equal(elements.credentialPassword.required,false);
+  elements.credentialPassword.value='synthetic-only';
+  await vm.runInContext('runDatabaseAction(false)',context);
+  assert.equal(requests.filter(r=>r.url.endsWith('/apply')).length,0);
+  assert.equal(requests.at(-1).url,'/api/launcher/database/test');
+  assert.equal(JSON.parse(requests.at(-1).options.body).credential.password,'synthetic-only');
+  assert.equal(elements.databaseResult.textContent,'launcher.database.tested\nlauncher.database.grantsHint');
+  failure=true;
+  await vm.runInContext('runDatabaseAction(true)',context);
+  assert.equal(elements.databaseResult.textContent,'injected network failure');
+  for(const id of ['databaseTest','databaseApply','databaseRefresh'])assert.equal(elements[id].disabled,false);
+  failure=false;
+  await vm.runInContext('runDatabaseAction(true)',context);
+  assert.equal(elements.credentialPassword.value,'');
+  assert.equal(elements.databaseResult.textContent,'launcher.database.applied');
+  for(const row of requests)assert.ok(!row.url.includes('synthetic-only'));
+  console.log('PASS database UI: saved password not filled, unsaved test, failed buttons restored, apply success');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+subprocess.run(['node', '-e', script, str(ROOT / '_Launcher/static/database.js'),
+                str(ROOT / '_Launcher/static/index.html')], check=True)
 print("launcher_auth_check: OK")

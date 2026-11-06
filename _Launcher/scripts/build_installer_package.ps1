@@ -269,6 +269,7 @@ New-Item -ItemType Directory -Force -Path $NuitkaOutput | Out-Null
     --python-flag=no_asserts `
     --python-flag=no_docstrings `
     --include-package=psutil `
+    --include-package=sqlite3 `
     --company-name=SmartData `
     --product-name="SD SMA Managed Database Runtime" `
     --file-description="SD SMA Unified Launcher" `
@@ -290,7 +291,7 @@ $InstalledLauncher = Join-Path $PackageLauncher "SD_SMA_Launcher.exe"
 Copy-Item -LiteralPath $CompiledLauncher -Destination $InstalledLauncher -Force
 Remove-Item -LiteralPath (Join-Path $PackageLauncher "sd_sma_launcher.py") -Force
 Remove-Item -LiteralPath (Join-Path $PackageLauncher "resource_monitor.py") -Force
-foreach ($launcherModule in @("launcher_supervisor.py", "launcher_security.py", "launcher_imports.py", "launcher_web.py", "launcher_settings.py", "managed_database.py")) {
+foreach ($launcherModule in @("launcher_supervisor.py", "launcher_security.py", "launcher_database.py", "launcher_imports.py", "launcher_web.py", "launcher_settings.py", "managed_database.py")) {
     Remove-Item -LiteralPath (Join-Path $PackageLauncher $launcherModule) -Force
 }
 

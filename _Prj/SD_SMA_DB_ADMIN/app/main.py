@@ -413,7 +413,7 @@ def default_connection() -> dict[str, Any]:
 
 
 def persist_default_connection(conn: DbConnection) -> dict[str, Any]:
-    if os.getenv('SD_SMA_MANAGED_DATABASE') == '1':
+    if os.getenv('SD_SMA_DB_CREDENTIAL_MANAGED'):
         raise HTTPException(409, 'Managed storage connection is controlled by Launcher')
     cfg = load_config()
     current = dict(cfg.get("default_connection") or {}) if isinstance(cfg.get("default_connection"), dict) else {}
@@ -543,6 +543,7 @@ def ensure_sqlite_connection(path: str) -> dict[str, Any]:
 
 _jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = threading.Lock()
+_database_hold = os.getenv('SD_SMA_DATABASE_SWITCH_HOLD') == '1'
 MAX_FINISHED_JOBS = 200
 MAX_JOB_LOG_LINES = 1000
 _confirmations: dict[str, dict[str, Any]] = {}
@@ -672,6 +673,9 @@ def start_job(
     now = datetime.now().isoformat(timespec="seconds")
     reserved_keys = _reserve_export_paths(protected_paths or [])
     with _jobs_lock:
+        if _database_hold:
+            _release_export_paths(reserved_keys)
+            raise HTTPException(409, 'Database switch in progress')
         cfg = load_config()
         max_running = max(1, int(cfg.get("max_concurrent_jobs") or 2))
         running = sum(1 for job in _jobs.values() if job.get("status") == "running")
@@ -1861,6 +1865,8 @@ install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 @app.middleware("http")
 async def forbid_cross_origin_writes(request: Request, call_next):
+    if _database_hold and request.method not in ('GET', 'HEAD', 'OPTIONS') and not request.url.path.startswith('/api/internal/database'):
+        return JSONResponse({'detail': 'Database switch in progress'}, status_code=409)
     if request.url.path in AUTH_EXEMPT_PATHS:
         return await call_next(request)
     if request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
@@ -1894,6 +1900,48 @@ def health() -> dict[str, Any]:
     return {"status": "ok"}
 
 
+from sd_sma_common.database_control import require_database_controller, database_connection_status
+
+
+@app.get('/api/internal/database')
+def database_runtime(request: Request) -> dict:
+    require_database_controller(request)
+    conn = managed_connection(DbConnection())
+    config = dict(type='mysql', host=conn.host, port=conn.port, username=conn.username,
+                  password=connection_password(conn), name=conn.database)
+    tools = {}
+    try:
+        for name in ('mysql', 'mysqldump'):
+            path = resolve_mysql_tool(name)
+            version = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=5,
+                                     creationflags=subprocess.CREATE_NO_WINDOW)
+            if version.returncode:
+                raise OSError('Client probe failed')
+            tools[name] = version.stdout.strip()
+        available = True
+    except (OSError, subprocess.SubprocessError):
+        available = False
+    return {**database_connection_status(config), 'held': _database_hold,
+            'tools_available': available, 'tools': tools}
+
+
+@app.post('/api/internal/database/{action}')
+def database_control(action: str, request: Request) -> dict:
+    global _database_hold
+    require_database_controller(request)
+    with _jobs_lock:
+        busy = [job['id'] for job in _jobs.values() if job.get('status') == 'running']
+        if action == 'pause':
+            if busy:
+                raise HTTPException(409, '数据库运维任务尚未完成')
+            _database_hold = True
+        elif action == 'resume':
+            _database_hold = False
+        else:
+            raise HTTPException(400, 'Unknown database action')
+        return {'held': _database_hold, 'busy': busy}
+
+
 @app.get("/api/config")
 def get_config() -> dict[str, Any]:
     cfg = load_config()
@@ -1911,7 +1959,8 @@ def get_config() -> dict[str, Any]:
 
 @app.get('/api/storage/status')
 def managed_storage_status() -> dict[str, Any]:
-    if os.getenv('SD_SMA_MANAGED_DATABASE') != '1':
+    managed = os.getenv('SD_SMA_MANAGED_DATABASE') == '1'
+    if not managed and not os.getenv('SD_SMA_DB_CREDENTIAL_MANAGED'):
         return {'managed': False}
     try:
         conn = managed_connection(DbConnection())
@@ -1922,12 +1971,14 @@ def managed_storage_status() -> dict[str, Any]:
                 cursor.execute('SELECT COALESCE(SUM(data_length + index_length), 0) '
                                'FROM information_schema.tables WHERE table_schema=%s', (conn.database,))
                 size = int(cursor.fetchone()[0])
-        free = shutil.disk_usage(os.getenv('SD_SMA_DATA_ROOT') or BASE_DIR).free
-        return {'managed': True, 'available': True, 'version': version,
-                'size_bytes': size, 'free_bytes': free}
+        result = {'managed': managed, 'external': not managed, 'available': True, 'version': version,
+                  'size_bytes': size, 'target': f'{conn.host}:{conn.port}/{conn.database}'}
+        if managed:
+            result['free_bytes'] = shutil.disk_usage(os.getenv('SD_SMA_DATA_ROOT') or BASE_DIR).free
+        return result
     except pymysql.MySQLError as error:
         code = error.args[0] if error.args else 0
-        return {'managed': True, 'available': False,
+        return {'managed': managed, **({'external': True} if not managed else {}), 'available': False,
                 'error': 'credentials' if code in (1044, 1045, 1049) else 'unavailable'}
     except OSError:
         return {'managed': True, 'available': False, 'error': 'disk'}

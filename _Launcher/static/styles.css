@@ -1,18 +1,11 @@
 :root {
-  font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
-  color: #182334; background: #edf2f7;
+  --sd-font: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  --sd-font-base: 18px; --sd-font-small: 16px;
   --blue: #1261a6; --green: #16845b; --red: #b32d2d; --line: #cbd6e2;
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; }
 .security-warning { padding: 12px 24px; background: #981f2f; color: #fff; text-align: center; font-weight: 700; }
-button, input, select, textarea { font: inherit; min-height: 56px; border-radius: 10px; border: 1px solid var(--line); font-size: 18px; }
-button { padding: 0 24px; cursor: pointer; font-weight: 700; background: white; }
-button:disabled { opacity: .45; cursor: not-allowed; }
-.primary { background: var(--blue); color: white; border-color: var(--blue); }
-.secondary { background: #fff; color: #25364b; }
-.danger { background: var(--red); color: #fff; border-color: var(--red); }
-.warning { background: #d9800a; color: #fff; border-color: #d9800a; }
 header { height: 94px; padding: 16px 28px; color: white; background: #143b60; display: flex; align-items: center; justify-content: space-between; }
 h1, h2, h3, p { margin-top: 0; }
 header h1 { font-size: 28px; margin: 0; }
@@ -24,7 +17,7 @@ main { padding: 22px; max-width: 1500px; margin: auto; }
 .page { display: none; }
 .page.active { display: block; }
 .service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; }
-.service-card, .panel { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 3px 12px #17395f16; }
+.service-card { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 3px 12px #17395f16; }
 .service-title, .panel-title, .browser-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .service-title h2 { font-size: 23px; margin: 0; }
 .state { padding: 8px 14px; border-radius: 999px; font-weight: 700; }
@@ -38,10 +31,6 @@ main { padding: 22px; max-width: 1500px; margin: auto; }
 .card-actions button { padding: 0 10px; }
 .open-link { display: block; margin-top: 10px; text-align: center; line-height: 54px; border: 1px solid var(--blue); border-radius: 10px; color: var(--blue); font-weight: 700; text-decoration: none; }
 .error-summary, .error { color: var(--red); min-height: 24px; }
-.panel { max-width: 1120px; margin: auto; }
-.panel label { display: block; font-weight: 700; margin: 15px 0; }
-.panel input, .panel select, .panel textarea, dialog input { width: 100%; padding: 0 14px; margin-top: 7px; background: #fff; }
-.panel textarea { padding: 12px; min-height: 100px; }
 .import-settings { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
 .import-settings summary { font-weight: 700; font-size: 18px; min-height: 42px; line-height: 42px; cursor: pointer; }
 .root-grid, .entry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
@@ -56,7 +45,6 @@ main { padding: 22px; max-width: 1500px; margin: auto; }
 .credential-actions { display: flex; gap: 8px; }
 .credential-actions button { min-height: 48px; padding: 0 16px; }
 .assignment select { max-width: 430px; margin: 0; }
-.hint, small { color: #5e6f82; }
 dialog { border: 0; border-radius: 18px; padding: 25px; width: min(620px, 94vw); box-shadow: 0 20px 80px #0008; }
 dialog::backdrop { background: #102235aa; }
 .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }

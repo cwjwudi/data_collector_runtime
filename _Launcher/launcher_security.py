@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import hmac
 import json
@@ -13,6 +14,7 @@ from typing import Any, Mapping
 
 
 PBKDF2_ITERATIONS = 310_000
+DATABASE_SERVICES = ('collector_web', 'query_web', 'db_admin')
 
 
 def _atomic_json(path: Path, data: Mapping[str, Any]) -> None:
@@ -23,15 +25,18 @@ def _atomic_json(path: Path, data: Mapping[str, Any]) -> None:
 
 
 class LauncherSecurityStore:
-    def __init__(self, path: Path, *, session_seconds: int = 15 * 60, managed_credentials: Mapping | None = None) -> None:
+    def __init__(self, path: Path, *, session_seconds: int = 15 * 60, managed_credentials: Mapping | None = None, managed_loader=None) -> None:
         self.path = path
         self.managed_credentials = dict(managed_credentials or {})
+        self.managed_loader = managed_loader
+        self.load_error = ''
         self.session_seconds = session_seconds
         self._lock = threading.RLock()
         self._sessions: dict[str, float] = {}
         self._failures = 0
         self._blocked_until = 0.0
         self._data = self._load()
+        self.database_error = self._binding_error(self._data)
 
     def _load(self) -> dict[str, Any]:
         try:
@@ -40,12 +45,19 @@ class LauncherSecurityStore:
                 raw.setdefault("version", 1)
                 raw.setdefault("credentials", [])
                 raw.setdefault("assignments", {})
+                if not isinstance(raw['credentials'], list) or not all(isinstance(row, dict) for row in raw['credentials']) or not isinstance(raw['assignments'], dict):
+                    raise ValueError('Invalid credential data')
                 return raw
-        except (OSError, ValueError, TypeError):
+            self.load_error = '数据库安全配置必须为 JSON 对象'
+        except FileNotFoundError:
             pass
+        except (OSError, ValueError, TypeError):
+            self.load_error = '数据库安全配置无法读取，请修复原文件后重启管理中心'
         return {"version": 1, "credentials": [], "assignments": {}}
 
     def _save(self) -> None:
+        if self.load_error:
+            raise RuntimeError(self.load_error)
         _atomic_json(self.path, self._data)
         try:
             self.path.chmod(0o600)
@@ -145,11 +157,14 @@ class LauncherSecurityStore:
                 row["password_configured"] = bool(raw.get("password"))
                 rows.append(row)
             return {"credentials": rows, "assignments": dict(self._data.get("assignments", {})),
-                    "managed_database": bool(self.managed_credentials)}
+                    "managed_database": bool(self.managed_credentials or self.managed_loader),
+                    "database_binding": copy.deepcopy(self._data.get('database_binding')),
+                    "error": self.load_error}
 
     def upsert_credential(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         with self._lock:
             credential_id = str(payload.get("id") or secrets.token_hex(8)).strip()
+            self._check_credential_edit(credential_id)
             if not credential_id or not all(ch.isalnum() or ch in "-_" for ch in credential_id):
                 raise ValueError("凭据 ID 无效")
             rows = list(self._data.get("credentials", []))
@@ -178,6 +193,7 @@ class LauncherSecurityStore:
 
     def delete_credential(self, credential_id: str) -> None:
         with self._lock:
+            self._check_credential_edit(credential_id)
             self._data["credentials"] = [
                 row for row in self._data.get("credentials", []) if str(row.get("id")) != credential_id
             ]
@@ -189,6 +205,8 @@ class LauncherSecurityStore:
 
     def assign(self, service: str, credential_id: str | None) -> None:
         with self._lock:
+            if 'database_binding' in self._data:
+                raise RuntimeError('请通过数据库统一应用修改连接')
             assignments = dict(self._data.get("assignments", {}))
             if credential_id:
                 if not any(str(row.get("id")) == credential_id for row in self._data.get("credentials", [])):
@@ -201,9 +219,20 @@ class LauncherSecurityStore:
 
     def credential_for_service(self, service: str) -> dict[str, Any] | None:
         with self._lock:
+            if service not in DATABASE_SERVICES:
+                return None
+            if self.load_error:
+                raise RuntimeError(self.load_error)
+            if self.database_error:
+                raise RuntimeError(self.database_error)
+            if 'database_binding' in self._data:
+                binding = self._data['database_binding']
+                if binding['mode'] == 'managed':
+                    return self._managed_for_service(service, required=True)
+                return self.credential_by_id(binding['external_credential_id'])
             credential_id = str(self._data.get("assignments", {}).get(service, ""))
-            if not credential_id and service in self.managed_credentials:
-                return dict(self.managed_credentials[service])
+            if not credential_id:
+                return self._managed_for_service(service)
             row = next(
                 (dict(item) for item in self._data.get("credentials", []) if str(item.get("id")) == credential_id),
                 None,
@@ -213,6 +242,71 @@ class LauncherSecurityStore:
         row.pop("password_protected", None)
         row["password"] = str(row.get("password") or "")
         return row
+
+    def _managed_for_service(self, service: str, *, required: bool = False) -> dict | None:
+        if self.managed_loader:
+            try:
+                self.managed_credentials = dict(self.managed_loader())
+            except Exception:
+                raise RuntimeError('内置数据库凭据不可用，请检查安装及原实例文件') from None
+        row = self.managed_credentials.get(service)
+        if row is None and required:
+            raise RuntimeError('当前环境未安装可用的内置数据库')
+        return dict(row) if row else None
+
+    @staticmethod
+    def _binding_error(data: Mapping) -> str:
+        if 'database_binding' not in data:
+            return ''
+        binding = data['database_binding']
+        if not isinstance(binding, dict) or binding.get('mode') not in ('managed', 'external'):
+            return '数据库统一选择无效'
+        if binding['mode'] == 'external':
+            row = next((row for row in data.get('credentials', []) if row.get('id') == binding.get('external_credential_id')), None)
+            if not row:
+                return '统一选择引用的外部凭据不存在，请重新应用配置'
+            if (row.get('engine') != 'mysql' or not all(isinstance(row.get(key), str) and row[key] for key in
+                    ('host', 'database', 'username', 'password')) or not isinstance(row.get('port'), int) or not 1 <= row['port'] <= 65535):
+                return '统一选择引用的外部连接参数损坏，请重新应用配置'
+        return ''
+
+    def _check_credential_edit(self, credential_id: str) -> None:
+        binding = self._data.get('database_binding')
+        if isinstance(binding, dict) and binding.get('external_credential_id') == credential_id:
+            raise RuntimeError('生效凭据只能通过数据库统一应用修改；删除前请先切换')
+        if any(value == credential_id for value in self._data.get('assignments', {}).values()):
+            raise RuntimeError('旧版生效档案也须通过数据库统一应用修改；删除前请先切换')
+
+    def database_snapshot(self) -> dict:
+        with self._lock:
+            return copy.deepcopy({key: value for key, value in self._data.items()
+                                  if key in ('database_binding', 'assignments', 'credentials')})
+
+    def restore_database(self, snapshot: Mapping) -> None:
+        with self._lock:
+            if self.load_error:
+                raise RuntimeError(self.load_error)
+            updated = {key: value for key, value in self._data.items()
+                       if key not in ('database_binding', 'assignments', 'credentials')}
+            updated.update(copy.deepcopy(snapshot))
+            _atomic_json(self.path, updated)
+            self._data = updated
+            self.database_error = self._binding_error(updated)
+
+    def apply_database_binding(self, binding: dict, credential: dict | None = None) -> None:
+        """Only the quiesced Launcher apply flow may commit an effective selection."""
+        with self._lock:
+            updated = self.database_snapshot()
+            updated['database_binding'] = dict(binding)
+            updated['assignments'] = {key: value for key, value in updated.get('assignments', {}).items()
+                                      if key not in DATABASE_SERVICES}
+            if credential is not None:
+                rows = [row for row in updated.get('credentials', []) if row['id'] != credential['id']]
+                updated['credentials'] = [*rows, dict(credential)]
+            error = self._binding_error(updated)
+            if error:
+                raise ValueError(error)
+            self.restore_database(updated)
 
     def credential_by_id(self, credential_id: str) -> dict[str, Any] | None:
         with self._lock:
@@ -228,6 +322,9 @@ class LauncherSecurityStore:
 
     def services_for_credential(self, credential_id: str) -> list[str]:
         with self._lock:
+            binding = self._data.get('database_binding')
+            if isinstance(binding, dict) and binding.get('external_credential_id') == credential_id:
+                return list(DATABASE_SERVICES)
             return [
                 str(service)
                 for service, assigned in self._data.get("assignments", {}).items()

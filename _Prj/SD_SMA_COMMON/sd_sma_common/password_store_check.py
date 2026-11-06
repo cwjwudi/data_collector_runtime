@@ -39,7 +39,8 @@ with TemporaryDirectory() as temp:
     query.save_app_settings({"database": {"password": "db-sample"}})
     query.save_opcua_settings({"password": "opc-sample"})
     assert query.get_active_config()["opcua"]["password"] == "opc-sample"
-    assert query.get_app_settings()["database"]["password"] == "db-sample"
+    assert "password" not in query.get_active_config()["app_settings"]["database"]
+    assert query.get_app_settings()["database"]["password"] == os.environ.get("SD_SMA_DB_PASSWORD", "")
     assert "password" not in query.get_public_app_settings()["database"]
     assert "password" not in query.get_public_opcua_settings()
     profile = query.get_public_profile()

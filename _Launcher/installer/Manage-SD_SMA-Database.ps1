@@ -18,6 +18,16 @@ $serviceExe = Join-Path $ProgramRoot '_Service\SD_SMA_DB.exe'
 $launcher = Join-Path $ProgramRoot '_Launcher\SD_SMA_Launcher.exe'
 $installedConfig = Join-Path $dataRoot 'config\launcher\launcher_config.json'
 if (-not $ConfigPath) { $ConfigPath = $installedConfig }
+$securityPath = Join-Path $dataRoot 'secrets\launcher_security.json'
+$externalMode = $false
+if (Test-Path -LiteralPath $securityPath) {
+    try { $security = Get-Content -LiteralPath $securityPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { throw 'Cannot read database selection. Original credentials were retained; repair launcher_security.json before retrying.' }
+    if ($security.PSObject.Properties.Name -contains 'database_binding') {
+        if ($security.database_binding.mode -notin @('managed', 'external')) { throw 'Invalid database selection. Repair it in SD SMA management before retrying.' }
+    }
+    $externalMode = $security.database_binding.mode -eq 'external'
+}
 
 if ($Action -eq 'Preflight') {
     if (Test-Path -LiteralPath $installedConfig) {
@@ -33,6 +43,7 @@ if ($Action -eq 'Preflight') {
         (Get-Service SD_SMA).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
     }
 }
+if ($externalMode -and $Action -in @('Initialize', 'Start')) { exit 0 }
 $service = Get-CimInstance Win32_Service -Filter "Name='SD_SMA_DB'"
 if ($service -and $service.PathName.Trim('"') -ne $serviceExe) {
     throw 'SD_SMA_DB belongs to another installation. Side-by-side installation is not supported.'
@@ -50,6 +61,7 @@ if ($Action -eq 'Stop' -or $Action -eq 'Remove' -or $Action -eq 'Preflight') {
 }
 
 if ($Action -eq 'Preflight') {
+    if ($externalMode) { exit 0 }
     $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $port = [int]$config.managed_database.port
     $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $port)

@@ -18,7 +18,7 @@ COMMON_ROOT = Path(__file__).resolve().parents[2] / "SD_SMA_COMMON"
 if str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
-from sd_sma_common.password_store import migrate_password_mapping, resolve_password
+from sd_sma_common.database_settings import database_credentials_from_env
 
 
 class ConfigLoader:
@@ -43,21 +43,14 @@ class ConfigLoader:
             path = Path(file_path)
             with path.open('r', encoding='utf-8') as f:
                 config_data = json.load(f)
-            database, migrated = migrate_password_mapping(path.parent, config_data.get('database', {}))
-            if migrated:
-                config_data['database'] = database
-                tmp_path = path.with_name(f".{path.name}.secret-migration.tmp")
-                with tmp_path.open('w', encoding='utf-8') as f:
-                    json.dump(config_data, f, ensure_ascii=False, indent=2)
-                tmp_path.replace(path)
-            return ConfigLoader._parse_config(config_data, config_dir=path.parent)
+            return ConfigLoader._parse_config(config_data)
         except FileNotFoundError:
             raise FileNotFoundError(f"配置文件未找到: {file_path}")
         except json.JSONDecodeError as e:
             raise ValueError(f"配置文件格式错误: {e}")
     
     @staticmethod
-    def _parse_config(config_data: Dict[str, Any], config_dir: Path | None = None) -> AppConfig:
+    def _parse_config(config_data: Dict[str, Any]) -> AppConfig:
         """解析配置数据"""
         if 'http_server' in config_data:
             raise ValueError("配置包含已删除的 http_server 字段")
@@ -226,13 +219,7 @@ class ConfigLoader:
             name=os.environ.get('SD_SMA_DB_DATABASE') or db_data.get('name', 'data.db'),
             host=os.environ.get('SD_SMA_DB_HOST') or db_data.get('host', '127.0.0.1'),
             port=int(os.environ.get('SD_SMA_DB_PORT') or db_data.get('port', 3306)),
-            username=os.environ.get('SD_SMA_DB_USERNAME') or db_data.get('username', ''),
-            # 环境变量优先；配置保存普通密码。
-            password=(
-                resolve_password(config_dir, db_data, 'SD_SMA_DB_PASSWORD')
-                if config_dir is not None
-                else (os.environ.get('SD_SMA_DB_PASSWORD') or str(db_data.get('password', '') or ''))
-            ),
+            **database_credentials_from_env(),
             auto_create=auto_create,
             data_groups=data_groups
         )

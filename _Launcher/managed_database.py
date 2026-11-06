@@ -113,6 +113,18 @@ class ManagedDatabase:
                     raise RuntimeError('Managed storage unavailable; check SD_SMA_DB service and rerun the installer if credentials are missing') from None
                 time.sleep(0.25)
 
+    def start_installed_service(self) -> None:
+        if not (self.package_root / '_Service/SD_SMA_DB.exe').is_file():
+            return
+        result = subprocess.run(
+            ['powershell', '-NoProfile', '-Command',
+             "$ErrorActionPreference='Stop'; $dbService=Get-Service SD_SMA_DB; "
+             "if ($dbService.Status -ne 'Running') { Start-Service SD_SMA_DB }"],
+            capture_output=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        if result.returncode:
+            raise RuntimeError('内置数据库服务无法启动，请检查 SD_SMA_DB')
+
     def _check_files(self):
         for name in ('mariadb-install-db.exe', 'mariadbd.exe', 'mariadb.exe', 'mariadb-dump.exe'):
             if not (self.binary / name).is_file():

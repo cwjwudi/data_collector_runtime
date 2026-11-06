@@ -438,6 +438,7 @@ Copy-Item -LiteralPath (Join-Path $LauncherDir "sd_sma_launcher.py") -Destinatio
 Copy-Item -LiteralPath (Join-Path $LauncherDir "resource_monitor.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_supervisor.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_security.py") -Destination $PackageLauncher -Force
+Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_database.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "managed_database.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_imports.py") -Destination $PackageLauncher -Force
 Copy-Item -LiteralPath (Join-Path $LauncherDir "launcher_web.py") -Destination $PackageLauncher -Force

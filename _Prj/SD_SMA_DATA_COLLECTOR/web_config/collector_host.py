@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 from collections import deque
 from pathlib import Path
@@ -89,6 +90,13 @@ class CollectorHost:
         self._phase = "idle"
         self._last_error: Optional[str] = None
         self._log_handler = RingBufferLogHandler()
+        self._database_hold = os.getenv('SD_SMA_DATABASE_SWITCH_HOLD') == '1'
+        self._database_release = asyncio.Event()
+        if not self._database_hold:
+            self._database_release.set()
+        self._paused_live = False
+        self._filename = ''
+        self._last_storage = None
 
     @property
     def phase(self) -> str:
@@ -118,8 +126,12 @@ class CollectorHost:
             raise ValueError("非法路径")
         return target
 
-    async def start(self, filename: str, collector_config_dir: Path) -> dict[str, Any]:
+    async def start(self, filename: str, collector_config_dir: Path, *, internal: bool = False) -> dict[str, Any]:
         async with self._lock:
+            if self._database_hold and not internal:
+                raise RuntimeError('数据库正在切换，请稍后启动采集')
+            if self._last_storage and (self._last_storage.data_queue or self._last_storage.retry_queue or self._last_storage.dead_letter_queue):
+                raise RuntimeError('上次采集仍有内存待写任务，请先恢复旧库并排空')
             if self._task and not self._task.done():
                 raise RuntimeError("采集已在运行中，请先停止")
             path = self.resolve_config_file(filename, collector_config_dir)
@@ -129,6 +141,7 @@ class CollectorHost:
             self._last_error = None
             self._log_handler.clear()
             self._phase = "starting"
+            self._filename = filename
             path_str = str(path)
 
             async def runner() -> None:
@@ -143,10 +156,13 @@ class CollectorHost:
                         self._phase = "error"
                         self._last_error = "初始化失败，请查看下方日志或 data_collector.log"
                         return
-                    self._phase = "running"
+                    self._phase = 'paused' if self._database_hold else 'running'
+                    await self._database_release.wait()
+                    self._phase = 'running'
                     await sys_obj.start()
                 except asyncio.CancelledError:
                     if sys_obj is not None:
+                        self._last_storage = sys_obj.storage_processor
                         sys_obj.running = False
                     raise
                 except Exception as exc:  # noqa: BLE001
@@ -197,6 +213,42 @@ class CollectorHost:
             "last_error": self._last_error,
             "task_active": bool(self._task and not self._task.done()),
         }
+
+    async def pause_database(self) -> dict:
+        async with self._lock:
+            if self._phase in ('starting', 'stopping'):
+                raise RuntimeError('采集正在启动或停止，请稍后重试')
+            self._database_hold = True
+            self._database_release.clear()
+            if self._system and self._system.running:
+                self._paused_live = True
+                self._phase = 'paused'
+                await self._system.data_collector.stop_collection()
+            storage = self._system.storage_processor if self._system else self._last_storage
+            if storage:
+                await storage.drain_for_database_switch()
+            return self.database_state()
+
+    def database_state(self) -> dict:
+        storage = self._system.storage_processor if self._system else self._last_storage
+        return dict(phase=self._phase, filename=self._filename, running=bool(self._system and self._system.running),
+                    held=self._database_hold, task_active=bool(self._task and not self._task.done()),
+                    storage=storage.get_runtime_metrics() if storage else {})
+
+    async def resume_database(self) -> dict:
+        async with self._lock:
+            if self._paused_live and self._system:
+                system = self._system
+                task = system.storage_processor.processing_task
+                if task and not task.done():
+                    await asyncio.wait_for(asyncio.shield(task), timeout=30)
+                await system.storage_processor.start_processing()
+                groups = [group for group in system.config.groups if group.name in system.config.database.data_groups]
+                await system.data_collector.start_collection(groups, {point.name: point for point in system.config.points})
+            self._paused_live = False
+            self._database_hold = False
+            self._database_release.set()
+            return self.database_state()
 
     async def shutdown(self) -> None:
         await self.stop()

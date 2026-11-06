@@ -8,15 +8,16 @@ async function refreshManagedStorage() {
     const response = await fetch('/api/storage/status');
     if (!response.ok) throw new Error();
     const result = await response.json();
-    panel.hidden = !result.managed;
-    if (!result.managed) return;
+    panel.hidden = !result.managed && !result.external;
+    if (panel.hidden) return;
     const connection = document.getElementById('connectionPanel');
     if (connection) connection.hidden = true;
     status.className = result.available ? 'muted ok' : 'muted warn';
     details.textContent = '';
     if (result.available) {
       status.textContent = SdI18n.t('dbStorage.status.online');
-      details.textContent = SdI18n.t('dbStorage.status.details', {
+      details.textContent = SdI18n.t(result.external ? 'dbStorage.status.externalDetails' : 'dbStorage.status.details', {
+        target: result.target,
         version: result.version,
         size: (result.size_bytes / 1048576).toFixed(1),
         free: (result.free_bytes / 1073741824).toFixed(1),

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +30,7 @@ if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
 from sd_sma_common.session_bridge import install_session_middleware
+from sd_sma_common.database_control import require_database_controller, database_connection_status, injected_database, collector_pending_outboxes
 
 AUTH_EXEMPT_PATHS = {"/api/health"}
 
@@ -60,6 +61,8 @@ opcua_browser = OpcUaBrowserService()
 
 
 async def _auto_start_collector() -> None:
+    if os.getenv('SD_SMA_DATABASE_SWITCH_HOLD') == '1':
+        return
     host = get_collector_host()
     try:
         settings = cfg.load_runtime_settings()
@@ -100,6 +103,14 @@ app.mount("/common", StaticFiles(directory=str(COMMON_ROOT / "sd_sma_common" / "
 install_session_middleware(app, exempt=AUTH_EXEMPT_PATHS)
 
 
+@app.middleware('http')
+async def database_switch_guard(request: Request, call_next):
+    if get_collector_host()._database_hold and request.method not in ('GET', 'HEAD', 'OPTIONS') and not request.url.path.startswith('/api/internal/database'):
+        from fastapi.responses import JSONResponse
+        return JSONResponse({'detail': 'Database switch in progress'}, status_code=409)
+    return await call_next(request)
+
+
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(BASE_DIR / "static" / "home.html")
@@ -118,6 +129,34 @@ def config_page() -> FileResponse:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {"status": "ok"}
+
+
+@app.get('/api/internal/database')
+def database_runtime(request: Request) -> dict:
+    require_database_controller(request)
+    host = get_collector_host()
+    result = host.database_state()
+    config = host._system.db_manager.db_config if host._system and host._system.db_manager else injected_database()
+    result.update(database_connection_status(config))
+    return result
+
+
+@app.post('/api/internal/database/{action}')
+async def database_control(action: str, request: Request) -> dict:
+    require_database_controller(request)
+    host = get_collector_host()
+    try:
+        if action == 'pause':
+            result = await host.pause_database()
+            return {**result, 'outboxes': collector_pending_outboxes(collector_config_dir, Path.cwd())}
+        if action == 'resume':
+            return await host.resume_database()
+        if action == 'prepare':
+            body = await request.json()
+            return await host.start(str(body['filename']), collector_config_dir, internal=True)
+    except (RuntimeError, ValueError, OSError, asyncio.TimeoutError) as exc:
+        raise HTTPException(409, '采集暂停/排空失败，旧任务已保留') from exc
+    raise HTTPException(400, 'Unknown database action')
 
 
 @app.get("/api/config/template")

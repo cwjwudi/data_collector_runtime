@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -14,11 +15,7 @@ COMMON_ROOT = Path(__file__).resolve().parents[2] / "SD_SMA_COMMON"
 if str(COMMON_ROOT) not in sys.path:
     sys.path.insert(0, str(COMMON_ROOT))
 
-from sd_sma_common.password_store import (
-    migrate_password_mapping,
-    password_is_configured,
-    prepare_password_mapping,
-)
+from sd_sma_common.database_settings import without_database_credentials, effective_database_settings
 
 
 class CollectorConfigManager:
@@ -126,9 +123,6 @@ class CollectorConfigManager:
                 "name": "",
                 "host": "127.0.0.1",
                 "port": 3306,
-                "username": "",
-                "password": "",
-                "password_configured": False,
                 "data_groups": [],
             },
             "logging": {
@@ -192,12 +186,8 @@ class CollectorConfigManager:
                 sanitized[list_key] = []
         if not isinstance(sanitized.get("database"), dict):
             sanitized["database"] = cls.default_payload()["database"]
-        database = dict(sanitized["database"])
-        database["password_configured"] = password_is_configured(database, "SD_SMA_DB_PASSWORD")
-        database["password"] = ""
-        database.pop("password_enc", None)
-        database.pop("clear_password", None)
-        sanitized["database"] = database
+        sanitized["database"] = without_database_credentials(effective_database_settings(sanitized["database"]))
+        sanitized['database']['launcher_managed'] = bool(os.getenv('SD_SMA_DB_CREDENTIAL_MANAGED'))
         if not isinstance(sanitized.get("logging"), dict):
             sanitized["logging"] = cls.default_payload()["logging"]
         if not isinstance(sanitized.get("persistent_queue"), dict):
@@ -205,30 +195,9 @@ class CollectorConfigManager:
 
         return sanitized, stats
 
-    def _migrate_database_secret(self, payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-        migrated = copy.deepcopy(payload)
-        database, changed = migrate_password_mapping(
-            self.collector_config_dir,
-            migrated.get("database", {}),
-        )
-        database.pop("password_configured", None)
-        migrated["database"] = database
-        return migrated, changed
-
-    def _prepare_for_storage(
-        self,
-        payload: dict[str, Any],
-        existing: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    def _prepare_for_storage(self, payload: dict[str, Any]) -> dict[str, Any]:
         stored = copy.deepcopy(payload)
-        existing_database = (existing or {}).get("database", {})
-        database = prepare_password_mapping(
-            self.collector_config_dir,
-            stored.get("database", {}),
-            existing_database if isinstance(existing_database, dict) else {},
-        )
-        database.pop("password_configured", None)
-        stored["database"] = database
+        stored["database"] = without_database_credentials(stored.get("database", {}))
         return stored
 
     def _validate_scope(self, payload: dict[str, Any]) -> None:
@@ -358,11 +327,6 @@ class CollectorConfigManager:
             raise ValueError(f"配置文件不存在: {safe_name}")
 
         payload = self._load_json(source)
-        payload, migrated = self._migrate_database_secret(payload)
-        if migrated:
-            tmp_source = source.with_suffix(f"{source.suffix}.tmp")
-            self._write_json(tmp_source, payload)
-            tmp_source.replace(source)
         sanitized, stats = self.sanitize_for_ui(payload)
         return {
             "filename": safe_name,
@@ -403,14 +367,7 @@ class CollectorConfigManager:
         safe_name = self._sanitize_filename(filename)
         self.collector_config_dir.mkdir(parents=True, exist_ok=True)
         target = (self.collector_config_dir / safe_name).resolve()
-        existing: dict[str, Any] = {}
-        if target.exists():
-            existing, migrated = self._migrate_database_secret(self._load_json(target))
-            if migrated:
-                migration_tmp = target.with_suffix(f"{target.suffix}.tmp")
-                self._write_json(migration_tmp, existing)
-                migration_tmp.replace(target)
-        stored = self._prepare_for_storage(payload, existing)
+        stored = self._prepare_for_storage(payload)
 
         backup_dir = (self.collector_config_dir / "_backup").resolve()
         backup_dir.mkdir(parents=True, exist_ok=True)
