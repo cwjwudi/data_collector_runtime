@@ -39,26 +39,7 @@
 
       <div id="tab-database" class="tab-panel active">
         <h2>数据库设定</h2>
-        <p class="hint">先填连接并点「连接数据库」。连接会把当前整份配置写入文件，再按这个库刷新后面的分组。</p>
-
-        <div class="settings-subsection settings-subsection-db">
-          <h3 class="subsection-title">数据库连接</h3>
-          <p class="hint subsection-hint">MySQL / SQLite 连接参数（app_settings.database）</p>
-          <div class="row">
-            <label for="appDbType">数据库类型</label>
-            <select id="appDbType">
-              <option value="mysql">mysql</option>
-              <option value="sqlite">sqlite</option>
-            </select>
-            <label for="appDbName">数据库名</label>
-            <input id="appDbName" type="text" />
-            <label for="appDbHost">Host</label>
-            <input id="appDbHost" type="text" />
-            <label for="appDbPort">Port</label>
-            <input id="appDbPort" class="field-narrow-num" type="number" min="0" />
-          </div>
-          <p class="hint" data-i18n="common.database.credentialsHint"></p>
-        </div>
+        <p class="hint" data-i18n="common.database.managedHint"></p>
 
         <div class="settings-subsection settings-subsection-limits">
           <h3 class="subsection-title">查询限制</h3>
@@ -74,7 +55,7 @@
         </div>
 
         <div class="row settings-actions">
-          <button type="button" id="btnConnectDatabase">连接数据库</button>
+          <button type="button" id="btnConnectDatabase" data-i18n="query.config.database.refresh">刷新数据库分组</button>
         </div>
         <div id="appSettingsHint" class="muted"></div>
       </div>
@@ -403,8 +384,8 @@
       </div>
     </div>
     <div id="opcuaNodePicker" class="opcua-node-picker" hidden></div>
-    <script src="/common/zh.js?v=20261105_02"></script>
+    <script src="/common/zh.js?v=20261106_01"></script>
     <script src="/common/i18n.js?v=20261020_03"></script>
-    <script src="/static/config.js?v=20261105_02"></script>
+    <script src="/static/config.js?v=20261106_01"></script>
   </body>
 </html>

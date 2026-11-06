@@ -220,7 +220,8 @@ class ConfigLoader:
             host=os.environ.get('SD_SMA_DB_HOST') or db_data.get('host', '127.0.0.1'),
             port=int(os.environ.get('SD_SMA_DB_PORT') or db_data.get('port', 3306)),
             **database_credentials_from_env(),
-            auto_create=auto_create,
+            # 中央管理在启动服务前准备或校验业务库，旧配置不能再触发采集器建库。
+            auto_create=auto_create and not os.getenv('SD_SMA_DB_CREDENTIAL_MANAGED'),
             data_groups=data_groups
         )
                 

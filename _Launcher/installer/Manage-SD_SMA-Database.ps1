@@ -76,8 +76,10 @@ $env:SD_SMA_DATA_ROOT = $dataRoot
 if ($Action -eq 'Initialize') {
     & $launcher --config $ConfigPath --initialize-database
     if ($LASTEXITCODE -ne 0) { throw 'Managed database initialization failed. Rerun the installer; existing data and credentials were retained.' }
-    if ($service) { & $serviceExe refresh } else { & $serviceExe install }
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to register SD_SMA_DB service.' }
+    if (-not $service) {
+        & $serviceExe install
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to register SD_SMA_DB service.' }
+    }
 }
 $status = Get-Service SD_SMA_DB -ErrorAction Stop
 if ($status.Status -ne 'Running') { Start-Service SD_SMA_DB }

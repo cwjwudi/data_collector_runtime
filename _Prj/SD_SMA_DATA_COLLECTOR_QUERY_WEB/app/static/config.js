@@ -260,12 +260,7 @@ function lockSelect(selectId, value, label) {
 
 function getAppSettingsPayload() {
   return {
-    database: {
-      type: document.getElementById('appDbType').value || 'mysql',
-      name: document.getElementById('appDbName').value.trim(),
-      host: document.getElementById('appDbHost').value.trim(),
-      port: Number(document.getElementById('appDbPort').value || 0),
-    },
+    database: currentProfile.app_settings.database,
     query_limits: {
       requests_per_minute: Number(document.getElementById('appRequestsPerMinute').value || 0),
       default_window_hours: Number(document.getElementById('appDefaultWindowHours').value || 24),
@@ -275,15 +270,7 @@ function getAppSettingsPayload() {
 }
 
 function fillAppSettingsForm(data) {
-  const database = data.database || {};
   const queryLimits = data.query_limits || {};
-  document.getElementById('appDbType').value = database.type || 'mysql';
-  document.getElementById('appDbName').value = database.name || '';
-  document.getElementById('appDbHost').value = database.host || '';
-  document.getElementById('appDbPort').value = Number(database.port || 3306);
-  for (const id of ['appDbType', 'appDbName', 'appDbHost', 'appDbPort']) {
-    document.getElementById(id).disabled = Boolean(database.launcher_managed);
-  }
   document.getElementById('appRequestsPerMinute').value = Number(queryLimits.requests_per_minute || 120);
   document.getElementById('appDefaultWindowHours').value = Number(queryLimits.default_window_hours || 24);
   document.getElementById('appMaxWindowHours').value = Number(queryLimits.max_window_hours || 168);

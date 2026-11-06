@@ -1347,27 +1347,10 @@ function renderDatabase() {
   const db = currentConfig.database;
   const groupOptions = getGroupNameOptions();
   panel.innerHTML = "";
-  appendHeaders(panel, ["数据库类型", "数据库名", "主机", "端口"]);
-  panel.appendChild(
-    createRow([
-      createSelect(
-        [
-          { value: "mysql", label: "mysql" },
-          { value: "sqlite", label: "sqlite" },
-        ],
-        db.type || "mysql",
-        (v) => (db.type = v)
-      ),
-      createInput(db.name || "", (v) => (db.name = v)),
-      createInput(db.host || "127.0.0.1", (v) => (db.host = v)),
-      createInput(db.port || 3306, (v) => (db.port = Number(v) || 3306), "number"),
-    ])
-  );
-  const credentialsHint = document.createElement("p");
-  for (const input of panel.querySelectorAll('input, select')) input.disabled = Boolean(db.launcher_managed);
-  credentialsHint.className = "hint";
-  credentialsHint.textContent = SdI18n.t('common.database.credentialsHint');
-  panel.appendChild(credentialsHint);
+  const managedHint = document.createElement("p");
+  managedHint.className = "hint";
+  managedHint.textContent = SdI18n.t('common.database.managedHint');
+  panel.appendChild(managedHint);
   appendHeaders(panel, [SdI18n.t('collector.database.dataGroups')]);
   panel.appendChild(
     createRow([
@@ -1376,26 +1359,6 @@ function renderDatabase() {
       }),
     ])
   );
-
-  const autoCreateLabel = document.createElement("label");
-  autoCreateLabel.className = "database-auto-create";
-  autoCreateLabel.appendChild(
-    createCheckbox(db.auto_create === true, (checked) => {
-      db.auto_create = checked;
-      renderDatabase();
-    })
-  );
-  const autoCreateText = document.createElement("span");
-  autoCreateText.textContent = "自动创建数据库及数据表（仅 MySQL）";
-  autoCreateLabel.appendChild(autoCreateText);
-  panel.appendChild(createRow([autoCreateLabel]));
-
-  if (db.auto_create === true) {
-    const warning = document.createElement("div");
-    warning.className = "database-create-warning";
-    warning.textContent = "启用自动创建前，请确保数据库账号具备服务器 CREATE 权限；推荐使用 ROOT 账号完成数据库初始化。";
-    panel.appendChild(warning);
-  }
 
   const queue = currentConfig.persistent_queue;
   const queueTitle = document.createElement("h3");

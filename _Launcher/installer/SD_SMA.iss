@@ -137,13 +137,31 @@ end;
 procedure RunRequiredScript(Name: String; Arguments: String);
 var
   ResultCode: Integer;
+  ErrorFile: String;
+  ErrorText: AnsiString;
+  Failure: String;
 begin
+  ErrorFile := '';
+  if Name = 'Manage-SD_SMA-Database.ps1' then begin
+    ErrorFile := ExpandConstant('{tmp}\managed-db-install-error.txt');
+    Arguments := Arguments + ' -ErrorFile "' + ErrorFile + '"';
+  end;
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\_Service\') + Name + '" ' + Arguments,
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     RaiseException('无法执行安装步骤：' + Name);
-  if ResultCode <> 0 then
-    RaiseException('安装步骤失败：' + Name + '。现有数据库和凭据已保留，请排除问题后重新运行安装程序。');
+  if ResultCode <> 0 then begin
+    Failure := '安装步骤失败：' + Name + '，退出码：' + IntToStr(ResultCode) +
+      '。现有数据库和凭据已保留，请排除问题后重新运行安装程序。';
+    if ErrorFile <> '' then begin
+      if LoadStringFromFile(ErrorFile, ErrorText) then
+        Failure := Failure + #13#10 + UTF8Decode(ErrorText);
+      Failure := Failure + #13#10 + '初始化详情：' + ExpandConstant('{commonappdata}\SmartData\SD SMA\logs\launcher\launcher.log') + #13#10 +
+        '数据库服务日志：' + ExpandConstant('{commonappdata}\SmartData\SD SMA\logs\database');
+    end;
+    Log(Failure);
+    RaiseException(Failure);
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

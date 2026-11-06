@@ -64,6 +64,17 @@ def check_collector(directory):
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["database"] == {key: value for key, value in payload["database"].items() if key not in LEGACY}
     assert payload["database"]["password"] == LEGACY["password"]
+    central = dict(SD_SMA_DB_CREDENTIAL_MANAGED="1", SD_SMA_DB_ENGINE="mysql",
+                   SD_SMA_DB_HOST="central-db", SD_SMA_DB_PORT="3307", SD_SMA_DB_DATABASE="central_data")
+    os.environ.update(central)
+    try:
+        loaded = ConfigLoader.load_from_file(str(path)).database
+        assert (loaded.type, loaded.host, loaded.port, loaded.name) == ("mysql", "central-db", 3307, "central_data")
+        assert not loaded.auto_create and loaded.data_groups == payload['database']['data_groups']
+    finally:
+        for key in central:
+            del os.environ[key]
+    assert ConfigLoader.load_from_file(str(path)).database.auto_create
 
 
 def check_query(directory):
@@ -134,17 +145,51 @@ const config = vm.runInContext(`normalizeConfig({database: {name: 'keep-db', use
 for (const key of keys) assert.equal(key in config.database, false);
 assert.equal(config.database.name, 'keep-db');
 const fields = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m => [m[1], {value: '', checked: false}]));
-for (const id of ['appDbUsername', 'appDbPassword', 'appDbClearPassword']) {
+for (const id of ['appDbUsername', 'appDbPassword', 'appDbClearPassword', 'appDbType', 'appDbName', 'appDbHost', 'appDbPort']) {
   assert.equal(id in fields, false);
   assert.equal(query.includes(id), false, 'removed control still referenced: ' + id);
 }
 const form = vm.createContext({document: {getElementById(id) {assert.ok(id in fields, id); return fields[id];}}});
 vm.runInContext(functions(query, ['getAppSettingsPayload', 'fillAppSettingsForm']), form);
-vm.runInContext(`fillAppSettingsForm({database: {name: 'keep-db', username: 'old', password: 'old'}})`, form);
+vm.runInContext(`let currentProfile = {app_settings: {database: {
+  type: 'mysql', name: 'keep-db', host: 'central-db', port: 3307, launcher_managed: true}}};
+  fillAppSettingsForm(currentProfile.app_settings)`, form);
+fields.appRequestsPerMinute.value = '180';
 const payload = vm.runInContext('getAppSettingsPayload()', form);
 assert.equal(payload.database.name, 'keep-db');
+assert.equal(payload.database.host, 'central-db');
+assert.equal(payload.database.port, 3307);
+assert.equal(payload.query_limits.requests_per_minute, 180);
 for (const key of keys) assert.equal(key in payload.database, false);
-console.log('PASS config scripts parse; legacy drafts and database form omit credentials');
+const nodes = [];
+function element(tag) {
+  const node = {tag, children: [], textContent: '', classList: {add() {}},
+    appendChild(child) {this.children.push(child);}, addEventListener() {},
+    set innerHTML(value) {this.children = [];}};
+  nodes.push(node);
+  return node;
+}
+const panel = element('div');
+context.document = {createElement: element, getElementById: () => panel};
+context.SdI18n = {t: key => key};
+context.currentConfig = config;
+config.database.auto_create = true;
+config.database.host = 'hidden-db-host';
+vm.runInContext(functions(collector, ['renderDatabase', 'getGroupNameOptions', 'appendHeaders',
+  'createHeaderCell', 'createRow', 'createInput', 'createSelect', 'createCheckbox', 'createMultiSelect']), context);
+for (const enabled of [false, true]) {
+  config.persistent_queue.enabled = enabled;
+  nodes.length = 0;
+  vm.runInContext('renderDatabase()', context);
+  const text = nodes.map(node => node.textContent).join(' ');
+  assert.ok(text.includes('collector.database.dataGroups'));
+  assert.ok(text.includes('持久化队列'));
+  assert.ok(!text.includes('自动创建数据库') && !text.includes('ROOT'));
+  assert.ok(!nodes.some(node => node.value === 'hidden-db-host' || node.textContent === 'mysql'));
+  assert.equal(nodes.filter(node => node.type === 'checkbox').length, 1);
+  assert.equal(config.database.auto_create, true, 'Rendering must not rewrite the old config');
+}
+console.log('PASS managed database controls removed; query limits, data groups, queue and saved database preserved');
 '''
     subprocess.run(["node", "-e", check, str(COLLECTOR / "web_config/static/config.js"),
                     str(QUERY / "app/static/config.js"), str(QUERY / "app/static/config.html")], check=True)
